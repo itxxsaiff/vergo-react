@@ -1,0 +1,87 @@
+<svg width="1440" height="980" viewBox="0 0 1440 980" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="980" fill="#F5F7FB"/>
+
+  <rect x="40" y="36" width="1360" height="88" rx="22" fill="#FFFFFF" stroke="#E4EAF3"/>
+  <text x="72" y="78" fill="#1F2A37" font-family="Arial, sans-serif" font-size="28" font-weight="700">Admin Dashboard</text>
+  <text x="72" y="108" fill="#667085" font-family="Arial, sans-serif" font-size="16">Overview of platform stats and order activity</text>
+
+  <rect x="40" y="156" width="320" height="150" rx="24" fill="#FFFFFF" stroke="#D9E3F0"/>
+  <text x="72" y="204" fill="#64748B" font-family="Arial, sans-serif" font-size="18">Properties</text>
+  <text x="72" y="262" fill="#0F172A" font-family="Arial, sans-serif" font-size="44" font-weight="700">124</text>
+  <text x="72" y="289" fill="#94A3B8" font-family="Arial, sans-serif" font-size="15">Total properties in system</text>
+
+  <rect x="390" y="156" width="320" height="150" rx="24" fill="#FFFFFF" stroke="#D9E3F0"/>
+  <text x="422" y="204" fill="#64748B" font-family="Arial, sans-serif" font-size="18">Owners</text>
+  <text x="422" y="262" fill="#0F172A" font-family="Arial, sans-serif" font-size="44" font-weight="700">38</text>
+  <text x="422" y="289" fill="#94A3B8" font-family="Arial, sans-serif" font-size="15">Registered property owners</text>
+
+  <rect x="740" y="156" width="320" height="150" rx="24" fill="#FFFFFF" stroke="#D9E3F0"/>
+  <text x="772" y="204" fill="#64748B" font-family="Arial, sans-serif" font-size="18">Providers</text>
+  <text x="772" y="262" fill="#0F172A" font-family="Arial, sans-serif" font-size="44" font-weight="700">61</text>
+  <text x="772" y="289" fill="#94A3B8" font-family="Arial, sans-serif" font-size="15">Active service providers</text>
+
+  <rect x="1090" y="156" width="310" height="150" rx="24" fill="#FFFFFF" stroke="#D9E3F0"/>
+  <text x="1122" y="204" fill="#64748B" font-family="Arial, sans-serif" font-size="18">Orders Section</text>
+  <text x="1122" y="246" fill="#0F172A" font-family="Arial, sans-serif" font-size="22" font-weight="700">Separate block</text>
+  <text x="1122" y="279" fill="#94A3B8" font-family="Arial, sans-serif" font-size="15">Dedicated area for order analytics</text>
+
+  <rect x="40" y="346" width="1360" height="560" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="72" y="396" fill="#0F172A" font-family="Arial, sans-serif" font-size="26" font-weight="700">Orders Analytics</text>
+  <text x="72" y="425" fill="#64748B" font-family="Arial, sans-serif" font-size="16">This is the separate orders field the client is asking for</text>
+
+  <rect x="72" y="454" width="350" height="410" rx="24" fill="#FFF7ED" stroke="#F59E0B" stroke-width="3"/>
+  <text x="98" y="494" fill="#B45309" font-family="Arial, sans-serif" font-size="18" font-weight="700">Left side metrics</text>
+  <text x="98" y="520" fill="#92400E" font-family="Arial, sans-serif" font-size="14">Yellow-marked area in client reference</text>
+
+  <rect x="98" y="550" width="298" height="86" rx="18" fill="#FFFFFF" stroke="#FCD34D"/>
+  <text x="122" y="582" fill="#92400E" font-family="Arial, sans-serif" font-size="16">Active orders</text>
+  <text x="122" y="616" fill="#111827" font-family="Arial, sans-serif" font-size="32" font-weight="700">42</text>
+
+  <rect x="98" y="652" width="298" height="86" rx="18" fill="#FFFFFF" stroke="#FCD34D"/>
+  <text x="122" y="684" fill="#92400E" font-family="Arial, sans-serif" font-size="16">Completed orders</text>
+  <text x="122" y="718" fill="#111827" font-family="Arial, sans-serif" font-size="32" font-weight="700">87</text>
+
+  <rect x="98" y="754" width="298" height="86" rx="18" fill="#FFFFFF" stroke="#FCD34D"/>
+  <text x="122" y="786" fill="#92400E" font-family="Arial, sans-serif" font-size="16">Total orders</text>
+  <text x="122" y="820" fill="#111827" font-family="Arial, sans-serif" font-size="32" font-weight="700">129</text>
+
+  <rect x="458" y="454" width="910" height="410" rx="24" fill="#EFF6FF" stroke="#3B82F6" stroke-width="3"/>
+  <text x="490" y="494" fill="#1D4ED8" font-family="Arial, sans-serif" font-size="18" font-weight="700">Right side chart area</text>
+  <text x="490" y="520" fill="#1E40AF" font-family="Arial, sans-serif" font-size="14">Blue-marked area in client reference</text>
+
+  <rect x="1152" y="474" width="184" height="42" rx="12" fill="#FFFFFF" stroke="#93C5FD"/>
+  <text x="1174" y="501" fill="#1E3A8A" font-family="Arial, sans-serif" font-size="16">Year Filter: 2026</text>
+
+  <line x1="520" y1="794" x2="1328" y2="794" stroke="#94A3B8" stroke-width="2"/>
+  <line x1="548" y1="560" x2="548" y2="794" stroke="#CBD5E1" stroke-width="2"/>
+
+  <polyline points="548,752 612,726 676,742 740,690 804,706 868,660 932,676 996,624 1060,640 1124,586 1188,602 1252,548 1316,570" fill="none" stroke="#2563EB" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="548" cy="752" r="6" fill="#2563EB"/>
+  <circle cx="612" cy="726" r="6" fill="#2563EB"/>
+  <circle cx="676" cy="742" r="6" fill="#2563EB"/>
+  <circle cx="740" cy="690" r="6" fill="#2563EB"/>
+  <circle cx="804" cy="706" r="6" fill="#2563EB"/>
+  <circle cx="868" cy="660" r="6" fill="#2563EB"/>
+  <circle cx="932" cy="676" r="6" fill="#2563EB"/>
+  <circle cx="996" cy="624" r="6" fill="#2563EB"/>
+  <circle cx="1060" cy="640" r="6" fill="#2563EB"/>
+  <circle cx="1124" cy="586" r="6" fill="#2563EB"/>
+  <circle cx="1188" cy="602" r="6" fill="#2563EB"/>
+  <circle cx="1252" cy="548" r="6" fill="#2563EB"/>
+  <circle cx="1316" cy="570" r="6" fill="#2563EB"/>
+
+  <text x="535" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Jan</text>
+  <text x="599" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Feb</text>
+  <text x="663" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Mar</text>
+  <text x="727" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Apr</text>
+  <text x="791" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">May</text>
+  <text x="855" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Jun</text>
+  <text x="919" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Jul</text>
+  <text x="983" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Aug</text>
+  <text x="1047" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Sep</text>
+  <text x="1111" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Oct</text>
+  <text x="1175" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Nov</text>
+  <text x="1239" y="824" fill="#64748B" font-family="Arial, sans-serif" font-size="14">Dec</text>
+
+  <text x="490" y="850" fill="#64748B" font-family="Arial, sans-serif" font-size="15">Monthly timeline showing how many orders were published in each month</text>
+</svg>

@@ -1,0 +1,901 @@
+.page-title-right .btn + .btn {
+  margin-left: 0.5rem;
+}
+
+.vergo-admin-directory-card {
+  aspect-ratio: 1;
+  border: 1px solid rgba(93, 135, 255, 0.12);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.vergo-admin-directory-card-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.vergo-admin-directory-photo-wrap {
+  flex: 0 0 56%;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(93, 135, 255, 0.14), rgba(93, 135, 255, 0.04));
+}
+
+.vergo-admin-directory-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vergo-admin-directory-content {
+  flex: 1 1 auto;
+  padding: 1rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.form-label {
+  font-weight: 500;
+}
+
+.top-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  width: 100%;
+  height: 3px;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, #2b6ef2 0%, #4f8cff 60%, #90c2ff 100%);
+  box-shadow: 0 0 10px rgba(43, 110, 242, 0.45);
+  transition: transform 180ms ease, opacity 220ms ease;
+}
+
+.top-progress-bar.is-visible {
+  opacity: 1;
+}
+
+.auth-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #495057;
+}
+
+.vergo-auth-body {
+  font-size: 0.95rem;
+}
+
+.vergo-auth-title {
+  font-size: 1.7rem;
+}
+
+.vergo-auth-subtitle {
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.vergo-auth-body .form-label,
+.vergo-auth-body .form-control,
+.vergo-auth-body .btn,
+.vergo-auth-body .alert,
+.vergo-auth-body small,
+.vergo-auth-body .btn-link,
+.vergo-auth-body p {
+  font-size: 0.95rem;
+}
+
+.vergo-wordmark {
+  display: inline-block;
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: #2a3547;
+  text-transform: none;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.vergo-wordmark-accent {
+  color: #5d87ff;
+  position: relative;
+  margin-right: 0.02em;
+}
+
+.vergo-wordmark-accent::after {
+  content: "";
+  position: absolute;
+  left: 0.02em;
+  right: 0.02em;
+  bottom: -0.1em;
+  height: 0.18em;
+  border-radius: 999px;
+  background: rgba(93, 135, 255, 0.18);
+  z-index: -1;
+}
+
+.vergo-wordmark-sidebar {
+  font-size: 1.55rem;
+}
+
+.vergo-wordmark-mobile {
+  font-size: 1.35rem;
+}
+
+.vergo-type-shell {
+  isolation: isolate;
+}
+
+.vergo-type-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 12, 28, 0.28) 0%, rgba(15, 23, 42, 0.7) 100%),
+    radial-gradient(circle at 18% 18%, rgba(190, 216, 255, 0.18) 0%, transparent 26%),
+    radial-gradient(circle at 78% 16%, rgba(140, 118, 255, 0.2) 0%, transparent 30%);
+  z-index: 0;
+}
+
+.vergo-type-shell > .d-flex {
+  position: relative;
+  z-index: 1;
+}
+
+.vergo-type-auth-card {
+  position: relative;
+  border: 0;
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(31, 41, 72, 0.3) 0%, rgba(20, 27, 49, 0.18) 100%);
+  box-shadow:
+    0 26px 60px rgba(7, 11, 27, 0.42),
+    0 10px 24px rgba(93, 135, 255, 0.12);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  overflow: hidden;
+}
+
+.vergo-type-auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02) 48%, transparent 75%);
+  pointer-events: none;
+}
+
+.vergo-type-auth-body {
+  position: relative;
+  padding: 2.5rem 2rem 2rem;
+  color: #ffffff;
+}
+
+.vergo-type-auth-body .vergo-wordmark,
+.vergo-type-auth-body .vergo-auth-title {
+  color: #ffffff;
+}
+
+.vergo-type-auth-body .vergo-wordmark-accent {
+  color: #5d87ff;
+}
+
+.vergo-type-auth-body .vergo-wordmark-accent::after {
+  background: rgba(93, 135, 255, 0.24);
+}
+
+.vergo-type-auth-body .vergo-auth-subtitle,
+.vergo-type-auth-body .vergo-type-note {
+  color: rgba(240, 245, 255, 0.76);
+}
+
+.vergo-type-auth-body .form-label {
+  color: #ffffff !important;
+}
+
+.vergo-type-auth-body .text-muted,
+.vergo-type-auth-body small {
+  color: rgba(240, 245, 255, 0.78) !important;
+}
+
+.vergo-type-auth-body .form-control,
+.vergo-type-auth-body .form-select {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.vergo-type-auth-body .form-control::placeholder,
+.vergo-type-auth-body .form-select::placeholder {
+  color: rgba(240, 245, 255, 0.5);
+}
+
+.vergo-type-auth-body .form-control:focus,
+.vergo-type-auth-body .form-select:focus {
+  border-color: rgba(122, 160, 255, 0.72);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  box-shadow: 0 0 0 0.25rem rgba(93, 135, 255, 0.2);
+}
+
+.vergo-type-auth-body .form-control[readonly],
+.vergo-type-auth-body .form-control:disabled,
+.vergo-type-auth-body .form-select:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.vergo-type-auth-body .input-group > .form-control {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.vergo-type-auth-body .btn-light,
+.vergo-type-auth-body .input-group > .btn-light {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.vergo-type-auth-body .btn-light:hover,
+.vergo-type-auth-body .btn-light:focus {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.vergo-type-auth-body .alert {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.vergo-type-auth-body .alert-danger {
+  background: rgba(217, 45, 32, 0.18);
+  color: #fff0ee;
+}
+
+.vergo-type-auth-body .alert-success {
+  background: rgba(18, 183, 106, 0.18);
+  color: #ebfff4;
+}
+
+.vergo-type-auth-body .btn-link.text-primary,
+.vergo-type-auth-body a.text-primary {
+  color: #9fc0ff !important;
+}
+
+.vergo-type-auth-body .btn-link.text-primary:hover,
+.vergo-type-auth-body a.text-primary:hover {
+  color: #ffffff !important;
+}
+
+.vergo-type-choice-card {
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.vergo-type-choice-card.is-active {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.vergo-type-choice-title {
+  color: #ffffff;
+}
+
+.vergo-type-choice-description {
+  color: rgba(240, 245, 255, 0.78);
+}
+
+.vergo-type-options {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.vergo-type-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  text-align: left;
+  transition: transform 0.22s ease, background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.vergo-type-option:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.vergo-type-option.is-active {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 18px 34px rgba(69, 91, 173, 0.24);
+}
+
+.vergo-type-option-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(133, 159, 255, 0.56), rgba(255, 255, 255, 0.16));
+  color: #ffffff;
+  font-size: 1.35rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.vergo-type-option-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.vergo-type-option-title {
+  display: block;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.vergo-type-option-description {
+  display: block;
+  margin-top: 0.3rem;
+  color: rgba(240, 245, 255, 0.74);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.vergo-type-option-indicator {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.vergo-type-option-indicator::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 999px;
+  background: #ffffff;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.vergo-type-option.is-active .vergo-type-option-indicator {
+  border-color: #ffffff;
+}
+
+.vergo-type-option.is-active .vergo-type-option-indicator::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.vergo-type-continue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  position: relative;
+  overflow: hidden;
+  padding: 0.55rem 1rem;
+  border: 1px solid rgba(93, 135, 255, 0.34);
+  background: linear-gradient(135deg, #5d87ff 0%, #7aa0ff 100%);
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.015em;
+  box-shadow: 0 18px 36px rgba(39, 86, 222, 0.34);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease, background 0.22s ease;
+}
+
+.vergo-type-continue::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02));
+  pointer-events: none;
+}
+
+.vergo-type-continue-label,
+.vergo-type-continue-icon {
+  position: relative;
+  z-index: 1;
+}
+
+.vergo-type-continue-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.85rem;
+}
+
+.vergo-type-continue:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #6b93ff 0%, #89abff 100%);
+  box-shadow: 0 24px 48px rgba(39, 86, 222, 0.42);
+}
+
+.vergo-type-continue:focus,
+.vergo-type-continue:focus-visible,
+.vergo-type-continue:active,
+.vergo-type-continue.active,
+.show > .vergo-type-continue.dropdown-toggle {
+  color: #ffffff !important;
+  border-color: rgba(93, 135, 255, 0.42);
+  background: linear-gradient(135deg, #5d87ff 0%, #7aa0ff 100%) !important;
+  box-shadow: 0 0 0 0.2rem rgba(93, 135, 255, 0.2), 0 18px 36px rgba(39, 86, 222, 0.34);
+}
+
+.vergo-type-continue:active:not(:disabled),
+.vergo-type-continue.active:not(:disabled),
+.show > .vergo-type-continue.dropdown-toggle:not(:disabled) {
+  transform: translateY(0);
+  background: linear-gradient(135deg, #527cf0 0%, #7398ff 100%) !important;
+  box-shadow: 0 14px 28px rgba(39, 86, 222, 0.3);
+}
+
+.vergo-type-continue:hover:not(:disabled) .vergo-type-continue-icon {
+  transform: translateX(2px);
+}
+
+.vergo-type-continue:focus .vergo-type-continue-icon,
+.vergo-type-continue:focus-visible .vergo-type-continue-icon,
+.vergo-type-continue:active .vergo-type-continue-icon,
+.vergo-type-continue.active .vergo-type-continue-icon {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.vergo-type-continue:disabled {
+  border-color: #6f94ff;
+  background: linear-gradient(135deg, #6f94ff 0%, #83a5ff 100%);
+  color: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 10px 24px rgba(39, 86, 222, 0.16);
+}
+
+.vergo-type-continue:disabled .vergo-type-continue-icon {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.vergo-type-note {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.84rem;
+}
+
+.table-action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.table-action-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.table-action-btn i {
+  font-size: 1.15rem;
+}
+
+.table-action-btn.table-action-edit {
+  color: #0074ba;
+  background: rgba(0, 116, 186, 0.12);
+  border-color: rgba(0, 116, 186, 0.16);
+}
+
+.table-action-btn.table-action-delete {
+  color: #fa896b;
+  background: rgba(250, 137, 107, 0.14);
+  border-color: rgba(250, 137, 107, 0.18);
+}
+
+.table-action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.vergo-table-scroll {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.vergo-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+}
+
+.vergo-notification-dropdown {
+  width: min(420px, calc(100vw - 32px));
+  max-width: min(420px, calc(100vw - 32px));
+  overflow: hidden;
+}
+
+.vergo-notification-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.vergo-notification-item {
+  gap: 0;
+}
+
+.vergo-notification-content {
+  min-width: 0;
+  width: calc(100% - 60px);
+}
+
+.vergo-notification-message {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.vergo-job-stat-card {
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.vergo-job-stat-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.vergo-job-card {
+  border-color: #dfe5ef !important;
+  border-radius: 28px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.vergo-job-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.1);
+  border-color: #d2dae8 !important;
+}
+
+.vergo-job-card-main {
+  flex: 1 1 640px;
+  min-width: 0;
+}
+
+.vergo-job-type-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(93, 135, 255, 0.12);
+  color: #5d87ff;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.vergo-job-card-title {
+  color: #111827;
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.vergo-job-card-description {
+  color: #5a6a85;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.vergo-job-card-footer {
+  margin-top: 1.8rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.vergo-job-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.vergo-job-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.vergo-job-meta-item i {
+  color: #97a4ba;
+  font-size: 1.18rem;
+}
+
+.vergo-job-apply-btn {
+  min-width: 150px;
+  min-height: 48px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: #5d87ff;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.vergo-job-apply-btn:hover {
+  color: #4a74ef;
+  background: rgba(93, 135, 255, 0.08);
+}
+
+.vergo-job-apply-btn-submitted,
+.vergo-job-apply-btn-submitted:hover {
+  color: #2f4858;
+  background: rgba(47, 72, 88, 0.08);
+}
+
+.vergo-dashboard-analytics-card {
+  border: 1px solid #e8eef7;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+}
+
+.vergo-dashboard-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(93, 135, 255, 0.12);
+  color: #2b6ef2;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.vergo-dashboard-analytics-panel {
+  height: 100%;
+  padding: 1.5rem;
+  border: 1px solid #e8eef7;
+  border-radius: 7px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+}
+
+.vergo-dashboard-metric-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 108px;
+  padding: 1rem 1.05rem;
+  border: 1px solid #e6edf7;
+  border-radius: 7px;
+  background: #f9fbff;
+}
+
+.vergo-dashboard-metric-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--metric-background);
+  color: var(--metric-color);
+  font-size: 1.35rem;
+}
+
+.vergo-dashboard-metric-value {
+  color: #111827;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.vergo-dashboard-chart-panel {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.vergo-dashboard-year-filter {
+  min-width: 150px;
+}
+
+.vergo-dashboard-chart-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.5rem;
+  margin-bottom: 1rem;
+  color: #5a6a85;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.vergo-dashboard-chart-wrap {
+  width: 100%;
+}
+
+.vergo-dashboard-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.vergo-dashboard-chart-empty {
+  min-height: 300px;
+  padding: 1.5rem;
+  border: 1px dashed #d9e3f0;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #5a6a85;
+  background: #fbfdff;
+}
+
+.modal.show {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-dialog-scrollable .modal-content > form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.modal-dialog-scrollable .modal-content > form .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.modal-dialog-scrollable .modal-content > form .modal-footer {
+  flex-shrink: 0;
+}
+
+.modal-dialog-scrollable .modal-body,
+.swal2-html-container {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.swal2-html-container {
+  overflow-y: auto !important;
+}
+
+@supports (height: 100dvh) {
+  .modal {
+    height: 100dvh;
+  }
+
+  .modal-dialog-scrollable {
+    height: calc(100dvh - var(--bs-modal-margin) * 2);
+    max-height: calc(100dvh - var(--bs-modal-margin) * 2);
+  }
+
+  .swal2-container {
+    height: 100dvh !important;
+  }
+
+  .swal2-popup {
+    max-height: calc(100dvh - 2rem) !important;
+  }
+
+  .swal2-html-container {
+    max-height: calc(100dvh - 12rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .vergo-job-card {
+    border-radius: 22px;
+  }
+
+  .vergo-job-card-title {
+    font-size: 1.35rem;
+  }
+
+  .vergo-job-meta-row {
+    gap: 0.9rem;
+  }
+
+  .vergo-job-apply-btn {
+    min-width: 100%;
+    justify-content: center;
+  }
+
+  .vergo-type-auth-card {
+    border-radius: 24px;
+  }
+
+  .vergo-type-auth-body {
+    padding: 2rem 1.25rem 1.35rem;
+  }
+
+  .vergo-type-option {
+    padding: 0.9rem;
+    border-radius: 18px;
+  }
+
+  .vergo-type-option-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    font-size: 1.2rem;
+  }
+
+  .vergo-type-option-title {
+    font-size: 0.96rem;
+  }
+
+  .vergo-type-option-description {
+    font-size: 0.86rem;
+  }
+
+  .vergo-dashboard-analytics-card {
+    border-radius: 24px;
+  }
+
+  .vergo-dashboard-analytics-panel {
+    padding: 1.2rem;
+    border-radius: 20px;
+  }
+
+  .vergo-dashboard-metric-card {
+    min-height: 96px;
+  }
+
+  .vergo-dashboard-metric-value {
+    font-size: 1.75rem;
+  }
+}

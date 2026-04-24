@@ -14,11 +14,24 @@ class PropertyObject extends Model
     protected $fillable = [
         'property_id',
         'name',
+        'address',
+        'postal_code',
+        'city',
         'type',
         'reference',
         'location',
+        'floors',
+        'apartment_count',
+        'commercial_area',
         'status',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'commercial_area' => 'decimal:2',
+        ];
+    }
 
     public function property(): BelongsTo
     {

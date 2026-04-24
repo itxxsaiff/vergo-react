@@ -48,13 +48,14 @@ class PropertyObjectController extends Controller
                 403
             );
         } else {
-            abort_unless($actor->role?->name === 'admin', 403);
+            abort_unless(in_array($actor->role?->name, ['admin', 'employee'], true), 403);
         }
 
-        $object = PropertyObject::query()->create([
-            ...$request->safe()->toArray(),
-            'status' => $request->input('status', 'active'),
-        ]);
+        $payload = $request->safe()->toArray();
+        $payload['name'] = $payload['name'] ?? $request->string('address')->toString();
+        $payload['status'] = $request->input('status', 'active');
+
+        $object = PropertyObject::query()->create($payload);
 
         return new PropertyObjectResource($object->load('property:id,li_number,title'));
     }
@@ -70,10 +71,16 @@ class PropertyObjectController extends Controller
                 403
             );
         } else {
-            abort_unless($actor->role?->name === 'admin', 403);
+            abort_unless(in_array($actor->role?->name, ['admin', 'employee'], true), 403);
         }
 
-        $propertyObject->update($request->safe()->toArray());
+        $payload = $request->safe()->toArray();
+
+        if (array_key_exists('address', $payload) && ! array_key_exists('name', $payload)) {
+            $payload['name'] = $payload['address'];
+        }
+
+        $propertyObject->update($payload);
 
         return new PropertyObjectResource($propertyObject->load('property:id,li_number,title'));
     }
@@ -89,7 +96,7 @@ class PropertyObjectController extends Controller
                 403
             );
         } else {
-            abort_unless($actor->role?->name === 'admin', 403);
+            abort_unless(in_array($actor->role?->name, ['admin', 'employee'], true), 403);
         }
 
         $propertyObject->delete();

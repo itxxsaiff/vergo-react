@@ -13,6 +13,7 @@ class PropertyResource extends JsonResource
             'id' => $this->id,
             'li_number' => $this->li_number,
             'title' => $this->title,
+            'management' => $this->management,
             'size' => $this->size !== null ? (float) $this->size : null,
             'address_line_1' => $this->address_line_1,
             'address_line_2' => $this->address_line_2,
@@ -20,6 +21,8 @@ class PropertyResource extends JsonResource
             'state' => $this->state,
             'country' => $this->country,
             'postal_code' => $this->postal_code,
+            'usage' => $this->usage,
+            'lot_area' => $this->lot_area !== null ? (float) $this->lot_area : null,
             'description' => $this->description,
             'status' => $this->status,
             'owners' => $this->whenLoaded('owners', function () {
@@ -40,9 +43,15 @@ class PropertyResource extends JsonResource
                 return $this->objects->map(fn ($object) => [
                     'id' => $object->id,
                     'name' => $object->name,
+                    'address' => $object->address,
+                    'postal_code' => $object->postal_code,
+                    'city' => $object->city,
                     'type' => $object->type,
                     'reference' => $object->reference,
                     'location' => $object->location,
+                    'floors' => $object->floors,
+                    'apartment_count' => $object->apartment_count,
+                    'commercial_area' => $object->commercial_area !== null ? (float) $object->commercial_area : null,
                     'status' => $object->status,
                 ])->values();
             }),

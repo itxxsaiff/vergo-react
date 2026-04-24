@@ -21,7 +21,7 @@ class PropertyController extends Controller
     {
         $actor = $request->user();
         $query = Property::query()
-            ->with(['owners:id,name,email'])
+            ->with(['owners:id,name,email', 'managerDomains'])
             ->withCount(['objects', 'orders', 'documents'])
             ->latest();
 
@@ -48,7 +48,7 @@ class PropertyController extends Controller
             'documents.analysisResults',
             'analysisResults',
         ])
-            ->loadCount(['orders', 'documents']);
+            ->loadCount(['objects', 'orders', 'documents']);
 
         return new PropertyResource($property);
     }
@@ -57,7 +57,7 @@ class PropertyController extends Controller
     {
         $actor = $request->user();
         abort_unless(
-            $actor instanceof User && in_array($actor->role?->name, ['admin', 'owner'], true),
+            $actor instanceof User && in_array($actor->role?->name, ['admin', 'owner', 'employee'], true),
             403
         );
 
@@ -109,7 +109,7 @@ class PropertyController extends Controller
 
             $property->update($payload);
 
-            if ($actor->role?->name === 'admin' && $request->exists('owner_id')) {
+            if (in_array($actor->role?->name, ['admin', 'employee'], true) && $request->exists('owner_id')) {
                 $property->ownerAssignments()->delete();
 
                 if ($request->filled('owner_id')) {
@@ -170,7 +170,7 @@ class PropertyController extends Controller
 
     private function authorizePropertyAccess(mixed $actor, Property $property): void
     {
-        if ($actor instanceof User && $actor->role?->name === 'admin') {
+        if ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true)) {
             return;
         }
 

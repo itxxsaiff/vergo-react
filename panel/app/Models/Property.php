@@ -15,6 +15,7 @@ class Property extends Model
     protected $fillable = [
         'li_number',
         'title',
+        'management',
         'size',
         'address_line_1',
         'address_line_2',
@@ -22,6 +23,8 @@ class Property extends Model
         'state',
         'country',
         'postal_code',
+        'usage',
+        'lot_area',
         'description',
         'status',
         'created_by',
@@ -31,6 +34,7 @@ class Property extends Model
     {
         return [
             'size' => 'decimal:2',
+            'lot_area' => 'decimal:2',
         ];
     }
 

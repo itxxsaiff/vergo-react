@@ -12,6 +12,11 @@ return [
         'common_area',
         'other',
     ],
+    'property_usage_types' => [
+        'residential',
+        'commercial',
+        'mixed',
+    ],
     'job_types' => [
         'cleaning',
         'hvac_maintenance',

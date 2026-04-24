@@ -8,10 +8,13 @@ import { getOptionLabel, PROPERTY_OBJECT_TYPE_OPTIONS } from '../lib/vergoOption
 
 const initialForm = {
   property_id: '',
-  name: '',
+  address: '',
+  postal_code: '',
+  city: '',
   type: '',
-  reference: '',
-  location: '',
+  floors: '',
+  apartment_count: '',
+  commercial_area: '',
   status: 'active',
 }
 
@@ -29,7 +32,7 @@ function PropertyObjectsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const isOwner = user?.role === 'owner'
-  const canManageObjects = ['admin', 'owner'].includes(user?.role)
+  const canManageObjects = ['admin', 'owner', 'employee'].includes(user?.role)
 
   useEffect(() => {
     async function loadData() {
@@ -86,8 +89,8 @@ function PropertyObjectsPage() {
       return
     }
 
-    if (!form.name.trim()) {
-      setError('Objektname ist erforderlich.')
+    if (!form.address.trim()) {
+      setError('Adresse ist erforderlich.')
       setIsSaving(false)
       return
     }
@@ -99,8 +102,15 @@ function PropertyObjectsPage() {
     }
     try {
       const payload = {
-        ...form,
         property_id: Number(form.property_id),
+        address: form.address.trim(),
+        postal_code: form.postal_code.trim() || null,
+        city: form.city.trim() || null,
+        type: form.type,
+        floors: form.floors ? Number(form.floors) : null,
+        apartment_count: form.type === 'commercial' ? null : (form.apartment_count ? Number(form.apartment_count) : null),
+        commercial_area: form.type === 'residential' ? null : (form.commercial_area ? Number(form.commercial_area) : null),
+        status: form.status,
       }
 
       if (editingObjectId) {
@@ -126,10 +136,13 @@ function PropertyObjectsPage() {
     setEditingObjectId(object.id)
     setForm({
       property_id: String(object.property_id ?? object.property?.id ?? ''),
-      name: object.name ?? '',
+      address: object.address ?? object.name ?? '',
+      postal_code: object.postal_code ?? '',
+      city: object.city ?? '',
       type: object.type ?? '',
-      reference: object.reference ?? '',
-      location: object.location ?? '',
+      floors: object.floors ?? '',
+      apartment_count: object.apartment_count ?? '',
+      commercial_area: object.commercial_area ?? '',
       status: object.status ?? 'active',
     })
     setError('')
@@ -164,9 +177,10 @@ function PropertyObjectsPage() {
   const filteredObjects = objects.filter((object) => {
     const searchValue = [
       object.name,
+      object.address,
+      object.postal_code,
+      object.city,
       object.type,
-      object.reference,
-      object.location,
       object.property?.li_number,
       object.property?.title,
     ]
@@ -216,14 +230,29 @@ function PropertyObjectsPage() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label">Objektname</label>
-                    <input className="form-control" name="name" value={form.name} onChange={handleChange} />
+                    <label className="form-label">Adresse</label>
+                    <input className="form-control" name="address" value={form.address} onChange={handleChange} />
+                  </div>
+
+                  <div className="row">
+                    <div className="col-md-4">
+                      <div className="mb-3">
+                        <label className="form-label">PLZ</label>
+                        <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                      </div>
+                    </div>
+                    <div className="col-md-8">
+                      <div className="mb-3">
+                        <label className="form-label">Ort</label>
+                        <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label">Typ</label>
+                    <label className="form-label">Nutzung</label>
                     <select className="form-select" name="type" value={form.type} onChange={handleChange}>
-                      <option value="">Objekttyp auswählen</option>
+                      <option value="">Nutzung auswählen</option>
                       {PROPERTY_OBJECT_TYPE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
@@ -233,14 +262,23 @@ function PropertyObjectsPage() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label">Referenz</label>
-                    <input className="form-control" name="reference" value={form.reference} onChange={handleChange} />
+                    <label className="form-label">Stockwerke</label>
+                    <input className="form-control" name="floors" type="number" min="0" value={form.floors} onChange={handleChange} />
                   </div>
 
-                  <div className="mb-3">
-                    <label className="form-label">Standort</label>
-                    <input className="form-control" name="location" value={form.location} onChange={handleChange} />
-                  </div>
+                  {form.type !== 'commercial' ? (
+                    <div className="mb-3">
+                      <label className="form-label">Anzahl Wohnungen</label>
+                      <input className="form-control" name="apartment_count" type="number" min="0" value={form.apartment_count} onChange={handleChange} />
+                    </div>
+                  ) : null}
+
+                  {form.type !== 'residential' ? (
+                    <div className="mb-3">
+                      <label className="form-label">Gewerbefläche</label>
+                      <input className="form-control" name="commercial_area" type="number" min="0" step="0.01" value={form.commercial_area} onChange={handleChange} />
+                    </div>
+                  ) : null}
 
                   <div className="mb-3">
                     <label className="form-label">Status</label>
@@ -283,7 +321,7 @@ function PropertyObjectsPage() {
                     name="search"
                     value={filters.search}
                     onChange={handleFilterChange}
-                    placeholder="Nach Objekt, Immobilie, Typ, Referenz oder Standort suchen"
+                    placeholder="Nach Adresse, Ort, Nutzung oder Immobilie suchen"
                   />
                 </div>
                 <div className="col-md-3">
@@ -315,10 +353,10 @@ function PropertyObjectsPage() {
                     <thead className="text-dark fs-4">
                       <tr>
                         <th><h6 className="fs-4 fw-semibold mb-0">Immobilie</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Objekt</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Typ</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Referenz</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Standort</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Adresse</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">PLZ / Ort</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Nutzung</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Stockwerke</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
                         <th width="90"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
                       </tr>
@@ -330,10 +368,10 @@ function PropertyObjectsPage() {
                             <div className="fw-semibold">{object.property?.li_number ?? '-'}</div>
                             <div className="text-muted">{object.property?.title ?? '-'}</div>
                           </td>
-                          <td>{object.name}</td>
+                          <td>{object.address || object.name || '-'}</td>
+                          <td>{[object.postal_code, object.city].filter(Boolean).join(' ') || '-'}</td>
                           <td>{getOptionLabel(PROPERTY_OBJECT_TYPE_OPTIONS, object.type)}</td>
-                          <td>{object.reference || '-'}</td>
-                          <td>{object.location || '-'}</td>
+                          <td>{object.floors ?? '-'}</td>
                           <td>
                             <span className={getStatusBadgeClass(object.status)}>
                               {formatStatusLabel(object.status)}

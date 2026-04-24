@@ -25,6 +25,7 @@ import PropertyManagersPage from './pages/PropertyManagersPage'
 import PropertyObjectsPage from './pages/PropertyObjectsPage'
 import PropertiesPage from './pages/PropertiesPage'
 import EmployeePropertiesPage from './pages/EmployeePropertiesPage'
+import EmployeePropertyDetailsPage from './pages/EmployeePropertyDetailsPage'
 import EmployeeUsersPage from './pages/EmployeeUsersPage'
 import ServiceProvidersPage from './pages/ServiceProvidersPage'
 import EmployeesPage from './pages/EmployeesPage'
@@ -79,6 +80,16 @@ function OrdersRoute() {
   return <OrdersPage />
 }
 
+function PropertyDetailsRoute() {
+  const { user } = useAuth()
+
+  if (user?.role === 'employee') {
+    return <EmployeePropertyDetailsPage />
+  }
+
+  return <PropertyDetailsPage />
+}
+
 function EmployeeUsersRoute() {
   return <EmployeeUsersPage />
 }
@@ -114,8 +125,8 @@ function App() {
         <Route
           path="properties/:propertyId"
           element={
-            <ProtectedRoute allowRoles={['admin', 'owner', 'manager']} allowManagerAccessModes={['full']}>
-              <PropertyDetailsPage />
+            <ProtectedRoute allowRoles={['admin', 'owner', 'manager', 'employee']} allowManagerAccessModes={['full']}>
+              <PropertyDetailsRoute />
             </ProtectedRoute>
           }
         />

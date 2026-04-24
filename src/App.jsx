@@ -30,6 +30,8 @@ import ServiceProvidersPage from './pages/ServiceProvidersPage'
 import EmployeesPage from './pages/EmployeesPage'
 import UserLoginPage from './pages/UserLoginPage'
 
+const HEADER_PLACEHOLDER_IMAGE = 'https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg'
+
 function AuthenticatedLayout() {
   const { user } = useAuth()
 
@@ -37,7 +39,7 @@ function AuthenticatedLayout() {
   const currentUser = {
     name: user?.name ?? 'Vergo User',
     roleLabel: user?.role_label ?? user?.role ?? currentRole,
-    avatar: '/assets/images/profile/user-1.jpg',
+    avatar: user?.image ?? HEADER_PLACEHOLDER_IMAGE,
     homePath: user?.home_path ?? '/dashboard',
   }
 

@@ -4,6 +4,8 @@ import PageContent from '../components/PageContent'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
+const ADMIN_PLACEHOLDER_IMAGE = 'https://i.sstatic.net/y9DpT.jpg'
+
 const CATEGORY_CONFIG = {
   owners: {
     label: 'Eigentümer',
@@ -207,12 +209,20 @@ function EmployeeUsersPage() {
                     src={admin.photo_url}
                     alt={`${admin.first_name} ${admin.last_name}`.trim() || 'Admin'}
                     className="vergo-admin-directory-photo"
+                    onError={(event) => {
+                      event.currentTarget.onerror = null
+                      event.currentTarget.src = ADMIN_PLACEHOLDER_IMAGE
+                    }}
                   />
                 </div>
                 <div className="vergo-admin-directory-content">
-                  <h5 className="fw-semibold mb-1">{admin.first_name || 'Admin'}</h5>
-                  <div className="fw-semibold text-dark mb-2">{admin.last_name || '-'}</div>
-                  <div className="text-muted small">{admin.location || '-'}</div>
+                  <div className="vergo-admin-directory-eyebrow">Admin Profil</div>
+                  <h5 className="vergo-admin-directory-first-name mb-1">{admin.first_name || 'Admin'}</h5>
+                  <div className="vergo-admin-directory-last-name">{admin.last_name || '-'}</div>
+                  <div className="vergo-admin-directory-location-row">
+                    <span className="vergo-admin-directory-location-label">Standort</span>
+                    <span className="vergo-admin-directory-location-value">{admin.location || '-'}</span>
+                  </div>
                 </div>
               </div>
             </div>

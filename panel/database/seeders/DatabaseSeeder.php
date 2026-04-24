@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
                 'first_name' => 'Vergo Admin',
                 'last_name' => null,
                 'location' => null,
+                'image' => null,
                 'password' => 'password123',
                 'status' => 'active',
             ],

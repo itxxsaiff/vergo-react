@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext'
 import { api } from '../../lib/api'
 import { toggleSidebar } from '../../lib/sidebarLayout'
 
+const HEADER_PLACEHOLDER_IMAGE = 'https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg'
+
 function Header({ user }) {
   const { logout } = useAuth()
   const [notifications, setNotifications] = useState([])
@@ -49,6 +51,11 @@ function Header({ user }) {
     } catch {
       // Ignore transient notification read issues in the header.
     }
+  }
+
+  function handleAvatarError(event) {
+    event.currentTarget.onerror = null
+    event.currentTarget.src = HEADER_PLACEHOLDER_IMAGE
   }
 
   return (
@@ -145,9 +152,9 @@ function Header({ user }) {
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
               >
-                <div className="d-flex align-items-center">
+                  <div className="d-flex align-items-center">
                   <div className="user-profile-img">
-                    <img src={user.avatar} className="rounded-circle" width="35" height="35" alt={user.name} />
+                    <img src={user.avatar || HEADER_PLACEHOLDER_IMAGE} className="rounded-circle" width="35" height="35" alt={user.name} onError={handleAvatarError} />
                   </div>
                 </div>
               </button>
@@ -160,7 +167,7 @@ function Header({ user }) {
                     <h5 className="mb-0 fs-5 fw-semibold">Benutzerprofil</h5>
                   </div>
                   <div className="d-flex align-items-center py-4 mx-4 border-bottom">
-                    <img src={user.avatar} className="rounded-circle" width="80" height="80" alt={user.name} />
+                    <img src={user.avatar || HEADER_PLACEHOLDER_IMAGE} className="rounded-circle" width="80" height="80" alt={user.name} onError={handleAvatarError} />
                     <div className="ms-3">
                       <h5 className="mb-1 fs-3">{user.name}</h5>
                       <span className="mb-1 d-block text-dark text-capitalize">{user.roleLabel}</span>

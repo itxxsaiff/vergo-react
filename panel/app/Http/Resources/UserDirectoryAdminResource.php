@@ -7,9 +7,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserDirectoryAdminResource extends JsonResource
 {
+    private const PLACEHOLDER_IMAGE = 'https://i.sstatic.net/y9DpT.jpg';
+
     public function toArray(Request $request): array
     {
-        $photoIndex = (($this->id - 1) % 10) + 1;
         $firstName = $this->first_name ?: $this->name ?: 'Admin';
         $lastName = $this->last_name ?: '';
 
@@ -18,7 +19,7 @@ class UserDirectoryAdminResource extends JsonResource
             'first_name' => $firstName,
             'last_name' => $lastName,
             'location' => $this->location,
-            'photo_url' => "/assets/images/profile/user-{$photoIndex}.jpg",
+            'photo_url' => $this->image ?: self::PLACEHOLDER_IMAGE,
         ];
     }
 }

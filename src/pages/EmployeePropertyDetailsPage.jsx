@@ -252,7 +252,7 @@ function EmployeePropertyDetailsPage() {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Nutzung</label>
+                          <label className="form-label">Gemischte Nutzung</label>
                           <select className="form-select" name="type" value={form.type} onChange={handleChange}>
                             <option value="">Nutzung auswählen</option>
                             {PROPERTY_USAGE_OPTIONS.map((option) => (
@@ -278,7 +278,7 @@ function EmployeePropertyDetailsPage() {
                       {form.type !== 'residential' ? (
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label className="form-label">Gewerbefläche</label>
+                            <label className="form-label">Quadratmeter Gewerbefläche</label>
                             <input className="form-control" name="commercial_area" type="number" min="0" step="0.01" value={form.commercial_area} onChange={handleChange} />
                           </div>
                         </div>

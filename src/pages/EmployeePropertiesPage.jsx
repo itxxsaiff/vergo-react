@@ -255,7 +255,7 @@ function EmployeePropertiesPage() {
                     <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Anzahl</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Eigentümerschaft</h6></th>
-                    <th width="130"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
+                    <th width="170"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
                   </tr>
                 </thead>
 
@@ -279,6 +279,13 @@ function EmployeePropertiesPage() {
                             title="Objekte anzeigen"
                           >
                             <i className="ti ti-building-community"></i>
+                          </Link>
+                          <Link
+                            to={`/properties/${property.id}/documents`}
+                            className="table-action-btn table-action-view"
+                            title="Dokumente und Analyse öffnen"
+                          >
+                            <i className="ti ti-file-invoice"></i>
                           </Link>
                           <button
                             type="button"
@@ -360,7 +367,7 @@ function EmployeePropertiesPage() {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Nutzung</label>
+                          <label className="form-label">Gemischte Nutzung</label>
                           <select className="form-select" name="usage" value={form.usage} onChange={handleChange}>
                             <option value="">Nutzung auswählen</option>
                             {PROPERTY_USAGE_OPTIONS.map((option) => (

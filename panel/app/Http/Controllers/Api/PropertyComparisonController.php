@@ -50,7 +50,7 @@ class PropertyComparisonController extends Controller
 
     private function authorizePropertyAccess(mixed $actor, Property $property): void
     {
-        if ($actor instanceof User && $actor->role?->name === 'admin') {
+        if ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true)) {
             return;
         }
 

@@ -26,6 +26,7 @@ import PropertyObjectsPage from './pages/PropertyObjectsPage'
 import PropertiesPage from './pages/PropertiesPage'
 import EmployeePropertiesPage from './pages/EmployeePropertiesPage'
 import EmployeePropertyDetailsPage from './pages/EmployeePropertyDetailsPage'
+import EmployeePropertyDocumentsPage from './pages/EmployeePropertyDocumentsPage'
 import EmployeeUsersPage from './pages/EmployeeUsersPage'
 import ServiceProvidersPage from './pages/ServiceProvidersPage'
 import EmployeesPage from './pages/EmployeesPage'
@@ -127,6 +128,14 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['admin', 'owner', 'manager', 'employee']} allowManagerAccessModes={['full']}>
               <PropertyDetailsRoute />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="properties/:propertyId/documents"
+          element={
+            <ProtectedRoute allowRoles={['employee']}>
+              <EmployeePropertyDocumentsPage />
             </ProtectedRoute>
           }
         />

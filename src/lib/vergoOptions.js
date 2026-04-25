@@ -28,9 +28,9 @@ export function getOptionLabel(options, value) {
 }
 
 export const DOCUMENT_TYPE_OPTIONS = [
-  { value: 'fm_contract', label: 'FM Contract' },
-  { value: 'contract', label: 'General Contract' },
-  { value: 'invoice', label: 'Invoice' },
+  { value: 'fm_contract', label: 'Vertrag' },
+  { value: 'contract', label: 'Vertrag' },
+  { value: 'invoice', label: 'Rechnung' },
   { value: 'facility', label: 'Facility Document' },
   { value: 'proposal', label: 'Proposal' },
   { value: 'other', label: 'Other' },

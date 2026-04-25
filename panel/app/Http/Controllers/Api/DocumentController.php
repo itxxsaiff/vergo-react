@@ -28,7 +28,7 @@ class DocumentController extends Controller
             $query->where('property_id', $actor->property_id);
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
-        } elseif (! ($actor instanceof User && $actor->role?->name === 'admin')) {
+        } elseif (! ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true))) {
             abort(403);
         }
 
@@ -39,7 +39,7 @@ class DocumentController extends Controller
     {
         $actor = $request->user();
         abort_unless(
-            $actor instanceof PropertyManagerProfile || ($actor instanceof User && in_array($actor->role?->name, ['admin', 'owner'], true)),
+            $actor instanceof PropertyManagerProfile || ($actor instanceof User && in_array($actor->role?->name, ['admin', 'owner', 'employee'], true)),
             403
         );
 
@@ -101,7 +101,7 @@ class DocumentController extends Controller
 
     private function authorizeDocumentAccess(mixed $actor, Document $document, bool $write): void
     {
-        if ($actor instanceof User && $actor->role?->name === 'admin') {
+        if ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true)) {
             return;
         }
 

@@ -29,7 +29,7 @@ class AiAnalysisController extends Controller
             $query->whereHas('document', fn ($documentQuery) => $documentQuery->where('property_id', $actor->property_id));
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('document.property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
-        } elseif (! ($actor instanceof User && $actor->role?->name === 'admin')) {
+        } elseif (! ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true))) {
             abort(403);
         }
 
@@ -63,7 +63,7 @@ class AiAnalysisController extends Controller
 
     private function authorizeDocumentAnalysis(mixed $actor, Document $document): void
     {
-        if ($actor instanceof User && $actor->role?->name === 'admin') {
+        if ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true)) {
             return;
         }
 

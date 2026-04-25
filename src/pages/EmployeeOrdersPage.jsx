@@ -94,29 +94,29 @@ function EmployeeOrdersPage() {
       ]}
     >
       <div className="card">
-        <div className="px-4 py-3 border-bottom">
-          <h5 className="card-title fw-semibold mb-0 lh-sm">Auftragsübersicht</h5>
-        </div>
-
         <div className="card-body p-4">
-          <div className="row g-3 mb-4">
+          <div className="row g-3 mb-4 vergo-filter-bar vergo-filter-bar-compact">
             <div className="col-md-10">
-              <label className="form-label">Suche</label>
-              <input
-                className="form-control"
-                name="search"
-                value={filters.search}
-                onChange={handleFilterChange}
-                placeholder="Nach Auftragsnummer, LI-Nummer, PLZ, Ort, Gewerk oder Genehmigung suchen"
-              />
+              <div className="vergo-search-input-wrap">
+                <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+                <input
+                  aria-label="Suche"
+                  className="form-control"
+                  name="search"
+                  value={filters.search}
+                  onChange={handleFilterChange}
+                  placeholder="Nach Auftragsnummer, LI-Nummer, PLZ, Ort, Gewerk oder Genehmigung suchen"
+                />
+              </div>
             </div>
 
-            <div className="col-md-2 d-flex align-items-end">
+            <div className="col-md-2 d-flex align-items-end justify-content-end vergo-filter-reset-wrap">
               <button
                 type="button"
-                className="btn btn-light-primary w-100"
+                className="btn btn-light-primary vergo-filter-reset-btn"
                 onClick={() => setFilters({ search: '' })}
               >
+                <i className="ti ti-refresh me-1" aria-hidden="true"></i>
                 Zurücksetzen
               </button>
             </div>
@@ -127,7 +127,7 @@ function EmployeeOrdersPage() {
 
           {!isLoading ? (
             <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
-              <table className="table border text-nowrap customize-table mb-0 align-middle">
+              <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                 <thead className="text-dark fs-4">
                   <tr>
                     <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>

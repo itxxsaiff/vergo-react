@@ -28786,7 +28786,7 @@ fieldset:disabled .btn {
     --bs-breadcrumb-font-size: 0.875rem;
     --bs-breadcrumb-divider-color: #2A3547;
     --bs-breadcrumb-item-padding-x: 0.5rem;
-    --bs-breadcrumb-item-active-color: #5A6A85;
+    --bs-breadcrumb-item-active-color: #9f6d54;
     display: flex;
     flex-wrap: wrap;
     padding: var(--bs-breadcrumb-padding-y) var(--bs-breadcrumb-padding-x);

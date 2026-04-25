@@ -5525,7 +5525,7 @@ textarea.form-control-lg {
   --bs-breadcrumb-border-radius: ;
   --bs-breadcrumb-divider-color: #2A3547;
   --bs-breadcrumb-item-padding-x: 0.5rem;
-  --bs-breadcrumb-item-active-color: #5A6A85;
+  --bs-breadcrumb-item-active-color: #9f6d54;
   display: flex;
   flex-wrap: wrap;
   padding: var(--bs-breadcrumb-padding-y) var(--bs-breadcrumb-padding-x);
@@ -22184,8 +22184,7 @@ html[dir=rtl] .welcome-bg-img {
   position: relative;
   z-index: 50;
   width: 100%;
-  background: #fff;
-  padding: 0 25px;
+  padding: 0 0;
 }
 .app-header .container-fluid, .app-header .container-sm, .app-header .container-md, .app-header .container-lg, .app-header .container-xl, .app-header .container-xxl {
   max-width: 1400px;

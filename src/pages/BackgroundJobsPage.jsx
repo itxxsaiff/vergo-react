@@ -89,7 +89,7 @@ function BackgroundJobsPage() {
           <h5 className="card-title fw-semibold mb-0">KI-Auftragswarteschlange</h5>
         </div>
         <div className="card-body p-4">
-          <div className="row g-3 mb-4">
+          <div className="row g-3 mb-4 vergo-filter-bar">
             <div className="col-md-7">
               <label className="form-label">Suche</label>
               <input
@@ -125,7 +125,7 @@ function BackgroundJobsPage() {
 
           {!isLoading ? (
             <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
-              <table className="table border text-nowrap customize-table mb-0 align-middle">
+              <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                 <thead className="text-dark fs-4">
                   <tr>
                     <th><h6 className="fs-4 fw-semibold mb-0">Dokument</h6></th>

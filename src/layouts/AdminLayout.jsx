@@ -11,7 +11,7 @@ function AdminLayout({ navigation, user }) {
     <div
       className={wrapperClassName}
       id="main-wrapper"
-      data-theme="blue_theme"
+      data-theme="orange_theme"
       data-layout="vertical"
       data-sidebartype={sidebarType}
       data-sidebar-position="fixed"
@@ -21,7 +21,7 @@ function AdminLayout({ navigation, user }) {
       <Sidebar navigation={navigation} user={user} />
       <div className="body-wrapper">
         <Header user={user} />
-        <div className="container-fluid px-3">
+        <div className="container-fluid px-3" style={{"maxWidth": "100%"}}>
           <Outlet />
         </div>
       </div>

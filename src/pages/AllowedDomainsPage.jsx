@@ -167,17 +167,16 @@ function AllowedDomainsPage() {
         { label: 'Armaturenbrett', href: '/dashboard' },
         { label: 'Erlaubte Domains' },
       ]}
+      actions={(
+        <button type="button" className="btn btn-primary" onClick={openCreateModal}>
+          <i className="ti ti-plus me-1"></i>
+          Domain hinzufügen
+        </button>
+      )}
     >
       <div className="card">
-        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between gap-3">
-          <h5 className="card-title fw-semibold mb-0 lh-sm">Liste der erlaubten Domains</h5>
-          <button type="button" className="btn btn-primary" onClick={openCreateModal}>
-            <i className="ti ti-plus me-1"></i>
-            Domain hinzufügen
-          </button>
-        </div>
         <div className="card-body p-4">
-          <div className="row g-3 mb-4">
+          <div className="row g-3 mb-4 vergo-filter-bar">
             <div className="col-md-7">
               <label className="form-label">Suche</label>
               <input
@@ -208,7 +207,7 @@ function AllowedDomainsPage() {
 
           {!isLoading ? (
             <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
-              <table className="table border text-nowrap customize-table mb-0 align-middle">
+              <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                 <thead className="text-dark fs-4">
                   <tr>
                     <th><h6 className="fs-4 fw-semibold mb-0">Immobilie</h6></th>

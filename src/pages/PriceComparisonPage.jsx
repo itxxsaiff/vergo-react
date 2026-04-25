@@ -127,7 +127,7 @@ function PriceComparisonPage() {
               <h5 className="card-title fw-semibold mb-0">Bestellungen zum Vergleich bereit</h5>
             </div>
             <div className="card-body p-4">
-              <div className="row g-3 mb-4">
+              <div className="row g-3 mb-4 vergo-filter-bar">
                 <div className="col-md-8">
                   <label className="form-label">Suchen</label>
                   <input
@@ -209,7 +209,7 @@ function PriceComparisonPage() {
 
               {!isLoadingOrder && selectedOrder ? (
                 <>
-                  <div className="row g-3 mb-4">
+                  <div className="row g-3 mb-4 vergo-filter-bar">
                     <div className="col-md-6">
                       <div className="border rounded p-3 h-100">
                         <div className="text-muted fs-2 mb-1">Eigentum</div>
@@ -238,7 +238,7 @@ function PriceComparisonPage() {
                         <div>{comparison.summary}</div>
                       </div>
 
-                      <div className="row g-3 mb-4">
+                      <div className="row g-3 mb-4 vergo-filter-bar">
                         <div className="col-md-3">
                           <div className="border rounded p-3 h-100">
                             <div className="text-muted fs-2">Durchschnitt</div>
@@ -272,7 +272,7 @@ function PriceComparisonPage() {
                   )}
 
                   <div className="table-responsive rounded-2 mb-0">
-                    <table className="table border text-nowrap customize-table mb-0 align-middle">
+                    <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                       <thead className="text-dark fs-4">
                         <tr>
                           <th><h6 className="fs-4 fw-semibold mb-0">Anbieter</h6></th>

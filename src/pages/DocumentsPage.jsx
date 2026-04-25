@@ -164,19 +164,16 @@ function DocumentsPage() {
         ? 'Laden Sie Verträge und Rechnungen hoch, damit Vergo die Preise vergleichen und Ihnen zeigen kann, ob Sie möglicherweise zu viel bezahlen.'
         : 'Laden Sie Verträge, Rechnungen und Anlagendokumente hoch, die später in den Preisvergleich und die Gemini-Analyse einfließen.'}
       breadcrumbs={[{ label: 'Armaturenbrett', href: '/dashboard' }, { label: 'Unterlagen' }]}
+      actions={canUpload ? (
+        <button type="button" className="btn btn-primary" onClick={openModal}>
+          <i className="ti ti-plus me-1"></i>
+          {isOwner ? 'Vertrag hochladen zur Preisprüfung' : 'Dokument hochladen'}
+        </button>
+      ) : null}
     >
       <div className="card">
-        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between gap-3">
-          <h5 className="card-title fw-semibold mb-0 lh-sm">Dokumentenbibliothek</h5>
-          {canUpload ? (
-            <button type="button" className="btn btn-primary" onClick={openModal}>
-              <i className="ti ti-plus me-1"></i>
-              {isOwner ? 'Vertrag hochladen zur Preisprüfung' : 'Dokument hochladen'}
-            </button>
-          ) : null}
-        </div>
         <div className="card-body p-4">
-          <div className="row g-3 mb-4">
+          <div className="row g-3 mb-4 vergo-filter-bar">
             <div className="col-md-7">
               <label className="form-label">Suchen</label>
               <input className="form-control" name="search" value={filters.search} onChange={handleFilterChange} placeholder="Suche nach Titel, Akte, Objekt oder Bestellung" />
@@ -200,7 +197,7 @@ function DocumentsPage() {
 
           {!isLoading ? (
             <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
-              <table className="table border text-nowrap customize-table mb-0 align-middle">
+              <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                 <thead className="text-dark fs-4">
                   <tr>
                     <th><h6 className="fs-4 fw-semibold mb-0">Titel</h6></th>

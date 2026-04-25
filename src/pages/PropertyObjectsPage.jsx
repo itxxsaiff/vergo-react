@@ -30,6 +30,7 @@ function PropertyObjectsPage() {
   const [editingObjectId, setEditingObjectId] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
   const isOwner = user?.role === 'owner'
   const canManageObjects = ['admin', 'owner', 'employee'].includes(user?.role)
@@ -60,6 +61,21 @@ function PropertyObjectsPage() {
     loadData()
   }, [canManageObjects])
 
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.classList.add('modal-open')
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.classList.remove('modal-open')
+      document.body.style.overflow = ''
+    }
+
+    return () => {
+      document.body.classList.remove('modal-open')
+      document.body.style.overflow = ''
+    }
+  }, [isModalOpen])
+
   function handleChange(event) {
     const { name, value } = event.target
 
@@ -76,6 +92,20 @@ function PropertyObjectsPage() {
       ...current,
       [name]: value,
     }))
+  }
+
+  function openCreateModal() {
+    setEditingObjectId(null)
+    setForm(initialForm)
+    setError('')
+    setIsModalOpen(true)
+  }
+
+  function closeModal() {
+    setEditingObjectId(null)
+    setForm(initialForm)
+    setError('')
+    setIsModalOpen(false)
   }
 
   async function handleSubmit(event) {
@@ -123,8 +153,7 @@ function PropertyObjectsPage() {
         setObjects((current) => [response.data, ...current])
       }
 
-      setForm(initialForm)
-      setEditingObjectId(null)
+      closeModal()
     } catch (saveError) {
       setError(saveError.message)
     } finally {
@@ -146,12 +175,11 @@ function PropertyObjectsPage() {
       status: object.status ?? 'active',
     })
     setError('')
+    setIsModalOpen(true)
   }
 
   function handleCancelEdit() {
-    setEditingObjectId(null)
-    setForm(initialForm)
-    setError('')
+    closeModal()
   }
 
   async function handleDelete(objectId) {
@@ -167,7 +195,7 @@ function PropertyObjectsPage() {
       showDeleteSuccess('property object')
 
       if (editingObjectId === objectId) {
-        handleCancelEdit()
+        closeModal()
       }
     } catch (deleteError) {
       setError(deleteError.message)
@@ -207,138 +235,49 @@ function PropertyObjectsPage() {
         { label: 'Armaturenbrett', href: '/dashboard' },
         { label: 'Objekte der Immobilien' },
       ]}
+      actions={canManageObjects ? (
+        <button type="button" className="btn btn-primary" onClick={openCreateModal}>
+          <i className="ti ti-plus me-1"></i>
+          Objekt erstellen
+        </button>
+      ) : null}
     >
       <div className="row">
-        {canManageObjects ? (
-          <div className="col-xl-4">
-            <div className="card">
-              <div className="card-body">
-                <h4 className="card-title mb-4">Immobilienobjekt erstellen</h4>
-                {editingObjectId ? <p className="text-muted">Ausgewähltes Immobilienobjekt bearbeiten.</p> : null}
-
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-3">
-                    <label className="form-label">Immobilie</label>
-                    <select className="form-select" name="property_id" value={form.property_id} onChange={handleChange}>
-                      <option value="">Immobilie auswählen</option>
-                      {properties.map((property) => (
-                        <option key={property.id} value={property.id}>
-                          {property.li_number} - {property.title}
-                        </option>
-                      ))}
-                    </select>
+        <div className="col-xl-12">
+          <div className="card">
+            <div className="card-body p-4">
+              <div className="row g-3 mb-4 vergo-filter-bar">
+                <div className="col-md-6">
+                  <div className="vergo-search-input-wrap">
+                    <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+                    <input
+                      aria-label="Suche"
+                      className="form-control"
+                      name="search"
+                      value={filters.search}
+                      onChange={handleFilterChange}
+                      placeholder="Nach Adresse, Ort, Nutzung oder Immobilie suchen"
+                    />
                   </div>
-
-                  <div className="mb-3">
-                    <label className="form-label">Adresse</label>
-                    <input className="form-control" name="address" value={form.address} onChange={handleChange} />
-                  </div>
-
-                  <div className="row">
-                    <div className="col-md-4">
-                      <div className="mb-3">
-                        <label className="form-label">PLZ</label>
-                        <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
-                      </div>
-                    </div>
-                    <div className="col-md-8">
-                      <div className="mb-3">
-                        <label className="form-label">Ort</label>
-                        <input className="form-control" name="city" value={form.city} onChange={handleChange} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label">Gemischte Nutzung</label>
-                    <select className="form-select" name="type" value={form.type} onChange={handleChange}>
-                      <option value="">Nutzung auswählen</option>
-                      {PROPERTY_OBJECT_TYPE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label">Stockwerke</label>
-                    <input className="form-control" name="floors" type="number" min="0" value={form.floors} onChange={handleChange} />
-                  </div>
-
-                  {form.type !== 'commercial' ? (
-                    <div className="mb-3">
-                      <label className="form-label">Anzahl Wohnungen</label>
-                      <input className="form-control" name="apartment_count" type="number" min="0" value={form.apartment_count} onChange={handleChange} />
-                    </div>
-                  ) : null}
-
-                  {form.type !== 'residential' ? (
-                    <div className="mb-3">
-                      <label className="form-label">Quadratmeter Gewerbefläche</label>
-                      <input className="form-control" name="commercial_area" type="number" min="0" step="0.01" value={form.commercial_area} onChange={handleChange} />
-                    </div>
-                  ) : null}
-
-                  <div className="mb-3">
-                    <label className="form-label">Status</label>
-                    <select className="form-select" name="status" value={form.status} onChange={handleChange}>
+                </div>
+                <div className="col-md-3">
+                  <div className="vergo-select-input-wrap">
+                    <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+                    <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                      <option value="">All Status</option>
                       <option value="active">Aktiv</option>
                       <option value="inactive">Inaktiv</option>
                       <option value="archived">Archiviert</option>
                     </select>
                   </div>
-
-                  {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-
-                  <div className="d-flex gap-2">
-                    <button type="submit" className="btn btn-primary waves-effect waves-light" disabled={isSaving}>
-                      {isSaving ? 'Wird gespeichert...' : editingObjectId ? 'Objekt aktualisieren' : 'Objekt erstellen'}
-                    </button>
-                    {editingObjectId ? (
-                      <button type="button" className="btn btn-light border" onClick={handleCancelEdit}>
-                        Abbrechen
-                      </button>
-                    ) : null}
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <div className={canManageObjects ? 'col-xl-8' : 'col-xl-12'}>
-          <div className="card">
-            <div className="px-4 py-3 border-bottom">
-              <h5 className="card-title fw-semibold mb-0 lh-sm">Liste der Immobilienobjekte</h5>
-            </div>
-            <div className="card-body p-4">
-              <div className="row g-3 mb-4">
-                <div className="col-md-6">
-                  <label className="form-label">Suche</label>
-                  <input
-                    className="form-control"
-                    name="search"
-                    value={filters.search}
-                    onChange={handleFilterChange}
-                    placeholder="Nach Adresse, Ort, Nutzung oder Immobilie suchen"
-                  />
                 </div>
-                <div className="col-md-3">
-                  <label className="form-label">Status</label>
-                  <select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                    <option value="">All Status</option>
-                    <option value="active">Aktiv</option>
-                    <option value="inactive">Inaktiv</option>
-                    <option value="archived">Archiviert</option>
-                  </select>
-                </div>
-                <div className="col-md-3 d-flex align-items-end">
+                <div className="col-md-3 d-flex align-items-end justify-content-end vergo-filter-reset-wrap">
                   <button
                     type="button"
-                    className="btn btn-light-primary w-100"
+                    className="btn btn-light-primary vergo-filter-reset-btn"
                     onClick={() => setFilters({ search: '', status: '' })}
                   >
+                    <i className="ti ti-refresh me-1" aria-hidden="true"></i>
                     Zurücksetzen
                   </button>
                 </div>
@@ -349,7 +288,7 @@ function PropertyObjectsPage() {
 
               {!isLoading ? (
                 <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
-                  <table className="table border text-nowrap customize-table mb-0 align-middle">
+                  <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                     <thead className="text-dark fs-4">
                       <tr>
                         <th><h6 className="fs-4 fw-semibold mb-0">Immobilie</h6></th>
@@ -417,6 +356,112 @@ function PropertyObjectsPage() {
           </div>
         </div>
       </div>
+
+      {isModalOpen ? (
+        <>
+          <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
+            <div className="modal-dialog modal-dialog-scrollable modal-lg">
+              <div className="modal-content rounded-1">
+                <div className="modal-header border-bottom">
+                  <div>
+                    <h5 className="modal-title mb-1">{editingObjectId ? 'Immobilienobjekt bearbeiten' : 'Immobilienobjekt erstellen'}</h5>
+                    <p className="text-muted mb-0">Pflegen Sie Adresse, Nutzung und Eckdaten des ausgewählten Objekts.</p>
+                  </div>
+                  <button type="button" className="btn-close" aria-label="Schließen" onClick={closeModal}></button>
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                  <div className="modal-body">
+                    <div className="mb-3">
+                      <label className="form-label">Immobilie</label>
+                      <select className="form-select" name="property_id" value={form.property_id} onChange={handleChange}>
+                        <option value="">Immobilie auswählen</option>
+                        {properties.map((property) => (
+                          <option key={property.id} value={property.id}>
+                            {property.li_number} - {property.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Adresse</label>
+                      <input className="form-control" name="address" value={form.address} onChange={handleChange} />
+                    </div>
+
+                    <div className="row">
+                      <div className="col-md-4">
+                        <div className="mb-3">
+                          <label className="form-label">PLZ</label>
+                          <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                        </div>
+                      </div>
+                      <div className="col-md-8">
+                        <div className="mb-3">
+                          <label className="form-label">Ort</label>
+                          <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Gemischte Nutzung</label>
+                      <select className="form-select" name="type" value={form.type} onChange={handleChange}>
+                        <option value="">Nutzung auswählen</option>
+                        {PROPERTY_OBJECT_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Stockwerke</label>
+                      <input className="form-control" name="floors" type="number" min="0" value={form.floors} onChange={handleChange} />
+                    </div>
+
+                    {form.type !== 'commercial' ? (
+                      <div className="mb-3">
+                        <label className="form-label">Anzahl Wohnungen</label>
+                        <input className="form-control" name="apartment_count" type="number" min="0" value={form.apartment_count} onChange={handleChange} />
+                      </div>
+                    ) : null}
+
+                    {form.type !== 'residential' ? (
+                      <div className="mb-3">
+                        <label className="form-label">Quadratmeter Gewerbefläche</label>
+                        <input className="form-control" name="commercial_area" type="number" min="0" step="0.01" value={form.commercial_area} onChange={handleChange} />
+                      </div>
+                    ) : null}
+
+                    <div className="mb-0">
+                      <label className="form-label">Status</label>
+                      <select className="form-select" name="status" value={form.status} onChange={handleChange}>
+                        <option value="active">Aktiv</option>
+                        <option value="inactive">Inaktiv</option>
+                        <option value="archived">Archiviert</option>
+                      </select>
+                    </div>
+
+                    {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
+                  </div>
+
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-light border" onClick={handleCancelEdit}>
+                      Abbrechen
+                    </button>
+                    <button type="submit" className="btn btn-primary waves-effect waves-light" disabled={isSaving}>
+                      {isSaving ? 'Wird gespeichert...' : editingObjectId ? 'Objekt aktualisieren' : 'Objekt erstellen'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
+      ) : null}
     </PageContent>
   )
 }

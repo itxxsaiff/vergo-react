@@ -112,7 +112,7 @@ function AiAnalysisPage() {
               <h5 className="card-title fw-semibold mb-0">Dokumente bereit für KI</h5>
             </div>
             <div className="card-body p-4">
-              <div className="row g-3 mb-4">
+              <div className="row g-3 mb-4 vergo-filter-bar">
                 <div className="col-md-8">
                   <label className="form-label">Suche</label>
                   <input
@@ -150,7 +150,7 @@ function AiAnalysisPage() {
 
               {!isLoading ? (
                 <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
-                  <table className="table border text-nowrap customize-table mb-0 align-middle">
+                  <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                     <thead>
                       <tr>
                         <th>Dokument</th>
@@ -208,7 +208,7 @@ function AiAnalysisPage() {
                 <>
                   <h5>{selectedAnalysis.document?.title ?? 'Analyseergebnis'}</h5>
 
-                  <div className="row g-3 mb-4">
+                  <div className="row g-3 mb-4 vergo-filter-bar">
                     <div className="col-md-4">
                       <div>Konfidenzwert: {selectedAnalysis.score ?? '-'}</div>
                     </div>

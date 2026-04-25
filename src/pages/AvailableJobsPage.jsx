@@ -146,7 +146,7 @@ function AvailableJobsPage() {
         { label: 'Verfügbare Aufträge' },
       ]}
     >
-      <div className="row g-3 mb-4">
+      <div className="row g-3 mb-4 vergo-filter-bar">
         <div className="col-md-4">
           <div className="card vergo-job-stat-card h-100">
             <div className="card-body">
@@ -201,7 +201,7 @@ function AvailableJobsPage() {
           <h5 className="card-title fw-semibold mb-0 lh-sm">Marktplatz-Aufträge</h5>
         </div>
         <div className="card-body p-4">
-          <div className="row g-3 mb-4">
+          <div className="row g-3 mb-4 vergo-filter-bar">
             <div className="col-md-8">
               <label className="form-label">Suche</label>
               <input

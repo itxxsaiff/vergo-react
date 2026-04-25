@@ -396,7 +396,7 @@ function OrderDetailsPage() {
 
                 {(priceRecommendation?.comparison_data?.benchmark_sources ?? []).length > 0 ? (
                   <div className="table-responsive rounded-2 mb-4">
-                    <table className="table border text-nowrap customize-table mb-0 align-middle">
+                    <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                       <thead className="text-dark fs-4">
                         <tr>
                           <th><h6 className="fs-4 fw-semibold mb-0">Quelle</h6></th>
@@ -463,7 +463,7 @@ function OrderDetailsPage() {
                 )}
 
                 <div className="table-responsive rounded-2 mb-0">
-                  <table className="table border text-nowrap customize-table mb-0 align-middle">
+                  <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                     <thead className="text-dark fs-4">
                       <tr>
                         <th><h6 className="fs-4 fw-semibold mb-0">Anbieter</h6></th>
@@ -587,7 +587,7 @@ function OrderDetailsPage() {
               <div className="card-body p-4">
                 {(order.documents ?? []).length > 0 ? (
                   <div className="table-responsive rounded-2 mb-0">
-                    <table className="table border text-nowrap customize-table mb-0 align-middle">
+                    <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                       <thead className="text-dark fs-4">
                         <tr>
                           <th><h6 className="fs-4 fw-semibold mb-0">Titel</h6></th>

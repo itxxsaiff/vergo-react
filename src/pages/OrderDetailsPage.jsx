@@ -82,7 +82,22 @@ function OrderDetailsPage() {
     setError('')
 
     try {
-      await api.updateBid(bidId, { status })
+      let rejectionReason = null
+
+      if (status === 'rejected') {
+        rejectionReason = window.prompt('Bitte geben Sie einen Ablehnungsgrund ein.')
+
+        if (!rejectionReason?.trim()) {
+          setUpdatingBidId(null)
+          setError('Ein Ablehnungsgrund ist erforderlich, bevor das nächste Angebot geöffnet werden kann.')
+          return
+        }
+      }
+
+      await api.updateBid(bidId, {
+        status,
+        rejection_reason: rejectionReason,
+      })
       await loadOrder()
     } catch (updateError) {
       setError(updateError.message)
@@ -150,6 +165,13 @@ function OrderDetailsPage() {
     return secondScore - firstScore
   })
   const recommendedBidId = rankings[0]?.bid_id ?? null
+  const isQuoteWorkflow = order?.workflow_meta?.assignment?.award_mode === 'request_quotes' || ['published_for_quotes', 'awarded', 'quotes_rejected'].includes(order?.workflow_status)
+  const bidDeadlinePassed = !order?.bid_deadline_at || new Date(order.bid_deadline_at) <= new Date()
+  const firstPendingRankIndex = rankedBids.findIndex((bid) => !['rejected', 'approved', 'accepted', 'completed'].includes(bid.status))
+  const visibleRankLimit = firstPendingRankIndex === -1 ? rankedBids.length : firstPendingRankIndex + 1
+  const visibleRankedBids = user?.role === 'manager' && isQuoteWorkflow && bidDeadlinePassed
+    ? rankedBids.slice(0, visibleRankLimit)
+    : rankedBids
 
   return (
     <PageContent
@@ -372,6 +394,17 @@ function OrderDetailsPage() {
               </div>
 
               <div className="card-body p-4">
+                {user?.role === 'manager' && isQuoteWorkflow && !bidDeadlinePassed ? (
+                  <div className="alert alert-light-primary border mb-4">
+                    <div className="fw-semibold mb-1">Bieterrunde läuft noch</div>
+                    <div>
+                      Bis zur Angebotsfrist sehen Sie nur die Anzahl der eingegangenen Angebote.
+                      {order?.bid_deadline_at ? ` Frist: ${order.bid_deadline_at}` : ''}
+                    </div>
+                    <div className="mt-2 fw-semibold">{order.bids?.length ?? 0} Angebote eingegangen</div>
+                  </div>
+                ) : null}
+
                 {priceRecommendation ? (
                   <div
                     className={`alert ${priceRecommendation.comparison_data?.pricing_signal === 'too_high'
@@ -462,6 +495,7 @@ function OrderDetailsPage() {
                   </div>
                 )}
 
+                {user?.role === 'manager' && isQuoteWorkflow && !bidDeadlinePassed ? null : (
                 <div className="table-responsive rounded-2 mb-0">
                   <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                     <thead className="text-dark fs-4">
@@ -479,7 +513,7 @@ function OrderDetailsPage() {
                     </thead>
 
                     <tbody>
-                      {rankedBids.length > 0 ? rankedBids.map((bid, index) => {
+                      {visibleRankedBids.length > 0 ? visibleRankedBids.map((bid, index) => {
                         const score = bidScoreMap[bid.id]
 
                         return (
@@ -499,7 +533,12 @@ function OrderDetailsPage() {
                               </div>
                             </td>
 
-                            <td>{bid.amount} {bid.currency}</td>
+                            <td>
+                              <div>{bid.amount} {bid.currency}</div>
+                              {(bid.line_items ?? []).length > 0 ? (
+                                <div className="text-muted small">{bid.line_items.length} Positionen</div>
+                              ) : null}
+                            </td>
 
                             <td>
                               <div>{bid.estimated_start_date || '-'}</div>
@@ -529,7 +568,7 @@ function OrderDetailsPage() {
                             {(canShortlistBids || canApproveBids) ? (
                               <td>
                                 <div className="d-flex gap-2 flex-wrap">
-                                  {canShortlistBids ? (
+                                  {canShortlistBids && !isQuoteWorkflow ? (
                                     <button
                                       type="button"
                                       className="btn btn-light-primary btn-sm"
@@ -561,7 +600,30 @@ function OrderDetailsPage() {
                                       </button>
                                     </>
                                   ) : null}
+
+                                  {canShortlistBids && isQuoteWorkflow ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="btn btn-success btn-sm"
+                                        disabled={updatingBidId === bid.id || ['approved', 'accepted', 'completed', 'rejected'].includes(bid.status)}
+                                        onClick={() => handleBidDecision(bid.id, 'approved')}
+                                      >
+                                        Zuschlag erteilen
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        className="btn btn-light-danger text-danger btn-sm"
+                                        disabled={updatingBidId === bid.id || ['approved', 'accepted', 'completed', 'rejected'].includes(bid.status)}
+                                        onClick={() => handleBidDecision(bid.id, 'rejected')}
+                                      >
+                                        Ablehnen
+                                      </button>
+                                    </>
+                                  ) : null}
                                 </div>
+                                {bid.rejection_reason ? <div className="text-muted small mt-2">{bid.rejection_reason}</div> : null}
                               </td>
                             ) : null}
                           </tr>
@@ -576,6 +638,7 @@ function OrderDetailsPage() {
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
             </div>
 

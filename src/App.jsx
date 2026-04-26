@@ -161,7 +161,7 @@ function App() {
         <Route
           path="orders"
           element={
-            <ProtectedRoute allowRoles={['admin', 'owner', 'manager', 'employee']} allowManagerAccessModes={['full', 'orders_only']}>
+            <ProtectedRoute allowRoles={['admin', 'owner', 'manager', 'employee']}>
               <OrdersRoute />
             </ProtectedRoute>
           }
@@ -169,7 +169,7 @@ function App() {
         <Route
           path="orders/:orderId"
           element={
-            <ProtectedRoute allowRoles={['admin', 'owner', 'manager']} allowManagerAccessModes={['full', 'orders_only']}>
+            <ProtectedRoute allowRoles={['admin', 'owner', 'manager']}>
               <OrderDetailsPage />
             </ProtectedRoute>
           }

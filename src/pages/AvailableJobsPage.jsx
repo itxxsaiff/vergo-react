@@ -11,6 +11,8 @@ const initialBidForm = {
   estimated_completion_date: '',
   notes: '',
   attachment: null,
+  selected_inspection_slot: '',
+  line_items: [],
 }
 
 function AvailableJobsPage() {
@@ -71,9 +73,32 @@ function AvailableJobsPage() {
     setBidForm((current) => ({ ...current, [name]: files ? files[0] : value }))
   }
 
+  function handleLineItemChange(index, value) {
+    setBidForm((current) => ({
+      ...current,
+      line_items: current.line_items.map((item, itemIndex) => (
+        itemIndex === index
+          ? { ...item, unit_price: value }
+          : item
+      )),
+    }))
+  }
+
+  function getQuoteBidTotal() {
+    return (bidForm.line_items ?? []).reduce((sum, item) => {
+      return sum + (Number(item.quantity || 0) * Number(item.unit_price || 0))
+    }, 0)
+  }
+
   function openBidModal(order) {
     setSelectedOrder(order)
-    setBidForm(initialBidForm)
+    setBidForm({
+      ...initialBidForm,
+      line_items: (order.quote_items ?? []).map((item) => ({
+        ...item,
+        unit_price: '',
+      })),
+    })
     setError('')
   }
 
@@ -88,7 +113,30 @@ function AvailableJobsPage() {
     setIsSaving(true)
     setError('')
 
-    if (!bidForm.amount) {
+    const isInspectionSignup = selectedOrder.workflow_status === 'public_inspection_open'
+    const isQuoteRequest = selectedOrder.workflow_status === 'published_for_quotes'
+
+    if (isInspectionSignup && !bidForm.selected_inspection_slot) {
+      setError('Bitte wählen Sie einen Besichtigungstermin aus.')
+      setIsSaving(false)
+      return
+    }
+
+    if (isQuoteRequest) {
+      const hasAnyPrice = (bidForm.line_items ?? []).some((item) => Number(item.unit_price || 0) > 0)
+
+      if (!hasAnyPrice) {
+        setError('Bitte erfassen Sie mindestens eine Preisposition.')
+        setIsSaving(false)
+        return
+      }
+
+      if (!bidForm.estimated_completion_date) {
+        setError('Bitte geben Sie an, wann Sie die Arbeit ausführen können.')
+        setIsSaving(false)
+        return
+      }
+    } else if (!bidForm.amount) {
       setError('Bid amount is required.')
       setIsSaving(false)
       return
@@ -97,11 +145,29 @@ function AvailableJobsPage() {
     try {
       const payload = new FormData()
       payload.append('order_id', selectedOrder.id)
-      payload.append('amount', Number(bidForm.amount))
       payload.append('currency', bidForm.currency || 'EUR')
+
+      if (isQuoteRequest) {
+        ;(bidForm.line_items ?? []).forEach((item, index) => {
+          payload.append(`line_items[${index}][label]`, item.label)
+          payload.append(`line_items[${index}][code]`, item.code || '')
+          payload.append(`line_items[${index}][unit]`, item.unit || '')
+          payload.append(`line_items[${index}][quantity]`, Number(item.quantity || 0))
+          payload.append(`line_items[${index}][unit_price]`, Number(item.unit_price || 0))
+          payload.append(`line_items[${index}][is_custom]`, item.is_custom ? '1' : '0')
+        })
+      } else if (!isInspectionSignup) {
+        payload.append('amount', Number(bidForm.amount))
+      }
+
       if (bidForm.estimated_start_date) payload.append('estimated_start_date', bidForm.estimated_start_date)
       if (bidForm.estimated_completion_date) payload.append('estimated_completion_date', bidForm.estimated_completion_date)
       if (bidForm.notes) payload.append('notes', bidForm.notes)
+      if (isInspectionSignup) {
+        payload.append('workflow_meta[selected_slot_index]', Number(bidForm.selected_inspection_slot))
+        payload.append('workflow_meta[selected_slot][date]', selectedOrder.workflow_meta?.inspection?.preferred_slots?.[Number(bidForm.selected_inspection_slot)]?.date || '')
+        payload.append('workflow_meta[selected_slot][time]', selectedOrder.workflow_meta?.inspection?.preferred_slots?.[Number(bidForm.selected_inspection_slot)]?.time || '')
+      }
       if (bidForm.attachment) payload.append('attachment', bidForm.attachment)
 
       await api.createBid(payload)
@@ -120,6 +186,10 @@ function AvailableJobsPage() {
   }
 
   const filteredOrders = orders.filter((order) => {
+    if (!['public_inspection_open', 'published_for_quotes'].includes(order.workflow_status)) {
+      return false
+    }
+
     const searchValue = [
       order.title,
       getOptionLabel(JOB_TYPE_OPTIONS, order.service_type),
@@ -267,6 +337,12 @@ function AvailableJobsPage() {
                             <p className="vergo-job-card-description mb-0">
                               {order.description || 'Für diesen Auftrag wurde keine zusätzliche Beschreibung hinzugefügt.'}
                             </p>
+
+                            <div className="mt-3 small text-muted">
+                              {order.workflow_status === 'public_inspection_open'
+                                ? 'Öffentliche Besichtigungsanfrage'
+                                : `Öffentliche Offertenanfrage${order.bid_deadline_at ? ` bis ${order.bid_deadline_at.slice(0, 10)}` : ''}`}
+                            </div>
                           </div>
 
                           <div className="d-flex align-items-start gap-2">
@@ -297,12 +373,12 @@ function AvailableJobsPage() {
 
                           {isSubmitted ? (
                             <button type="button" className="btn vergo-job-apply-btn vergo-job-apply-btn-submitted" disabled>
-                              Angebot eingereicht
+                              {order.workflow_status === 'public_inspection_open' ? 'Besichtigung angefragt' : 'Angebot eingereicht'}
                               <i className="ti ti-check ms-2"></i>
                             </button>
                           ) : (
                             <button type="button" className="btn vergo-job-apply-btn" onClick={() => openBidModal(order)}>
-                              Bewerben
+                              {order.workflow_status === 'public_inspection_open' ? 'Besichtigung anfragen' : 'Angebot abgeben'}
                               <i className="ti ti-arrow-right ms-2"></i>
                             </button>
                           )}
@@ -342,10 +418,64 @@ function AvailableJobsPage() {
                       <div className="text-muted">{selectedOrder.property?.li_number} {selectedOrder.property?.title}</div>
                     </div>
                     <div className="row">
-                      <div className="col-md-6 mb-3">
-                        <label className="form-label">Betrag</label>
-                        <input className="form-control" name="amount" value={bidForm.amount} onChange={handleBidChange} />
-                      </div>
+                      {selectedOrder.workflow_status === 'public_inspection_open' ? (
+                        <div className="col-12 mb-3">
+                          <label className="form-label">Besichtigungstermin auswählen</label>
+                          <select className="form-select" name="selected_inspection_slot" value={bidForm.selected_inspection_slot} onChange={handleBidChange}>
+                            <option value="">Termin auswählen</option>
+                            {(selectedOrder.workflow_meta?.inspection?.preferred_slots ?? []).map((slot, index) => (
+                              <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
+                                {slot.date || '-'} {slot.time || ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : null}
+
+                      {selectedOrder.workflow_status === 'published_for_quotes' ? (
+                        <div className="col-12 mb-3">
+                          <label className="form-label">Positionen und Preise</label>
+                          <div className="border rounded-3">
+                            {(bidForm.line_items ?? []).map((item, index) => (
+                              <div key={`${item.label}-${index}`} className="p-3 border-bottom">
+                                <div className="row g-3 align-items-end">
+                                  <div className="col-md-5">
+                                    <div className="fw-semibold">{item.label}</div>
+                                    <div className="text-muted small">{item.quantity} {item.unit || 'Stück'}</div>
+                                  </div>
+                                  <div className="col-md-3">
+                                    <label className="form-label mb-1">Einzelpreis</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      className="form-control"
+                                      value={item.unit_price}
+                                      onChange={(event) => handleLineItemChange(index, event.target.value)}
+                                    />
+                                  </div>
+                                  <div className="col-md-4">
+                                    <div className="text-muted small mb-1">Zwischensumme</div>
+                                    <div className="fw-semibold">
+                                      {(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)} {bidForm.currency}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="p-3 d-flex justify-content-between align-items-center">
+                              <span className="fw-semibold">Gesamtsumme</span>
+                              <span className="fw-semibold">{getQuoteBidTotal().toFixed(2)} {bidForm.currency}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="col-md-6 mb-3">
+                          <label className="form-label">Betrag</label>
+                          <input className="form-control" name="amount" value={bidForm.amount} onChange={handleBidChange} />
+                        </div>
+                      )}
+
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Währung</label>
                         <select className="form-select" name="currency" value={bidForm.currency} onChange={handleBidChange}>
@@ -378,7 +508,7 @@ function AvailableJobsPage() {
                   <div className="modal-footer">
                     <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>Abbrechen</button>
                     <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                      {isSaving ? 'Wird gespeichert...' : 'Angebot einreichen'}
+                      {isSaving ? 'Wird gespeichert...' : selectedOrder.workflow_status === 'public_inspection_open' ? 'Besichtigung anfragen' : 'Angebot einreichen'}
                     </button>
                   </div>
                 </form>

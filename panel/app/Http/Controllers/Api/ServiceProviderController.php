@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateServiceProviderRequest;
 use App\Http\Resources\ServiceProviderResource;
 use App\Models\Role;
 use App\Models\ServiceProvider;
+use App\Models\PropertyManagerProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -17,7 +18,12 @@ class ServiceProviderController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        $actor = $request->user();
+        abort_unless(
+            ($actor instanceof User && $actor->role?->name === 'admin')
+            || $actor instanceof PropertyManagerProfile,
+            403
+        );
 
         return ServiceProviderResource::collection(
             ServiceProvider::query()->withCount('bids')->latest()->get()

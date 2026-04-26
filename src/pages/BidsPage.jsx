@@ -139,6 +139,20 @@ function BidsPage() {
     }
   }
 
+  async function handleProviderAction(bidId, status) {
+    setIsSaving(true)
+    setError('')
+
+    try {
+      const response = await api.updateBid(bidId, { status })
+      setBids((current) => current.map((bid) => (bid.id === bidId ? response.data : bid)))
+    } catch (actionError) {
+      setError(actionError.message)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const filteredBids = bids.filter((bid) => {
     const searchValue = [
       bid.order?.title,
@@ -194,8 +208,13 @@ function BidsPage() {
                 <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
                   <option value="">All Status</option>
                   <option value="submitted">Eingereicht</option>
+                  <option value="inspection_requested">Besichtigung angefragt</option>
+                  <option value="inspection_confirmed">Besichtigung bestätigt</option>
                   <option value="shortlisted">Vorausgewählt</option>
+                  <option value="awarded_pending_acceptance">Zuschlag wartet</option>
                   <option value="approved">Genehmigt</option>
+                  <option value="accepted">Angenommen</option>
+                  <option value="completed">Abgeschlossen</option>
                   <option value="rejected">Abgelehnt</option>
                 </select>
               </div>
@@ -294,6 +313,33 @@ function BidsPage() {
                               <i className="ti ti-trash"></i>
                             </button>
                           </div>
+                        ) : isProvider && bid.status === 'inspection_requested' ? (
+                          <button
+                            type="button"
+                            className="btn btn-light-primary btn-sm"
+                            disabled={isSaving}
+                            onClick={() => handleProviderAction(bid.id, 'inspection_confirmed')}
+                          >
+                            Besichtigung bestätigen
+                          </button>
+                        ) : isProvider && bid.status === 'awarded_pending_acceptance' ? (
+                          <button
+                            type="button"
+                            className="btn btn-success btn-sm"
+                            disabled={isSaving}
+                            onClick={() => handleProviderAction(bid.id, 'accepted')}
+                          >
+                            Auftrag annehmen
+                          </button>
+                        ) : isProvider && ['accepted', 'approved'].includes(bid.status) ? (
+                          <button
+                            type="button"
+                            className="btn btn-warning btn-sm"
+                            disabled={isSaving}
+                            onClick={() => handleProviderAction(bid.id, 'completed')}
+                          >
+                            Als erledigt markieren
+                          </button>
                         ) : (
                           <span className="text-muted">Gesperrt</span>
                         )}

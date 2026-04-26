@@ -17,13 +17,20 @@ class StoreBidRequest extends FormRequest
     {
         return [
             'order_id' => ['required', 'integer', 'exists:orders,id'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'max:10'],
+            'line_items' => ['nullable', 'array'],
+            'line_items.*.label' => ['required_with:line_items', 'string', 'max:255'],
+            'line_items.*.quantity' => ['nullable', 'numeric', 'min:0'],
+            'line_items.*.unit_price' => ['required_with:line_items', 'numeric', 'min:0'],
+            'line_items.*.code' => ['nullable', 'string', 'max:100'],
+            'line_items.*.is_custom' => ['nullable', 'boolean'],
             'estimated_start_date' => ['nullable', 'date'],
             'estimated_completion_date' => ['nullable', 'date', 'after_or_equal:estimated_start_date'],
             'notes' => ['nullable', 'string'],
+            'workflow_meta' => ['nullable', 'array'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
-            'status' => ['nullable', Rule::in(['submitted', 'shortlisted', 'rejected', 'approved'])],
+            'status' => ['nullable', Rule::in(['submitted', 'shortlisted', 'rejected', 'approved', 'accepted', 'completed'])],
         ];
     }
 
@@ -32,12 +39,22 @@ class StoreBidRequest extends FormRequest
         return [
             'order_id.required' => 'Please select an order.',
             'order_id.exists' => 'The selected order is invalid.',
-            'amount.required' => 'Bid amount is required.',
             'currency.required' => 'Currency is required.',
             'estimated_completion_date.after_or_equal' => 'Completion date must be after the start date.',
             'attachment.max' => 'Attachment size must not exceed 10 MB.',
             'attachment.mimes' => 'Attachment must be a PDF, Office document, or image file.',
             'status.in' => 'Please select a valid bid status.',
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $lineItems = collect($this->input('line_items', []))->filter(fn ($item) => is_array($item) && filled($item['label'] ?? null));
+
+            if (! $lineItems->isNotEmpty() && ! $this->filled('amount')) {
+                $validator->errors()->add('amount', 'Bid amount is required when no line items are provided.');
+            }
+        });
     }
 }

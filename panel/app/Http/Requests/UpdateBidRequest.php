@@ -19,11 +19,19 @@ class UpdateBidRequest extends FormRequest
         return [
             'amount' => ['sometimes', 'required', 'numeric', 'min:0'],
             'currency' => ['sometimes', 'required', 'string', 'max:10'],
+            'line_items' => ['nullable', 'array'],
+            'line_items.*.label' => ['required_with:line_items', 'string', 'max:255'],
+            'line_items.*.quantity' => ['nullable', 'numeric', 'min:0'],
+            'line_items.*.unit_price' => ['required_with:line_items', 'numeric', 'min:0'],
+            'line_items.*.code' => ['nullable', 'string', 'max:100'],
+            'line_items.*.is_custom' => ['nullable', 'boolean'],
             'estimated_start_date' => ['nullable', 'date'],
             'estimated_completion_date' => ['nullable', 'date', 'after_or_equal:estimated_start_date'],
             'notes' => ['nullable', 'string'],
+            'workflow_meta' => ['nullable', 'array'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
-            'status' => ['sometimes', 'nullable', Rule::in(['submitted', 'shortlisted', 'rejected', 'approved'])],
+            'status' => ['sometimes', 'nullable', Rule::in(['submitted', 'shortlisted', 'rejected', 'approved', 'accepted', 'completed'])],
+            'rejection_reason' => ['nullable', 'string'],
         ];
     }
 

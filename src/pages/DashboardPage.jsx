@@ -303,8 +303,7 @@ function DashboardPage({ role }) {
       {isManager ? (
         <>
           <div className="card bg-light-info overflow-hidden mb-4">
-            <div className="card-body">
-              <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
+              <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4 py-3 px-5">
                 <div>
                   <h2 className="mb-2">Guten Tag</h2>
                   <div className="text-muted">{user?.email || '(Mail Adresse)'}</div>
@@ -319,7 +318,6 @@ function DashboardPage({ role }) {
                   </Link>
                 </div>
               </div>
-            </div>
           </div>
 
           {analyticsError ? <div className="alert alert-danger py-2 mb-4">{analyticsError}</div> : null}

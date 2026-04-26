@@ -16,13 +16,20 @@ class Order extends Model
         'property_id',
         'property_manager_profile_id',
         'property_object_id',
+        'property_object_ids',
         'requester_name',
         'requester_email',
         'title',
         'service_type',
         'description',
         'status',
+        'workflow_type',
+        'workflow_status',
+        'bid_priority',
         'due_date',
+        'bid_deadline_at',
+        'workflow_meta',
+        'quote_items',
         'requested_at',
         'completed_at',
     ];
@@ -30,7 +37,11 @@ class Order extends Model
     protected function casts(): array
     {
         return [
+            'property_object_ids' => 'array',
             'due_date' => 'date',
+            'bid_deadline_at' => 'datetime',
+            'workflow_meta' => 'array',
+            'quote_items' => 'array',
             'requested_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
@@ -58,7 +69,7 @@ class Order extends Model
 
     public function approvedBid(): HasOne
     {
-        return $this->hasOne(Bid::class)->where('status', 'approved')->latestOfMany();
+        return $this->hasOne(Bid::class)->whereIn('status', ['approved', 'accepted', 'completed', 'awarded_pending_acceptance'])->latestOfMany();
     }
 
     public function documents(): HasMany

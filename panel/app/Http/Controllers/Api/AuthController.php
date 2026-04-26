@@ -234,7 +234,7 @@ class AuthController extends Controller
             'consumed_at' => now(),
         ]);
 
-        $abilities = ['manager:full', 'orders:view_all', 'orders:update', 'orders:delete'];
+        $abilities = ['manager:full', 'orders:view_all', 'orders:create', 'orders:update', 'orders:delete'];
         $token = $manager->createToken('vergo-manager', $abilities)->plainTextToken;
 
         return response()->json([
@@ -288,7 +288,7 @@ class AuthController extends Controller
             'consumed_at' => now(),
         ]);
 
-        $abilities = ['manager:orders_only', 'orders:view_all', 'orders:create'];
+        $abilities = ['manager:full', 'orders:view_all', 'orders:create', 'orders:update', 'orders:delete'];
         $token = $manager->createToken('vergo-manager', $abilities)->plainTextToken;
 
         return response()->json([
@@ -406,18 +406,16 @@ class AuthController extends Controller
 
     private function resolveManagerAccess(array $abilities): array
     {
-        $mode = in_array('manager:orders_only', $abilities, true) ? 'orders_only' : 'full';
-
         return [
-            'mode' => $mode,
-            'navigation_role' => $mode === 'orders_only' ? 'manager_orders_only' : 'manager',
-            'home_path' => $mode === 'orders_only' ? '/orders' : '/dashboard',
+            'mode' => 'full',
+            'navigation_role' => 'manager',
+            'home_path' => '/dashboard',
             'permissions' => [
                 'orders' => [
                     'view_all' => true,
-                    'create' => $mode === 'orders_only',
-                    'edit' => $mode === 'full',
-                    'delete' => $mode === 'full',
+                    'create' => true,
+                    'edit' => true,
+                    'delete' => true,
                 ],
             ],
         ];

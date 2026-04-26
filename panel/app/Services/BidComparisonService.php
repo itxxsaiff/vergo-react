@@ -32,7 +32,9 @@ class BidComparisonService
             ? round((($highestAmount - $lowestAmount) / $lowestAmount) * 100, 2)
             : 0;
 
-        $rankings = $bids->map(function ($bid) use ($lowestAmount, $order) {
+        $weights = $this->resolveWeights((string) $order->bid_priority);
+
+        $rankings = $bids->map(function ($bid) use ($lowestAmount, $order, $weights) {
             $provider = $bid->serviceProvider;
             $priceScore = $lowestAmount > 0 ? max(0, 100 - (((float) $bid->amount - $lowestAmount) / $lowestAmount) * 100) : 100;
             $startDelayDays = $bid->estimated_start_date ? max(0, now()->startOfDay()->diffInDays($bid->estimated_start_date, false)) : 14;
@@ -55,11 +57,11 @@ class BidComparisonService
             $propertyExperienceScore = $hasWorkedOnPropertyBefore ? 100 : 35;
 
             $finalScore = round(
-                ($priceScore * 0.4)
-                + ($timelineScore * 0.25)
-                + ($propertyExperienceScore * 0.15)
-                + ($ratingScore * 0.1)
-                + ($historyScore * 0.1),
+                ($priceScore * ($weights['price'] / 100))
+                + ($timelineScore * ($weights['timeline'] / 100))
+                + ($propertyExperienceScore * ($weights['property_experience'] / 100))
+                + ($ratingScore * ($weights['provider_rating'] / 100))
+                + ($historyScore * ($weights['completed_history'] / 100)),
                 2
             );
 
@@ -106,15 +108,36 @@ class BidComparisonService
                 'lowest_amount' => $lowestAmount,
                 'highest_amount' => $highestAmount,
                 'spread_percentage' => $spreadPercentage,
-                'weights' => [
-                    'price' => 40,
-                    'timeline' => 25,
-                    'property_experience' => 15,
-                    'provider_rating' => 10,
-                    'completed_history' => 10,
-                ],
+                'weights' => $weights,
                 'rankings' => $rankings->all(),
             ],
         ];
+    }
+
+    private function resolveWeights(string $priority): array
+    {
+        return match ($priority) {
+            'fastest_turnaround' => [
+                'price' => 20,
+                'timeline' => 45,
+                'property_experience' => 15,
+                'provider_rating' => 10,
+                'completed_history' => 10,
+            ],
+            'high_quality_materials' => [
+                'price' => 20,
+                'timeline' => 15,
+                'property_experience' => 20,
+                'provider_rating' => 25,
+                'completed_history' => 20,
+            ],
+            default => [
+                'price' => 40,
+                'timeline' => 25,
+                'property_experience' => 15,
+                'provider_rating' => 10,
+                'completed_history' => 10,
+            ],
+        };
     }
 }

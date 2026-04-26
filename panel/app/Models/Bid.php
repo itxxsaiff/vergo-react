@@ -15,14 +15,17 @@ class Bid extends Model
         'service_provider_id',
         'amount',
         'currency',
+        'line_items',
         'estimated_start_date',
         'estimated_completion_date',
         'notes',
+        'workflow_meta',
         'attachment_name',
         'attachment_path',
         'attachment_mime_type',
         'attachment_size',
         'status',
+        'rejection_reason',
         'submitted_at',
     ];
 
@@ -30,8 +33,10 @@ class Bid extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'line_items' => 'array',
             'estimated_start_date' => 'date',
             'estimated_completion_date' => 'date',
+            'workflow_meta' => 'array',
             'submitted_at' => 'datetime',
         ];
     }

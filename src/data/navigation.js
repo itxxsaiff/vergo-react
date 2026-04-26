@@ -124,11 +124,4 @@ export const navigationByRole = {
       ],
     },
   ],
-  manager_orders_only: [
-    {
-      title: 'Bestellungen',
-      icon: 'ti ti-file-invoice',
-      href: '/orders',
-    },
-  ],
 }

@@ -6,10 +6,6 @@ function ProtectedRoute({ allowRoles, allowManagerAccessModes, children }) {
   const { isAuthenticated, isBooting, user } = useAuth()
 
   function getFallbackPath() {
-    if (user?.role === 'manager' && user?.access_mode === 'orders_only') {
-      return '/orders'
-    }
-
     return '/dashboard'
   }
 
@@ -22,14 +18,6 @@ function ProtectedRoute({ allowRoles, allowManagerAccessModes, children }) {
   }
 
   if (allowRoles && !allowRoles.includes(user.role)) {
-    return <Navigate to={getFallbackPath()} replace />
-  }
-
-  if (
-    user?.role === 'manager'
-    && allowManagerAccessModes
-    && !allowManagerAccessModes.includes(user.access_mode ?? 'full')
-  ) {
     return <Navigate to={getFallbackPath()} replace />
   }
 

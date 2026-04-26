@@ -84,7 +84,7 @@ function OrdersRoute() {
 function PropertyDetailsRoute() {
   const { user } = useAuth()
 
-  if (user?.role === 'employee') {
+  if (['admin', 'employee'].includes(user?.role)) {
     return <EmployeePropertyDetailsPage />
   }
 

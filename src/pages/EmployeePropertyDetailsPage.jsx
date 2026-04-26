@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { api } from '../lib/api'
 import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
@@ -19,6 +19,10 @@ function EmployeePropertyDetailsPage() {
   const { propertyId } = useParams()
   const [property, setProperty] = useState(null)
   const [form, setForm] = useState(initialForm)
+  const [filters, setFilters] = useState({
+    search: '',
+    type: '',
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -78,6 +82,15 @@ function EmployeePropertyDetailsPage() {
     }))
   }
 
+  function handleFilterChange(event) {
+    const { name, value } = event.target
+
+    setFilters((current) => ({
+      ...current,
+      [name]: value,
+    }))
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
     setIsSaving(true)
@@ -126,6 +139,26 @@ function EmployeePropertyDetailsPage() {
     return (property?.owners ?? []).map((owner) => owner.name).filter(Boolean).join(', ') || '-'
   }, [property])
 
+  const filteredObjects = useMemo(() => {
+    return (property?.objects ?? []).filter((object) => {
+      const searchValue = [
+        object.address,
+        object.name,
+        object.postal_code,
+        object.city,
+        object.type,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      const matchesSearch = !filters.search || searchValue.includes(filters.search.toLowerCase())
+      const matchesType = !filters.type || object.type === filters.type
+
+      return matchesSearch && matchesType
+    })
+  }, [filters.search, filters.type, property])
+
   return (
     <PageContent
       title="Objekte"
@@ -165,23 +198,66 @@ function EmployeePropertyDetailsPage() {
           </div>
 
           <div className="card">
-            <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between gap-3">
-              <div>
-                <h5 className="card-title fw-semibold mb-0 lh-sm">Objekte in dieser Liegenschaft</h5>
-                <div className="text-muted small mt-1">{property.objects_count ?? 0} Objekte als Kartenansicht</div>
-              </div>
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <Link to="/properties" className="btn btn-light-primary btn-sm">Zurück zur Liste</Link>
-                <button type="button" className="btn btn-primary btn-sm" onClick={openModal}>
-                  <i className="ti ti-plus me-1"></i>
-                  Objekt erstellen
-                </button>
-              </div>
-            </div>
             <div className="card-body p-4">
-              {(property.objects ?? []).length > 0 ? (
+              <div className="row g-3 mb-4 vergo-filter-bar vergo-filter-bar-compact">
+                <div className="col-xl-5 col-lg-5 col-md-12">
+                  <div className="vergo-search-input-wrap">
+                    <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+                    <input
+                      aria-label="Objekte durchsuchen"
+                      className="form-control"
+                      name="search"
+                      value={filters.search}
+                      onChange={handleFilterChange}
+                      placeholder="Nach Adresse, PLZ, Ort oder Nutzung suchen"
+                    />
+                  </div>
+                </div>
+
+                <div className="col-xl-3 col-lg-3 col-md-12">
+                  <div className="vergo-select-input-wrap">
+                    <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+                    <select
+                      aria-label="Nutzung filtern"
+                      className="form-select"
+                      name="type"
+                      value={filters.type}
+                      onChange={handleFilterChange}
+                    >
+                      <option value="">Alle Nutzungen</option>
+                      {PROPERTY_USAGE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="col-xl-4 col-lg-4 col-md-12">
+                  <div className="d-flex justify-content-lg-end gap-2 flex-nowrap vergo-action-buttons">
+                    <button
+                      type="button"
+                      className="btn btn-light-primary text-nowrap"
+                      onClick={() => setFilters({ search: '', type: '' })}
+                    >
+                      <i className="ti ti-refresh me-1"></i>
+                      Zurücksetzen
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-primary text-nowrap"
+                      onClick={openModal}
+                    >
+                      <i className="ti ti-plus me-1"></i>
+                      Objekt erstellen
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {filteredObjects.length > 0 ? (
                 <div className="row g-4">
-                  {property.objects.map((object) => (
+                  {filteredObjects.map((object) => (
                     <div className="col-xl-3 col-lg-4 col-sm-6" key={object.id}>
                       <div className="vergo-property-object-shell h-100">
                         <div className="vergo-property-object-icon-badge">
@@ -210,7 +286,7 @@ function EmployeePropertyDetailsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-muted py-4">Noch keine Objekte vorhanden.</div>
+                <div className="text-center text-muted py-4">Keine Objekte gefunden.</div>
               )}
             </div>
           </div>
@@ -252,7 +328,7 @@ function EmployeePropertyDetailsPage() {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Gemischte Nutzung</label>
+                          <label className="form-label">Nutzung</label>
                           <select className="form-select" name="type" value={form.type} onChange={handleChange}>
                             <option value="">Nutzung auswählen</option>
                             {PROPERTY_USAGE_OPTIONS.map((option) => (

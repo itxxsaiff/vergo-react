@@ -37,6 +37,9 @@ class OrderResource extends JsonResource
             'property_object' => $this->whenLoaded('propertyObject', fn () => $this->propertyObject ? [
                 'id' => $this->propertyObject->id,
                 'name' => $this->propertyObject->name,
+                'address' => $this->propertyObject->address,
+                'postal_code' => $this->propertyObject->postal_code,
+                'city' => $this->propertyObject->city,
                 'type' => $this->propertyObject->type,
                 'reference' => $this->propertyObject->reference,
             ] : null),

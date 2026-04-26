@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import PageContent from '../components/PageContent'
+import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
+import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
 const summaryCards = [
   {
@@ -166,8 +169,22 @@ function OrderTrendChart({ monthlyCounts }) {
   )
 }
 
+function getOrderAddress(order) {
+  return order?.property_object?.address || order?.property_object?.name || order?.property?.title || '-'
+}
+
+function getOrderPostalCode(order) {
+  return order?.property_object?.postal_code || order?.property?.postal_code || '-'
+}
+
+function getOrderCity(order) {
+  return order?.property_object?.city || order?.property?.city || '-'
+}
+
 function DashboardPage({ role }) {
+  const { user } = useAuth()
   const isEmployee = role === 'employee'
+  const isManager = role === 'manager'
   const [overview, setOverview] = useState({
     properties: 0,
     owners: 0,
@@ -272,62 +289,44 @@ function DashboardPage({ role }) {
     },
   ]
 
+  const activeOrders = useMemo(() => orders.filter((order) => isActiveOrder(order.status)), [orders])
+  const activeOrderPreview = useMemo(() => activeOrders.slice(0, 3), [activeOrders])
+  const remainingActiveOrders = Math.max(activeOrders.length - activeOrderPreview.length, 0)
+
   return (
     <PageContent
-      title="Vergo Armaturenbrett"
+      title={isManager ? '' : 'Vergo Armaturenbrett'}
       subtitle={`Willkommen im Armaturenbrett als ${role}.`}
       variant="dashboard"
-      breadcrumbs={['Armaturenbrett']}
+      breadcrumbs={isManager ? [] : ['Armaturenbrett']}
     >
-
-      {!isEmployee ? (
+      {isManager ? (
         <>
-      <div className="row">
-        {summaryCards.map((card) => (
-          <div className="col-xl-3 col-md-6" key={card.key}>
-            <div className="card overflow-hidden">
-              <div className="card-body">
-                <div className="d-flex align-items-center">
-                  <div className="flex-grow-1">
-                    <p className="text-muted fw-medium">{card.title}</p>
-                    <h3 className="mb-0 fw-semibold">{overview[card.key] ?? 0}</h3>
-                  </div>
-                  <div className="flex-shrink-0 ms-3">
-                    <div className={`round-48 rounded-circle bg-light-${card.color} d-flex align-items-center justify-content-center`}>
-                      <span className={`text-${card.color} d-flex align-items-center justify-content-center fs-8`}>
-                        <i className={card.icon}></i>
-                      </span>
-                    </div>
-                  </div>
+          <div className="card bg-light-info overflow-hidden mb-4">
+            <div className="card-body">
+              <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
+                <div>
+                  <h2 className="mb-2">Guten Tag</h2>
+                  <div className="text-muted">{user?.email || '(Mail Adresse)'}</div>
+                </div>
+
+                <div className="d-flex flex-wrap gap-2">
+                  <Link to="/properties" className="btn vergo-manager-quick-link">
+                    Liegenschaften
+                  </Link>
+                  <Link to="/orders" className="btn vergo-manager-quick-link">
+                    Auftrag erfassen
+                  </Link>
                 </div>
               </div>
             </div>
           </div>
-        ))}
-      </div>
 
-      <div className="row">
-        <div className="col-12">
-          <div className="card vergo-dashboard-analytics-card overflow-hidden">
-            <div className="card-body p-4">
-              <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
-                <div>
-                  {/* <span className="vergo-dashboard-eyebrow">Auftragsanalyse</span> */}
-                  <h4 className="fw-semibold mb-2 mt-3">Auftragsstatus und monatliche Veröffentlichungen</h4>
-                  <p className="text-muted mb-0">
-                    Links sehen Sie die aktuellen Auftragszahlen, rechts die monatliche Entwicklung nach Jahr.
-                  </p>
-                </div>
+          {analyticsError ? <div className="alert alert-danger py-2 mb-4">{analyticsError}</div> : null}
 
-                <div className="text-md-end">
-                  <div className="text-muted small mb-1">Ausgewähltes Jahr</div>
-                  <div className="fw-semibold fs-5">{selectedYearNumber}</div>
-                </div>
-              </div>
-
-              {analyticsError ? <div className="alert alert-danger py-2 mb-0">{analyticsError}</div> : null}
-
-              {!analyticsError ? (
+          {!analyticsError ? (
+            <div className="card vergo-dashboard-analytics-card overflow-hidden">
+              <div className="card-body p-4">
                 <div className="row g-4 align-items-stretch">
                   <div className="col-xl-4">
                     <div className="vergo-dashboard-analytics-panel h-100">
@@ -365,64 +364,268 @@ function DashboardPage({ role }) {
                   </div>
 
                   <div className="col-xl-8">
-                    <div className="vergo-dashboard-analytics-panel vergo-dashboard-chart-panel h-100">
-                      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-                        <div>
-                          <h5 className="fw-semibold mb-1">Monatliche Auftragsveröffentlichungen</h5>
-                          <p className="text-muted mb-0">
-                            Januar bis Dezember, basierend auf Anfragedatum oder Erstellungsdatum.
-                          </p>
+                    <div className="d-flex flex-column gap-4 h-100">
+                      <div className="vergo-dashboard-analytics-panel">
+                        <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+                          <h5 className="fw-semibold mb-0">Aktive Aufträge</h5>
+                          <span className="badge bg-light-primary text-primary px-3 py-2 rounded-pill">
+                            {formatCount(activeOrders.length)} aktiv
+                          </span>
                         </div>
 
-                        <div className="vergo-dashboard-year-filter">
-                          <label className="form-label mb-1">Jahr</label>
-                          <select
-                            className="form-select"
-                            value={String(selectedYearNumber)}
-                            onChange={(event) => setSelectedYear(event.target.value)}
-                          >
-                            {availableYears.map((year) => (
-                              <option key={year} value={year}>
-                                {year}
-                              </option>
+                        {isAnalyticsLoading ? (
+                          <div className="vergo-dashboard-chart-empty">
+                            <div>
+                              <div className="fw-semibold mb-1">Aktive Aufträge werden geladen</div>
+                              <div>Die aktuellen Karten werden vorbereitet.</div>
+                            </div>
+                          </div>
+                        ) : activeOrders.length > 0 ? (
+                          <div className="row g-3">
+                            {activeOrderPreview.map((order) => (
+                              <div className="col-lg-4 col-sm-6" key={order.id}>
+                                <Link to={`/orders/${order.id}`} className="vergo-manager-order-card">
+                                  <div className="vergo-manager-order-card-label">Gewerk</div>
+                                  <div className="vergo-manager-order-card-value">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
+                                  <div className="vergo-manager-order-card-meta">
+                                    <span>Adresse</span>
+                                    <strong>{getOrderAddress(order)}</strong>
+                                  </div>
+                                  <div className="vergo-manager-order-card-grid">
+                                    <div>
+                                      <span>PLZ</span>
+                                      <strong>{getOrderPostalCode(order)}</strong>
+                                    </div>
+                                    <div>
+                                      <span>Ort</span>
+                                      <strong>{getOrderCity(order)}</strong>
+                                    </div>
+                                  </div>
+                                </Link>
+                              </div>
                             ))}
-                          </select>
-                        </div>
+
+                            {remainingActiveOrders > 0 ? (
+                              <div className="col-lg-4 col-sm-6">
+                                <div className="vergo-manager-order-card vergo-manager-order-card-more">
+                                  <span>Weitere Aufträge</span>
+                                  <strong>+{formatCount(remainingActiveOrders)}</strong>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <div className="vergo-dashboard-chart-empty">
+                            <div>
+                              <div className="fw-semibold mb-1">Keine aktiven Aufträge</div>
+                              <div>Zurzeit sind keine laufenden Aufträge für diese Liegenschaft vorhanden.</div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {isAnalyticsLoading ? (
-                        <div className="vergo-dashboard-chart-empty">
+                      <div className="vergo-dashboard-analytics-panel vergo-dashboard-chart-panel flex-grow-1">
+                        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
                           <div>
-                            <div className="fw-semibold mb-1">Diagramm wird geladen</div>
-                            <div>Die monatliche Auftragsentwicklung wird vorbereitet.</div>
+                            <h5 className="fw-semibold mb-1">Monatliche Auftragsveröffentlichungen</h5>
+                            <p className="text-muted mb-0">
+                              Januar bis Dezember, basierend auf Anfragedatum oder Erstellungsdatum.
+                            </p>
+                          </div>
+
+                          <div className="vergo-dashboard-year-filter">
+                            <label className="form-label mb-1">Jahr</label>
+                            <select
+                              className="form-select"
+                              value={String(selectedYearNumber)}
+                              onChange={(event) => setSelectedYear(event.target.value)}
+                            >
+                              {availableYears.map((year) => (
+                                <option key={year} value={year}>
+                                  {year}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
-                      ) : publishedThisYear > 0 ? (
-                        <>
-                          <div className="vergo-dashboard-chart-summary">
-                            <span>{formatCount(publishedThisYear)} veröffentlichte Aufträge in {selectedYearNumber}</span>
-                            <span>
-                              Stärkster Monat: {busiestMonthIndex >= 0 ? MONTH_LABELS[busiestMonthIndex] : '-'} ({formatCount(busiestMonthCount)})
-                            </span>
+
+                        {isAnalyticsLoading ? (
+                          <div className="vergo-dashboard-chart-empty">
+                            <div>
+                              <div className="fw-semibold mb-1">Diagramm wird geladen</div>
+                              <div>Die monatliche Auftragsentwicklung wird vorbereitet.</div>
+                            </div>
                           </div>
-                          <OrderTrendChart monthlyCounts={monthlyCounts} />
-                        </>
-                      ) : (
-                        <div className="vergo-dashboard-chart-empty">
-                          <div>
-                            <div className="fw-semibold mb-1">Keine Aufträge in diesem Jahr</div>
-                            <div>Für {selectedYearNumber} wurden noch keine Veröffentlichungen gefunden.</div>
+                        ) : publishedThisYear > 0 ? (
+                          <>
+                            <div className="vergo-dashboard-chart-summary">
+                              <span>{formatCount(publishedThisYear)} veröffentlichte Aufträge in {selectedYearNumber}</span>
+                              <span>
+                                Stärkster Monat: {busiestMonthIndex >= 0 ? MONTH_LABELS[busiestMonthIndex] : '-'} ({formatCount(busiestMonthCount)})
+                              </span>
+                            </div>
+                            <OrderTrendChart monthlyCounts={monthlyCounts} />
+                          </>
+                        ) : (
+                          <div className="vergo-dashboard-chart-empty">
+                            <div>
+                              <div className="fw-semibold mb-1">Keine Aufträge in diesem Jahr</div>
+                              <div>Für {selectedYearNumber} wurden noch keine Veröffentlichungen gefunden.</div>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              ) : null}
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+
+      {!isEmployee && !isManager ? (
+        <>
+          <div className="row">
+            {summaryCards.map((card) => (
+              <div className="col-xl-3 col-md-6" key={card.key}>
+                <div className="card overflow-hidden">
+                  <div className="card-body">
+                    <div className="d-flex align-items-center">
+                      <div className="flex-grow-1">
+                        <p className="text-muted fw-medium">{card.title}</p>
+                        <h3 className="mb-0 fw-semibold">{overview[card.key] ?? 0}</h3>
+                      </div>
+                      <div className="flex-shrink-0 ms-3">
+                        <div className={`round-48 rounded-circle bg-light-${card.color} d-flex align-items-center justify-content-center`}>
+                          <span className={`text-${card.color} d-flex align-items-center justify-content-center fs-8`}>
+                            <i className={card.icon}></i>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="row">
+            <div className="col-12">
+              <div className="card vergo-dashboard-analytics-card overflow-hidden">
+                <div className="card-body p-4">
+                  <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+                    <div>
+                      <h4 className="fw-semibold mb-2 mt-3">Auftragsstatus und monatliche Veröffentlichungen</h4>
+                      <p className="text-muted mb-0">
+                        Links sehen Sie die aktuellen Auftragszahlen, rechts die monatliche Entwicklung nach Jahr.
+                      </p>
+                    </div>
+
+                    <div className="text-md-end">
+                      <div className="text-muted small mb-1">Ausgewähltes Jahr</div>
+                      <div className="fw-semibold fs-5">{selectedYearNumber}</div>
+                    </div>
+                  </div>
+
+                  {analyticsError ? <div className="alert alert-danger py-2 mb-0">{analyticsError}</div> : null}
+
+                  {!analyticsError ? (
+                    <div className="row g-4 align-items-stretch">
+                      <div className="col-xl-4">
+                        <div className="vergo-dashboard-analytics-panel h-100">
+                          <div className="mb-3">
+                            <h5 className="fw-semibold mb-1">Auftragsübersicht</h5>
+                            <p className="text-muted mb-0">Die wichtigsten Kennzahlen der aktuell sichtbaren Aufträge.</p>
+                          </div>
+
+                          {isAnalyticsLoading ? (
+                            <p className="text-muted mb-0">Auftragsanalyse wird geladen...</p>
+                          ) : (
+                            <div className="d-grid gap-3">
+                              {analyticsMetrics.map((metric) => (
+                                <div className="vergo-dashboard-metric-card" key={metric.key}>
+                                  <span
+                                    className="vergo-dashboard-metric-icon"
+                                    style={{
+                                      '--metric-color': metric.color,
+                                      '--metric-background': metric.background,
+                                    }}
+                                  >
+                                    <i className={metric.icon}></i>
+                                  </span>
+
+                                  <div>
+                                    <div className="vergo-dashboard-metric-value">{formatCount(metric.value)}</div>
+                                    <div className="fw-semibold text-dark">{metric.label}</div>
+                                    <div className="text-muted small">{metric.helper}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="col-xl-8">
+                        <div className="vergo-dashboard-analytics-panel vergo-dashboard-chart-panel h-100">
+                          <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                            <div>
+                              <h5 className="fw-semibold mb-1">Monatliche Auftragsveröffentlichungen</h5>
+                              <p className="text-muted mb-0">
+                                Januar bis Dezember, basierend auf Anfragedatum oder Erstellungsdatum.
+                              </p>
+                            </div>
+
+                            <div className="vergo-dashboard-year-filter">
+                              <label className="form-label mb-1">Jahr</label>
+                              <select
+                                className="form-select"
+                                value={String(selectedYearNumber)}
+                                onChange={(event) => setSelectedYear(event.target.value)}
+                              >
+                                {availableYears.map((year) => (
+                                  <option key={year} value={year}>
+                                    {year}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {isAnalyticsLoading ? (
+                            <div className="vergo-dashboard-chart-empty">
+                              <div>
+                                <div className="fw-semibold mb-1">Diagramm wird geladen</div>
+                                <div>Die monatliche Auftragsentwicklung wird vorbereitet.</div>
+                              </div>
+                            </div>
+                          ) : publishedThisYear > 0 ? (
+                            <>
+                              <div className="vergo-dashboard-chart-summary">
+                                <span>{formatCount(publishedThisYear)} veröffentlichte Aufträge in {selectedYearNumber}</span>
+                                <span>
+                                  Stärkster Monat: {busiestMonthIndex >= 0 ? MONTH_LABELS[busiestMonthIndex] : '-'} ({formatCount(busiestMonthCount)})
+                                </span>
+                              </div>
+                              <OrderTrendChart monthlyCounts={monthlyCounts} />
+                            </>
+                          ) : (
+                            <div className="vergo-dashboard-chart-empty">
+                              <div>
+                                <div className="fw-semibold mb-1">Keine Aufträge in diesem Jahr</div>
+                                <div>Für {selectedYearNumber} wurden noch keine Veröffentlichungen gefunden.</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
         </>
       ) : null}
     </PageContent>

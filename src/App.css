@@ -231,6 +231,29 @@ body {
   width: auto;
 }
 
+.vergo-layout-no-sidebar .left-sidebar {
+  display: none !important;
+}
+
+.vergo-layout-no-sidebar .body-wrapper {
+  margin-left: 0 !important;
+}
+
+.vergo-layout-no-sidebar.app-header-offset,
+.vergo-layout-no-sidebar .body-wrapper > .container-fluid,
+.vergo-layout-no-sidebar .body-wrapper > .container-sm,
+.vergo-layout-no-sidebar .body-wrapper > .container-md,
+.vergo-layout-no-sidebar .body-wrapper > .container-lg,
+.vergo-layout-no-sidebar .body-wrapper > .container-xl,
+.vergo-layout-no-sidebar .body-wrapper > .container-xxl {
+  padding-top: calc(var(--vergo-header-height) + var(--vergo-shell-gap) + 18px) !important;
+}
+
+.vergo-layout-no-sidebar .app-header {
+  left: var(--vergo-shell-gap) !important;
+  width: auto !important;
+}
+
 .body-wrapper > .container-fluid,
 .body-wrapper > .container-sm,
 .body-wrapper > .container-md,
@@ -1431,6 +1454,99 @@ body {
   background: #fbfdff;
 }
 
+.vergo-manager-quick-link,
+.vergo-manager-quick-link:hover,
+.vergo-manager-quick-link:focus {
+  min-width: 190px;
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.95rem 1.4rem;
+  border: 1px solid #55c778;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #9af2a4 0%, #72e087 100%);
+  color: #165a2d;
+  font-weight: 700;
+  box-shadow: 0 14px 28px rgba(114, 224, 135, 0.24);
+}
+
+.vergo-manager-order-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid #dbe8f5;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #215f8f 0%, #174a73 100%);
+  color: #ffffff;
+  box-shadow: 0 14px 30px rgba(23, 74, 115, 0.22);
+}
+
+.vergo-manager-order-card:hover {
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.vergo-manager-order-card-label,
+.vergo-manager-order-card-meta span,
+.vergo-manager-order-card-grid span {
+  color: rgba(232, 243, 255, 0.76);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vergo-manager-order-card-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.vergo-manager-order-card-meta,
+.vergo-manager-order-card-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.vergo-manager-order-card-meta strong,
+.vergo-manager-order-card-grid strong {
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.vergo-manager-order-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.vergo-manager-order-card-more {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 100%;
+  background: linear-gradient(180deg, #1d567f 0%, #153f62 100%);
+}
+
+.vergo-manager-order-card-more span {
+  color: rgba(232, 243, 255, 0.76);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.vergo-manager-order-card-more strong {
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .modal.show {
   overflow-x: hidden;
   overflow-y: auto;
@@ -1550,5 +1666,15 @@ body {
 
   .vergo-dashboard-metric-value {
     font-size: 1.75rem;
+  }
+
+  .vergo-manager-quick-link,
+  .vergo-manager-quick-link:hover,
+  .vergo-manager-quick-link:focus {
+    min-width: 100%;
+  }
+
+  .vergo-manager-order-card-grid {
+    grid-template-columns: 1fr;
   }
 }

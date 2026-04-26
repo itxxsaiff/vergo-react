@@ -6,10 +6,11 @@ import { closeSidebar, getInitialSidebarState } from '../lib/sidebarLayout'
 
 function AdminLayout({ navigation, user }) {
   const { sidebarType, wrapperClassName } = getInitialSidebarState()
+  const hideSidebar = user?.navigationRole === 'manager'
 
   return (
     <div
-      className={wrapperClassName}
+      className={`${wrapperClassName}${hideSidebar ? ' vergo-layout-no-sidebar' : ''}`}
       id="main-wrapper"
       data-theme="orange_theme"
       data-layout="vertical"
@@ -18,9 +19,9 @@ function AdminLayout({ navigation, user }) {
       data-header-position="fixed"
     >
       <TopProgressBar />
-      <Sidebar navigation={navigation} user={user} />
+      {!hideSidebar ? <Sidebar navigation={navigation} user={user} /> : null}
       <div className="body-wrapper">
-        <Header user={user} />
+        <Header user={user} showSidebarToggle={!hideSidebar} />
         <div className="container-fluid px-3" style={{"maxWidth": "100%"}}>
           <Outlet />
         </div>

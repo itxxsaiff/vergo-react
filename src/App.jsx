@@ -40,6 +40,9 @@ function AuthenticatedLayout() {
   const currentRole = user?.navigation_role ?? user?.role ?? 'admin'
   const currentUser = {
     name: user?.name ?? 'Vergo User',
+    email: user?.email ?? '',
+    role: user?.role ?? currentRole,
+    navigationRole: currentRole,
     roleLabel: user?.role_label ?? user?.role ?? currentRole,
     avatar: user?.image ?? HEADER_PLACEHOLDER_IMAGE,
     homePath: user?.home_path ?? '/dashboard',

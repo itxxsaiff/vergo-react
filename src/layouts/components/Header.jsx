@@ -6,7 +6,7 @@ import { toggleSidebar } from '../../lib/sidebarLayout'
 
 const HEADER_PLACEHOLDER_IMAGE = 'https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg'
 
-function Header({ user }) {
+function Header({ user, showSidebarToggle = true }) {
   const { logout } = useAuth()
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -62,16 +62,18 @@ function Header({ user }) {
     <header className="app-header">
       <nav className="navbar navbar-expand-lg navbar-light">
         <ul className="navbar-nav">
-          <li className="nav-item">
-            <button
-              type="button"
-              className="nav-link nav-icon-hover ms-n3 border-0 bg-transparent"
-              id="headerCollapse"
-              onClick={handleSidebarToggle}
-            >
-              <i className="ti ti-menu-2"></i>
-            </button>
-          </li>
+          {showSidebarToggle ? (
+            <li className="nav-item">
+              <button
+                type="button"
+                className="nav-link nav-icon-hover ms-n3 border-0 bg-transparent"
+                id="headerCollapse"
+                onClick={handleSidebarToggle}
+              >
+                <i className="ti ti-menu-2"></i>
+              </button>
+            </li>
+          ) : null}
         </ul>
 
         <div className="d-block d-lg-none">

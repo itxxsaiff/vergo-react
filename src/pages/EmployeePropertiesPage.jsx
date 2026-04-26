@@ -209,17 +209,11 @@ function EmployeePropertiesPage() {
         { label: 'Armaturenbrett', href: '/dashboard' },
         { label: 'Liegenschaften' },
       ]}
-      actions={(
-        <button type="button" className="btn btn-primary" onClick={openCreateModal}>
-          <i className="ti ti-plus me-1"></i>
-          Liegenschaft erstellen
-        </button>
-      )}
     >
       <div className="card">
         <div className="card-body p-4">
           <div className="row g-3 mb-4 vergo-filter-bar vergo-filter-bar-compact">
-            <div className="col-md-10">
+            <div className="col-xl-8 col-lg-7 col-md-12">
               <div className="vergo-search-input-wrap">
                 <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
                 <input
@@ -233,11 +227,28 @@ function EmployeePropertiesPage() {
               </div>
             </div>
 
-            <div className="col-md-2 d-flex align-items-end justify-content-end vergo-filter-reset-wrap">
-              <button type="button" className="btn btn-light-primary vergo-filter-reset-btn" onClick={() => setFilters({ search: '' })}>
-                <i className="ti ti-refresh me-1" aria-hidden="true"></i>
-                Zurücksetzen
-              </button>
+            <div className="col-xl-4 col-lg-5 col-md-12">
+              <div className="d-flex justify-content-lg-end gap-2 flex-nowrap vergo-action-buttons">
+
+                <button
+                  type="button"
+                  className="btn btn-light-primary text-nowrap"
+                  onClick={() => setFilters({ search: '' })}
+                >
+                  <i className="ti ti-refresh me-1"></i>
+                  Zurücksetzen
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-primary text-nowrap"
+                  onClick={openCreateModal}
+                >
+                  <i className="ti ti-plus me-1"></i>
+                  Liegenschaft erstellen
+                </button>
+
+              </div>
             </div>
           </div>
 
@@ -317,7 +328,7 @@ function EmployeePropertiesPage() {
       {isModalOpen ? (
         <>
           <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
-            <div className="modal-dialog modal-dialog-scrollable modal-lg">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
                   <div>

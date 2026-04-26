@@ -592,7 +592,7 @@ function EmployeePropertyDocumentsPage() {
       {isModalOpen ? (
         <>
           <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
-            <div className="modal-dialog modal-dialog-scrollable modal-lg">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
                   <div>

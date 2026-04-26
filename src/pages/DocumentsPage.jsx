@@ -176,19 +176,28 @@ function DocumentsPage() {
           <div className="row g-3 mb-4 vergo-filter-bar">
             <div className="col-md-7">
               <label className="form-label">Suchen</label>
-              <input className="form-control" name="search" value={filters.search} onChange={handleFilterChange} placeholder="Suche nach Titel, Akte, Objekt oder Bestellung" />
+              <div className="vergo-search-input-wrap">
+                <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+                <input aria-label="Suche" className="form-control" name="search" value={filters.search} onChange={handleFilterChange} placeholder="Suche nach Titel, Akte, Objekt oder Bestellung" />
+              </div>
             </div>
             <div className="col-md-3">
               <label className="form-label">Status</label>
-              <select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                <option value="">All Status</option>
-                <option value="uploaded">Hochgeladen</option>
-                <option value="processing">In Bearbeitung</option>
-                <option value="analyzed">Analysiert</option>
-              </select>
+              <div className="vergo-select-input-wrap">
+                <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+                <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                  <option value="">All Status</option>
+                  <option value="uploaded">Hochgeladen</option>
+                  <option value="processing">In Bearbeitung</option>
+                  <option value="analyzed">Analysiert</option>
+                </select>
+              </div>
             </div>
-            <div className="col-md-2 d-flex align-items-end">
-              <button type="button" className="btn btn-light-primary w-100" onClick={() => setFilters({ search: '', status: '' })}>Zurücksetzen</button>
+            <div className="col-md-2 d-flex align-items-end justify-content-end vergo-filter-reset-wrap">
+              <button type="button" className="btn btn-light-primary vergo-filter-reset-btn" onClick={() => setFilters({ search: '', status: '' })}>
+                <i className="ti ti-refresh me-1" aria-hidden="true"></i>
+                Zurücksetzen
+              </button>
             </div>
           </div>
 
@@ -252,7 +261,7 @@ function DocumentsPage() {
       {isModalOpen ? (
         <>
           <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
-            <div className="modal-dialog modal-dialog-scrollable modal-lg">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
                   <h5 className="modal-title">{isOwner ? 'Vertrag für Preisprüfung hochladen' : 'Dokument hochladen'}</h5>

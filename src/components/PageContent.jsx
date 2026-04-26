@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-function PageContent({ title, subtitle, children, breadcrumbs = [], actions = null, variant = 'default' }) {
+function PageContent({ title, subtitle, children, breadcrumbs = [], variant = 'default' }) {
   return (
     <div className="mb-3">
             <div className="row align-items-center pb-3 px-3">
@@ -26,10 +26,7 @@ function PageContent({ title, subtitle, children, breadcrumbs = [], actions = nu
                   </ol>
               </div>
               <div className="col-12 pt-3">
-                <div className="d-flex justify-content-between align-items-center">
-                  <h2>{title}</h2>
-                  {actions}
-                </div>
+                <h2>{title}</h2>
               </div>
             </div>
       {children}

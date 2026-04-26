@@ -233,29 +233,37 @@ function PropertiesPage() {
               <div className="row g-3 mb-4 vergo-filter-bar">
                 <div className="col-md-7">
                   <label className="form-label">Suchen</label>
-                  <input
-                    className="form-control"
-                    name="search"
-                    value={filters.search}
-                    onChange={handleFilterChange}
-                    placeholder="Suche nach Titel, Li-Nummer, Stadt oder Land"
-                  />
+                  <div className="vergo-search-input-wrap">
+                    <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+                    <input
+                      aria-label="Suche"
+                      className="form-control"
+                      name="search"
+                      value={filters.search}
+                      onChange={handleFilterChange}
+                      placeholder="Suche nach Titel, Li-Nummer, Stadt oder Land"
+                    />
+                  </div>
                 </div>
                 <div className="col-md-3">
                   <label className="form-label">Status</label>
-                  <select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                    <option value="">All Status</option>
-                    <option value="draft">Entwurf</option>
-                    <option value="active">Aktiv</option>
-                    <option value="archived">Archiviert</option>
-                  </select>
+                  <div className="vergo-select-input-wrap">
+                    <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+                    <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                      <option value="">All Status</option>
+                      <option value="draft">Entwurf</option>
+                      <option value="active">Aktiv</option>
+                      <option value="archived">Archiviert</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="col-md-2 d-flex align-items-end">
+                <div className="col-md-2 d-flex align-items-end justify-content-end vergo-filter-reset-wrap">
                   <button
                     type="button"
-                    className="btn btn-light-primary w-100"
+                    className="btn btn-light-primary vergo-filter-reset-btn"
                     onClick={() => setFilters({ search: '', status: '' })}
                   >
+                    <i className="ti ti-refresh me-1" aria-hidden="true"></i>
                     Zurücksetzen
                   </button>
                 </div>
@@ -353,7 +361,7 @@ function PropertiesPage() {
             tabIndex="-1"
             aria-hidden={!isModalOpen}
           >
-            <div className="modal-dialog modal-dialog-scrollable modal-lg">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
                   <div>

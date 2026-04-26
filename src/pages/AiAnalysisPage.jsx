@@ -115,34 +115,44 @@ function AiAnalysisPage() {
               <div className="row g-3 mb-4 vergo-filter-bar">
                 <div className="col-md-8">
                   <label className="form-label">Suche</label>
-                  <input
-                    className="form-control"
-                    name="search"
-                    value={filters.search}
-                    onChange={handleFilterChange}
-                    placeholder="Nach Titel, Datei, Immobilie oder Auftrag suchen"
-                  />
+                  <div className="vergo-search-input-wrap">
+                    <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+                    <input
+                      aria-label="Suche"
+                      className="form-control"
+                      name="search"
+                      value={filters.search}
+                      onChange={handleFilterChange}
+                      placeholder="Nach Titel, Datei, Immobilie oder Auftrag suchen"
+                    />
+                  </div>
                 </div>
                 <div className="col-md-2">
                   <label className="form-label">Typ</label>
-                  <select className="form-select" name="type" value={filters.type} onChange={handleFilterChange}>
-                    <option value="">All Status</option>
-                    {DOCUMENT_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="vergo-select-input-wrap">
+                    <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+                    <select aria-label="Typ" className="form-select" name="type" value={filters.type} onChange={handleFilterChange}>
+                      <option value="">All Status</option>
+                      {DOCUMENT_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="col-md-2">
                   <label className="form-label">Status</label>
-                  <select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                    <option value="">All Status</option>
-                    <option value="uploaded">Hochgeladen</option>
-                    <option value="processing">In Bearbeitung</option>
-                    <option value="analyzed">Analysiert</option>
-                    <option value="failed">Fehlgeschlagen</option>
-                  </select>
+                  <div className="vergo-select-input-wrap">
+                    <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+                    <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                      <option value="">All Status</option>
+                      <option value="uploaded">Hochgeladen</option>
+                      <option value="processing">In Bearbeitung</option>
+                      <option value="analyzed">Analysiert</option>
+                      <option value="failed">Fehlgeschlagen</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 

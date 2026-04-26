@@ -174,32 +174,40 @@ function BidsPage() {
           <div className="row g-3 mb-4 vergo-filter-bar">
             <div className="col-md-7">
               <label className="form-label">Suche</label>
-              <input
-                className="form-control"
-                name="search"
-                value={filters.search}
-                onChange={handleFilterChange}
-                placeholder="Nach Auftrag, Immobilie oder Anbieter suchen"
-              />
+              <div className="vergo-search-input-wrap">
+                <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+                <input
+                  aria-label="Suche"
+                  className="form-control"
+                  name="search"
+                  value={filters.search}
+                  onChange={handleFilterChange}
+                  placeholder="Nach Auftrag, Immobilie oder Anbieter suchen"
+                />
+              </div>
             </div>
 
             <div className="col-md-3">
               <label className="form-label">Status</label>
-              <select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                <option value="">All Status</option>
-                <option value="submitted">Eingereicht</option>
-                <option value="shortlisted">Vorausgewählt</option>
-                <option value="approved">Genehmigt</option>
-                <option value="rejected">Abgelehnt</option>
-              </select>
+              <div className="vergo-select-input-wrap">
+                <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+                <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                  <option value="">All Status</option>
+                  <option value="submitted">Eingereicht</option>
+                  <option value="shortlisted">Vorausgewählt</option>
+                  <option value="approved">Genehmigt</option>
+                  <option value="rejected">Abgelehnt</option>
+                </select>
+              </div>
             </div>
 
-            <div className="col-md-2 d-flex align-items-end">
+            <div className="col-md-2 d-flex align-items-end justify-content-end vergo-filter-reset-wrap">
               <button
                 type="button"
-                className="btn btn-light-primary w-100"
+                className="btn btn-light-primary vergo-filter-reset-btn"
                 onClick={() => setFilters({ search: '', status: '' })}
               >
+                <i className="ti ti-refresh me-1" aria-hidden="true"></i>
                 Zurücksetzen
               </button>
             </div>
@@ -310,7 +318,7 @@ function BidsPage() {
       {editingBid && canEdit ? (
         <>
           <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
-            <div className="modal-dialog modal-dialog-scrollable modal-lg">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
                   <h5 className="modal-title">Angebot bearbeiten</h5>

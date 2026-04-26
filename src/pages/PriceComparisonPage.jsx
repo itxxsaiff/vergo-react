@@ -130,25 +130,32 @@ function PriceComparisonPage() {
               <div className="row g-3 mb-4 vergo-filter-bar">
                 <div className="col-md-8">
                   <label className="form-label">Suchen</label>
-                  <input
-                    className="form-control"
-                    name="search"
-                    value={filters.search}
-                    onChange={handleFilterChange}
-                    placeholder="Suche nach Titel, Immobilie oder Objekt"
-                  />
+                  <div className="vergo-search-input-wrap">
+                    <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+                    <input
+                      aria-label="Suche"
+                      className="form-control"
+                      name="search"
+                      value={filters.search}
+                      onChange={handleFilterChange}
+                      placeholder="Suche nach Titel, Immobilie oder Objekt"
+                    />
+                  </div>
                 </div>
                 <div className="col-md-4">
                   <label className="form-label">Status</label>
-                  <select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                    <option value="">All Status</option>
-                    <option value="open">Offen</option>
-                    <option value="in_review">In Prüfung</option>
-                    <option value="awaiting_owner_approval">Warten auf Eigentümerfreigabe</option>
-                    <option value="approved">Genehmigt</option>
-                    <option value="completed">Abgeschlossen</option>
-                    <option value="closed">Geschlossen</option>
-                  </select>
+                  <div className="vergo-select-input-wrap">
+                    <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+                    <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                      <option value="">All Status</option>
+                      <option value="open">Offen</option>
+                      <option value="in_review">In Prüfung</option>
+                      <option value="awaiting_owner_approval">Warten auf Eigentümerfreigabe</option>
+                      <option value="approved">Genehmigt</option>
+                      <option value="completed">Abgeschlossen</option>
+                      <option value="closed">Geschlossen</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 

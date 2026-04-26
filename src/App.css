@@ -290,6 +290,10 @@ body {
   box-shadow: 0 0 0 0.2rem rgba(183, 132, 103, 0.12);
 }
 
+.vergo-filter-bar {
+  align-items: end;
+}
+
 .vergo-filter-bar .form-control,
 .vergo-filter-bar .form-select {
   border: 0;
@@ -308,6 +312,14 @@ body {
   box-shadow: none;
 }
 
+.vergo-filter-bar .form-label {
+  display: none;
+}
+
+.vergo-filter-bar .btn {
+  min-height: 46px;
+}
+
 .vergo-filter-bar-compact {
   align-items: end;
   justify-content: space-between;
@@ -321,10 +333,6 @@ body {
 .vergo-filter-bar-compact > [class*="col-"]:last-child {
   flex: 0 0 248px;
   max-width: 248px;
-}
-
-.vergo-filter-bar-compact .form-label {
-  margin-bottom: 0.45rem;
 }
 
 .vergo-filter-bar-compact .btn {
@@ -362,11 +370,11 @@ body {
   pointer-events: none;
 }
 
-.vergo-filter-bar-compact .vergo-search-input-wrap .form-control {
+.vergo-search-input-wrap .form-control {
   padding-left: 1.7rem !important;
 }
 
-.vergo-filter-bar-compact .vergo-search-input-wrap .form-control::placeholder {
+.vergo-search-input-wrap .form-control::placeholder {
   color: #8a91a4;
 }
 

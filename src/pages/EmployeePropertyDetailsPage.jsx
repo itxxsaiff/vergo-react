@@ -135,12 +135,6 @@ function EmployeePropertyDetailsPage() {
         { label: 'Liegenschaften', href: '/properties' },
         { label: property?.title || 'Objekte' },
       ]}
-      actions={(
-        <button type="button" className="btn btn-primary" onClick={openModal}>
-          <i className="ti ti-plus me-1"></i>
-          Objekt erstellen
-        </button>
-      )}
     >
       {error && !isModalOpen ? <div className="alert alert-danger py-2">{error}</div> : null}
       {isLoading ? <div className="card"><div className="card-body">Objekte werden geladen...</div></div> : null}
@@ -176,7 +170,13 @@ function EmployeePropertyDetailsPage() {
                 <h5 className="card-title fw-semibold mb-0 lh-sm">Objekte in dieser Liegenschaft</h5>
                 <div className="text-muted small mt-1">{property.objects_count ?? 0} Objekte als Kartenansicht</div>
               </div>
-              <Link to="/properties" className="btn btn-light-primary btn-sm">Zurück zur Liste</Link>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <Link to="/properties" className="btn btn-light-primary btn-sm">Zurück zur Liste</Link>
+                <button type="button" className="btn btn-primary btn-sm" onClick={openModal}>
+                  <i className="ti ti-plus me-1"></i>
+                  Objekt erstellen
+                </button>
+              </div>
             </div>
             <div className="card-body p-4">
               {(property.objects ?? []).length > 0 ? (
@@ -220,7 +220,7 @@ function EmployeePropertyDetailsPage() {
       {isModalOpen ? (
         <>
           <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
-            <div className="modal-dialog modal-dialog-scrollable modal-lg">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
                   <div>

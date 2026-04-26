@@ -10,7 +10,8 @@ use App\Models\PropertyManagerProfile;
 use App\Models\ServiceProvider;
 use App\Models\User;
 use App\Notifications\SystemNotification;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification;
 
 class NotificationService
@@ -139,8 +140,8 @@ class NotificationService
             return collect();
         }
 
-        $owners = $property->owners instanceof Collection ? $property->owners : collect();
-        $managers = $property->managerProfiles instanceof Collection ? $property->managerProfiles : collect();
+        $owners = $property->owners instanceof EloquentCollection ? $property->owners : collect();
+        $managers = $property->managerProfiles instanceof EloquentCollection ? $property->managerProfiles : collect();
 
         return $owners
             ->concat($managers)

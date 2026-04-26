@@ -267,12 +267,9 @@ function AvailableJobsPage() {
       </div>
 
       <div className="card">
-        <div className="px-4 py-3 border-bottom">
-          <h5 className="card-title fw-semibold mb-0 lh-sm">Marktplatz-Aufträge</h5>
-        </div>
         <div className="card-body p-4">
           <div className="row g-3 mb-4 vergo-filter-bar">
-            <div className="col-md-8">
+            <div className="col-md-6">
               <label className="form-label">Suche</label>
               <div className="vergo-search-input-wrap">
                 <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>

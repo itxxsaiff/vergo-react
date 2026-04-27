@@ -54,24 +54,42 @@ function Sidebar({ navigation, user }) {
 
             {navigation.map((item) => {
               if (item.children) {
-                const isOpen = Boolean(openSections[item.title] || autoOpenSections[item.title])
+                const isParentActive = item.href === location.pathname
+                const isChildActive = item.children.some((child) => child.href === location.pathname)
+                const isOpen = Boolean(openSections[item.title] || autoOpenSections[item.title] || isParentActive)
+                const isSelected = isOpen || isParentActive || isChildActive
 
                 return (
-                  <li key={item.title} className={`sidebar-item${isOpen ? ' selected' : ''}`}>
-                    <a
-                      href="#"
-                      className={`sidebar-link has-arrow${isOpen ? ' active' : ''}`}
-                      aria-expanded={isOpen}
-                      onClick={(event) => {
-                        event.preventDefault()
-                        toggleSection(item.title)
-                      }}
-                    >
-                      <span className="d-flex">
-                        <i className={item.icon}></i>
-                      </span>
-                      <span className="hide-menu">{item.title}</span>
-                    </a>
+                  <li key={item.title} className={`sidebar-item${isSelected ? ' selected' : ''}`}>
+                    <div className={`sidebar-link has-arrow vergo-sidebar-group${isParentActive ? ' active' : ''}`}>
+                      {item.href ? (
+                        <NavLink
+                          to={item.href}
+                          onClick={closeSidebar}
+                          className={({ isActive }) => `vergo-sidebar-parent-link${isActive ? ' active' : ''}`}
+                        >
+                          <span className="d-flex">
+                            <i className={item.icon}></i>
+                          </span>
+                          <span className="hide-menu">{item.title}</span>
+                        </NavLink>
+                      ) : (
+                        <span className="vergo-sidebar-parent-link">
+                          <span className="d-flex">
+                            <i className={item.icon}></i>
+                          </span>
+                          <span className="hide-menu">{item.title}</span>
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        className="vergo-sidebar-toggle"
+                        aria-expanded={isOpen}
+                        aria-label={`${item.title} Untermenü umschalten`}
+                        onClick={() => toggleSection(item.title)}
+                      />
+                    </div>
 
                     <ul
                       aria-expanded={isOpen}

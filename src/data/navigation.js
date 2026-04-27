@@ -52,8 +52,8 @@ export const navigationByRole = {
     {
       title: 'Liegenschaften',
       icon: 'ti ti-building-estate',
+      href: '/properties',
       children: [
-        { title: 'Liegenschaften', href: '/properties' },
         { title: 'Objekte', href: '/property-objects' },
       ],
     },

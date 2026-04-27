@@ -23,6 +23,28 @@ const initialForm = {
   file: null,
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function getDocumentObjectScope(document) {
+  const relatedObjects = document?.property_objects ?? []
+
+  if (relatedObjects.length > 0) {
+    return relatedObjects
+      .map((object) => object?.address || object?.name || `Objekt ${object?.id ?? ''}`.trim())
+      .filter(Boolean)
+      .join(', ')
+  }
+
+  return document?.property_object?.address || document?.property_object?.name || '-'
+}
+
 function EmployeePropertyDocumentsPage() {
   const { propertyId } = useParams()
   const [property, setProperty] = useState(null)
@@ -264,6 +286,262 @@ function EmployeePropertyDocumentsPage() {
     } finally {
       setIsAnalyzing(false)
     }
+  }
+
+  function handleExportAnalysisPdf() {
+    if (!propertyPriceRecommendation) {
+      setAnalysisNotice('Bitte führen Sie zuerst eine Analyse durch, bevor Sie den PDF-Bericht exportieren.')
+      return
+    }
+
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1120,height=900')
+
+    if (!printWindow) {
+      setError('Der PDF-Bericht konnte nicht geöffnet werden. Bitte erlauben Sie Pop-ups für diese Seite.')
+      return
+    }
+
+    const signalLabel = formatStatusLabel(propertyPriceRecommendation.comparison_data?.pricing_signal)
+    const signalTone = propertyPriceRecommendation.comparison_data?.pricing_signal === 'too_high'
+      ? '#b42318'
+      : propertyPriceRecommendation.comparison_data?.pricing_signal === 'too_low'
+        ? '#b54708'
+        : '#027a48'
+
+    const contractRows = contractDocuments.map((document) => {
+      const serviceLabel = getOptionLabel(
+        JOB_TYPE_OPTIONS,
+        document.service_type || document.analysis_results?.[0]?.comparison_data?.service_category,
+      )
+
+      return `
+        <tr>
+          <td>${escapeHtml(document.title || '-')}</td>
+          <td>${escapeHtml(serviceLabel)}</td>
+          <td>${escapeHtml(getDocumentObjectScope(document))}</td>
+          <td>${escapeHtml(document.analysis_results?.[0]?.comparison_data?.estimated_amount ?? '-')}</td>
+          <td>${escapeHtml(formatStatusLabel(document.status))}</td>
+        </tr>
+      `
+    }).join('')
+
+    const invoiceRows = invoiceDocuments.map((document) => {
+      const serviceLabel = getOptionLabel(
+        JOB_TYPE_OPTIONS,
+        document.service_type || document.analysis_results?.[0]?.comparison_data?.service_category,
+      )
+
+      return `
+        <tr>
+          <td>${escapeHtml(document.title || '-')}</td>
+          <td>${escapeHtml(serviceLabel)}</td>
+          <td>${escapeHtml(getDocumentObjectScope(document))}</td>
+          <td>${escapeHtml(document.analysis_results?.[0]?.comparison_data?.estimated_amount ?? '-')}</td>
+          <td>${escapeHtml(formatStatusLabel(document.status))}</td>
+        </tr>
+      `
+    }).join('')
+
+    const reasons = (propertyPriceRecommendation.comparison_data?.reasons ?? [])
+      .map((reason) => `<li>${escapeHtml(reason)}</li>`)
+      .join('')
+
+    const benchmarkSources = (propertyPriceRecommendation.comparison_data?.benchmark_sources ?? [])
+      .slice(0, 12)
+      .map((source) => `
+        <tr>
+          <td>${escapeHtml(source.document_title || '-')}</td>
+          <td>${escapeHtml(source.amount ?? '-')} ${escapeHtml(source.currency || '')}</td>
+          <td>${escapeHtml(source.document_type ? formatStatusLabel(source.document_type) : '-')}</td>
+          <td>${escapeHtml(source.match_score ?? '-')}</td>
+        </tr>
+      `)
+      .join('')
+
+    const html = `
+      <!doctype html>
+      <html lang="de">
+        <head>
+          <meta charset="utf-8" />
+          <title>Vergo Analysebericht</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              color: #1f2937;
+              margin: 32px;
+              line-height: 1.45;
+            }
+            h1, h2, h3 {
+              margin: 0 0 12px;
+              color: #111827;
+            }
+            .muted {
+              color: #6b7280;
+            }
+            .section {
+              margin-top: 28px;
+            }
+            .grid {
+              display: grid;
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+              gap: 12px;
+              margin-top: 16px;
+            }
+            .stat {
+              border: 1px solid #e5e7eb;
+              border-radius: 10px;
+              padding: 12px 14px;
+              background: #f9fafb;
+            }
+            .stat-label {
+              font-size: 12px;
+              color: #6b7280;
+              margin-bottom: 6px;
+              text-transform: uppercase;
+            }
+            .stat-value {
+              font-size: 18px;
+              font-weight: 700;
+              color: #111827;
+            }
+            .signal {
+              color: ${signalTone};
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 12px;
+            }
+            th, td {
+              border: 1px solid #e5e7eb;
+              padding: 10px 12px;
+              text-align: left;
+              vertical-align: top;
+              font-size: 13px;
+            }
+            th {
+              background: #f3f4f6;
+            }
+            ul {
+              margin: 10px 0 0 18px;
+            }
+            .summary {
+              border: 1px solid #dbeafe;
+              background: #eff6ff;
+              padding: 14px 16px;
+              border-radius: 10px;
+            }
+            @media print {
+              body {
+                margin: 18px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Analysebericht</h1>
+          <div class="muted">Liegenschaft: ${escapeHtml(property?.li_number || '-')} ${escapeHtml(property?.title || '')}</div>
+          <div class="muted">Erstellt am: ${escapeHtml(new Date().toLocaleString('de-DE'))}</div>
+
+          <div class="section">
+            <div class="summary">
+              <h2>Zusammenfassung</h2>
+              <div>${escapeHtml(propertyPriceRecommendation.summary || '-')}</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>Bewertung</h2>
+            <div class="grid">
+              <div class="stat">
+                <div class="stat-label">Preissignal</div>
+                <div class="stat-value signal">${escapeHtml(signalLabel)}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Benchmark</div>
+                <div class="stat-value">${escapeHtml(propertyPriceRecommendation.comparison_data?.benchmark_amount ?? '-')}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Varianz</div>
+                <div class="stat-value">${escapeHtml(propertyPriceRecommendation.comparison_data?.variance_percentage ?? '-')}%</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Leistung</div>
+                <div class="stat-value">${escapeHtml(getOptionLabel(JOB_TYPE_OPTIONS, propertyPriceRecommendation.comparison_data?.service_category))}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Intervall</div>
+                <div class="stat-value">${escapeHtml(propertyPriceRecommendation.comparison_data?.service_interval || '-')}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Quellen</div>
+                <div class="stat-value">${escapeHtml(propertyPriceRecommendation.comparison_data?.benchmark_source_count ?? 0)}</div>
+              </div>
+            </div>
+            ${reasons ? `<div class="section"><h3>Begründung</h3><ul>${reasons}</ul></div>` : ''}
+          </div>
+
+          <div class="section">
+            <h2>Wartungsverträge</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Titel</th>
+                  <th>Leistung</th>
+                  <th>Betroffene Objekte</th>
+                  <th>Preis</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${contractRows || '<tr><td colspan="5">Keine Verträge vorhanden.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2>Rechnungen</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Titel</th>
+                  <th>Leistung</th>
+                  <th>Objekt</th>
+                  <th>Preis</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${invoiceRows || '<tr><td colspan="5">Keine Rechnungen vorhanden.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+
+          ${benchmarkSources ? `
+            <div class="section">
+              <h2>Vergleichsquellen</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Quelle</th>
+                    <th>Betrag</th>
+                    <th>Typ</th>
+                    <th>Übereinstimmung</th>
+                  </tr>
+                </thead>
+                <tbody>${benchmarkSources}</tbody>
+              </table>
+            </div>
+          ` : ''}
+        </body>
+      </html>
+    `
+
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
   }
 
   const propertyDocuments = property?.documents ?? []
@@ -535,10 +813,16 @@ function EmployeePropertyDocumentsPage() {
                   Startet die KI-Auswertung der Dokumente dieser Liegenschaft und zeigt das Ergebnis direkt unten auf dieser Seite.
                 </div>
               </div>
-              <button type="button" className="btn btn-success" onClick={handleAnalyzeProperty} disabled={isAnalyzing}>
-                <i className="ti ti-sparkles me-1"></i>
-                      {isAnalyzing ? 'Analyse läuft...' : 'Analyse'}
-              </button>
+              <div className="d-flex gap-2 flex-wrap">
+                <button type="button" className="btn btn-light-primary" onClick={handleExportAnalysisPdf} disabled={!propertyPriceRecommendation}>
+                  <i className="ti ti-file-export me-1"></i>
+                  PDF exportieren
+                </button>
+                <button type="button" className="btn btn-success" onClick={handleAnalyzeProperty} disabled={isAnalyzing}>
+                  <i className="ti ti-sparkles me-1"></i>
+                  {isAnalyzing ? 'Analyse läuft...' : 'Analyse'}
+                </button>
+              </div>
             </div>
           </div>
 

@@ -95,6 +95,15 @@ function AiAnalysisPage() {
   const extractedData = selectedAnalysis?.comparison_data ?? {}
   const keyPoints = Array.isArray(extractedData.key_points) ? extractedData.key_points : []
 
+  function handleViewDocumentAnalysis(document) {
+    const latestDocumentAnalysis = analyses.find((analysis) => analysis.document?.id === document.id)
+      ?? document.analysis_results?.[0]
+
+    if (latestDocumentAnalysis?.id) {
+      setSelectedAnalysisId(latestDocumentAnalysis.id)
+    }
+  }
+
   return (
     <PageContent
       title="KI-Analyse"
@@ -181,10 +190,20 @@ function AiAnalysisPage() {
                           </td>
                           <td>
                             <div className="d-flex gap-2">
-                              <button type="button" className="btn btn-primary btn-sm">
-                                Analysieren
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleAnalyzeDocument(document.id)}
+                                disabled={runningDocumentId === document.id}
+                              >
+                                {runningDocumentId === document.id ? 'Läuft...' : 'Analysieren'}
                               </button>
-                              <button type="button" className="btn btn-light-primary btn-sm">
+                              <button
+                                type="button"
+                                className="btn btn-light-primary btn-sm"
+                                onClick={() => handleViewDocumentAnalysis(document)}
+                                disabled={!analyses.some((analysis) => analysis.document?.id === document.id) && !(document.analysis_results?.length > 0)}
+                              >
                                 Anzeigen
                               </button>
                             </div>
@@ -239,7 +258,19 @@ function AiAnalysisPage() {
                     <h6>Extrahierte Daten</h6>
                     <div>Lieferant: {extractedData.entities?.vendor_name || '-'}</div>
                     <div>Standort: {extractedData.location || '-'}</div>
+                    <div>Leistung: {getOptionLabel(DOCUMENT_TYPE_OPTIONS, selectedAnalysis.document?.type)}</div>
                   </div>
+
+                  {keyPoints.length > 0 ? (
+                    <div className="mt-3">
+                      <h6>Kernpunkte</h6>
+                      <ul className="mb-0 ps-3">
+                        {keyPoints.map((point, index) => (
+                          <li key={`${point}-${index}`}>{point}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>

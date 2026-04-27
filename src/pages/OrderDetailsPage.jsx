@@ -207,6 +207,14 @@ function OrderDetailsPage() {
                 </div>
 
                 <div className="mb-2">
+                  <strong>Objekt / Bauteil:</strong> {order.workflow_meta?.detail_catalog?.trade_object || '-'}
+                </div>
+
+                <div className="mb-2">
+                  <strong>Tätigkeit:</strong> {order.workflow_meta?.detail_catalog?.trade_activity || '-'}
+                </div>
+
+                <div className="mb-2">
                   <strong>Fälligkeitsdatum:</strong> {order.due_date || '-'}
                 </div>
 

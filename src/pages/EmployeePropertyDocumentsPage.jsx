@@ -4,11 +4,19 @@ import PageContent from '../components/PageContent'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
-import { DOCUMENT_TYPE_OPTIONS, JOB_TYPE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
+import {
+  DOCUMENT_TYPE_OPTIONS,
+  JOB_TYPE_OPTIONS,
+  TRADE_ACTIVITY_OPTIONS_BY_GROUP,
+  TRADE_OBJECT_OPTIONS_BY_GROUP,
+  getOptionLabel,
+} from '../lib/vergoOptions'
 
 const initialForm = {
   document_kind: 'contract',
   service_type: '',
+  trade_object: '',
+  trade_activity: '',
   property_object_id: '',
   property_object_ids: [],
   title: '',
@@ -83,6 +91,17 @@ function EmployeePropertyDocumentsPage() {
     setForm((current) => ({
       ...current,
       [name]: files ? files[0] : value,
+      ...(name === 'service_type'
+        ? {
+          trade_object: '',
+          trade_activity: '',
+        }
+        : {}),
+      ...(name === 'trade_object'
+        ? {
+          trade_activity: '',
+        }
+        : {}),
       ...(name === 'document_kind'
         ? {
           property_object_id: '',
@@ -113,9 +132,10 @@ function EmployeePropertyDocumentsPage() {
 
     const serviceLabel = getOptionLabel(JOB_TYPE_OPTIONS, form.service_type)
     const kindLabel = form.document_kind === 'invoice' ? 'Rechnung' : 'Vertrag'
+    const detailParts = [serviceLabel, form.trade_object, form.trade_activity].filter(Boolean)
 
-    return serviceLabel && serviceLabel !== '-'
-      ? `${kindLabel} - ${serviceLabel}`
+    return detailParts.length > 0
+      ? `${kindLabel} - ${detailParts.join(' / ')}`
       : kindLabel
   }
 
@@ -156,6 +176,8 @@ function EmployeePropertyDocumentsPage() {
       payload.append('title', buildDocumentTitle())
       payload.append('file', form.file)
       payload.append('service_type', form.service_type)
+      if (form.trade_object) payload.append('trade_object', form.trade_object)
+      if (form.trade_activity) payload.append('trade_activity', form.trade_activity)
 
       if (form.document_kind === 'invoice') {
         payload.append('property_object_id', form.property_object_id)
@@ -246,6 +268,8 @@ function EmployeePropertyDocumentsPage() {
 
   const propertyDocuments = property?.documents ?? []
   const propertyObjects = property?.objects ?? []
+  const availableTradeObjects = TRADE_OBJECT_OPTIONS_BY_GROUP[form.service_type] ?? []
+  const availableTradeActivities = TRADE_ACTIVITY_OPTIONS_BY_GROUP[form.service_type] ?? []
   const propertyPriceRecommendation = useMemo(() => {
     const propertyAnalyses = property?.analysis_results ?? []
     const persistedAnalysis = propertyAnalyses.find(
@@ -631,6 +655,28 @@ function EmployeePropertyDocumentsPage() {
                             <option value="">Leistung auswählen</option>
                             {JOB_TYPE_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Objekt / Bauteil</label>
+                          <select className="form-select" name="trade_object" value={form.trade_object} onChange={handleChange} disabled={!form.service_type}>
+                            <option value="">Objekt / Bauteil auswählen</option>
+                            {availableTradeObjects.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Tätigkeit</label>
+                          <select className="form-select" name="trade_activity" value={form.trade_activity} onChange={handleChange} disabled={!form.service_type}>
+                            <option value="">Tätigkeit auswählen</option>
+                            {availableTradeActivities.map((option) => (
+                              <option key={option} value={option}>{option}</option>
                             ))}
                           </select>
                         </div>

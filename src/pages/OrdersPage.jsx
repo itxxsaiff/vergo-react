@@ -5,7 +5,12 @@ import { useAuth } from '../context/AuthContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
-import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
+import {
+  getOptionLabel,
+  JOB_TYPE_OPTIONS,
+  TRADE_ACTIVITY_OPTIONS_BY_GROUP,
+  TRADE_OBJECT_OPTIONS_BY_GROUP,
+} from '../lib/vergoOptions'
 
 const initialForm = {
   property_id: '',
@@ -14,6 +19,8 @@ const initialForm = {
   requester_email: '',
   title: '',
   service_type: '',
+  trade_object: '',
+  trade_activity: '',
   description: '',
   status: 'open',
   due_date: '',
@@ -32,29 +39,6 @@ const BID_PRIORITY_OPTIONS = [
   { value: 'high_quality_materials', label: 'Hochwertige Materialien' },
 ]
 
-const TRADE_LINE_ITEM_LIBRARY = {
-  cleaning: [
-    { label: 'Treppenhaus reinigen', unit: 'Einsatz', quantity: 1, source: 'catalog' },
-    { label: 'Tiefgarage reinigen', unit: 'Einsatz', quantity: 1, source: 'catalog' },
-    { label: 'Fensterflächen reinigen', unit: 'Stück', quantity: 10, source: 'catalog' },
-  ],
-  electrical: [
-    { label: 'Unterverteilung prüfen', unit: 'Stück', quantity: 1, source: 'catalog' },
-    { label: 'Leuchtmittel ersetzen', unit: 'Stück', quantity: 10, source: 'catalog' },
-    { label: 'Störung beheben', unit: 'Einsatz', quantity: 1, source: 'catalog' },
-  ],
-  plumbing: [
-    { label: 'Leckage prüfen', unit: 'Einsatz', quantity: 1, source: 'catalog' },
-    { label: 'Armatur austauschen', unit: 'Stück', quantity: 1, source: 'catalog' },
-    { label: 'Leitung spülen', unit: 'Meter', quantity: 5, source: 'catalog' },
-  ],
-  flooring: [
-    { label: 'Altbelag entfernen', unit: 'm²', quantity: 20, source: 'catalog' },
-    { label: 'Neuen Belag verlegen', unit: 'm²', quantity: 20, source: 'catalog' },
-    { label: 'Sockelleisten montieren', unit: 'Meter', quantity: 20, source: 'catalog' },
-  ],
-}
-
 const MANAGER_ORDER_STEPS = [
   { id: 1, label: 'Liegenschaft', helper: 'Objekte wählen', icon: 'ti ti-building-estate' },
   { id: 2, label: 'Ablauf', helper: 'Besichtigung oder Auftrag', icon: 'ti ti-git-branch' },
@@ -69,6 +53,8 @@ function getInitialManagerWizard(propertyId = '') {
     selected_object_ids: [],
     flow_type: '',
     service_type: '',
+    trade_object: '',
+    trade_activity: '',
     title: '',
     description: '',
     inspection_date_1: '',
@@ -123,6 +109,11 @@ function hasManualProviderSelection(wizard) {
 function buildManagerWorkflowMeta(wizard, selectedObjects) {
   return {
     flow_type: wizard.flow_type,
+    detail_catalog: {
+      trade_group: wizard.service_type || null,
+      trade_object: wizard.trade_object || null,
+      trade_activity: wizard.trade_activity || null,
+    },
     property_object_ids: selectedObjects.map((object) => object.id),
     property_objects: selectedObjects.map((object) => ({
       id: object.id,
@@ -269,6 +260,8 @@ function OrdersPage() {
       ...current,
       [name]: value,
       ...(name === 'property_id' ? { property_object_id: '' } : {}),
+      ...(name === 'service_type' ? { trade_object: '', trade_activity: '' } : {}),
+      ...(name === 'trade_object' ? { trade_activity: '' } : {}),
     }))
   }
 
@@ -279,6 +272,17 @@ function OrdersPage() {
       ...current,
       [name]: value,
       ...(name === 'property_id' ? { selected_object_ids: [] } : {}),
+      ...(name === 'service_type'
+        ? {
+          trade_object: '',
+          trade_activity: '',
+        }
+        : {}),
+      ...(name === 'trade_object'
+        ? {
+          trade_activity: '',
+        }
+        : {}),
       ...(name === 'flow_type'
         ? {
           inspection_request_mode: '',
@@ -310,16 +314,49 @@ function OrdersPage() {
           manual_provider_contact: '',
           manual_provider_email: '',
           manual_provider_phone: '',
-          quote_items: seedQuoteItemsForTrade(current.service_type),
+          quote_items: seedQuoteItemsForTrade(current.service_type, current.trade_object, current.trade_activity),
         }
         : {}),
     }))
   }
 
-  function seedQuoteItemsForTrade(serviceType) {
-    const baseItems = TRADE_LINE_ITEM_LIBRARY[serviceType] ?? [
-      { label: 'Weitere Position', unit: 'Stück', quantity: 1, source: 'catalog' },
-    ]
+  function seedQuoteItemsForTrade(serviceType, tradeObject = '', tradeActivity = '') {
+    const tradeActivities = TRADE_ACTIVITY_OPTIONS_BY_GROUP[serviceType] ?? []
+    const selectedActivities = tradeActivity
+      ? [tradeActivity]
+      : tradeActivities.slice(0, Math.min(3, tradeActivities.length))
+
+    const buildLabel = (activity) => {
+      if (tradeObject && activity) {
+        return `${tradeObject} ${activity}`
+      }
+
+      if (tradeObject) {
+        return tradeObject
+      }
+
+      if (activity) {
+        return `${getOptionLabel(JOB_TYPE_OPTIONS, serviceType)} ${activity}`
+      }
+
+      return getOptionLabel(JOB_TYPE_OPTIONS, serviceType)
+    }
+
+    const baseItems = selectedActivities.length > 0
+      ? selectedActivities.map((activity) => ({
+        label: buildLabel(activity),
+        unit: 'Stück',
+        quantity: 1,
+        code: activity,
+        source: 'catalog',
+      }))
+      : [{
+        label: buildLabel(''),
+        unit: 'Stück',
+        quantity: 1,
+        code: '',
+        source: 'catalog',
+      }]
 
     return baseItems.map((item, index) => ({
       id: `${serviceType || 'custom'}-${index}-${Date.now()}`,
@@ -336,8 +373,31 @@ function OrdersPage() {
     setManagerWizard((current) => ({
       ...current,
       service_type: value,
+      trade_object: '',
+      trade_activity: '',
       quote_items: current.award_mode === 'request_quotes'
         ? seedQuoteItemsForTrade(value)
+        : current.quote_items,
+    }))
+  }
+
+  function handleManagerTradeObjectChange(value) {
+    setManagerWizard((current) => ({
+      ...current,
+      trade_object: value,
+      trade_activity: '',
+      quote_items: current.award_mode === 'request_quotes'
+        ? seedQuoteItemsForTrade(current.service_type, value, '')
+        : current.quote_items,
+    }))
+  }
+
+  function handleManagerTradeActivityChange(value) {
+    setManagerWizard((current) => ({
+      ...current,
+      trade_activity: value,
+      quote_items: current.award_mode === 'request_quotes'
+        ? seedQuoteItemsForTrade(current.service_type, current.trade_object, value)
         : current.quote_items,
     }))
   }
@@ -435,6 +495,26 @@ function OrdersPage() {
   const selectedManagerObjects = useMemo(() => (
     managerAvailableObjects.filter((item) => managerWizard.selected_object_ids.includes(item.id))
   ), [managerAvailableObjects, managerWizard.selected_object_ids])
+
+  const availableTradeObjects = useMemo(
+    () => TRADE_OBJECT_OPTIONS_BY_GROUP[form.service_type] ?? [],
+    [form.service_type],
+  )
+
+  const availableTradeActivities = useMemo(
+    () => TRADE_ACTIVITY_OPTIONS_BY_GROUP[form.service_type] ?? [],
+    [form.service_type],
+  )
+
+  const managerAvailableTradeObjects = useMemo(
+    () => TRADE_OBJECT_OPTIONS_BY_GROUP[managerWizard.service_type] ?? [],
+    [managerWizard.service_type],
+  )
+
+  const managerAvailableTradeActivities = useMemo(
+    () => TRADE_ACTIVITY_OPTIONS_BY_GROUP[managerWizard.service_type] ?? [],
+    [managerWizard.service_type],
+  )
 
   useEffect(() => {
     if (isManagerCreateFlow && managerAvailableObjects.length === 1 && managerWizard.selected_object_ids.length === 0) {
@@ -673,8 +753,17 @@ function OrdersPage() {
         requester_name: form.requester_name || null,
         requester_email: form.requester_email || null,
         service_type: form.service_type || null,
+        trade_object: form.trade_object || null,
+        trade_activity: form.trade_activity || null,
         description: form.description || null,
         due_date: form.due_date || null,
+        workflow_meta: {
+          detail_catalog: {
+            trade_group: form.service_type || null,
+            trade_object: form.trade_object || null,
+            trade_activity: form.trade_activity || null,
+          },
+        },
       }
 
       if (editingOrderId) {
@@ -704,6 +793,8 @@ function OrdersPage() {
       requester_email: order.requester_email || '',
       title: order.title || '',
       service_type: order.service_type || '',
+      trade_object: order.workflow_meta?.detail_catalog?.trade_object || '',
+      trade_activity: order.workflow_meta?.detail_catalog?.trade_activity || '',
       description: order.description || '',
       status: order.status || 'open',
       due_date: order.due_date || '',
@@ -1075,6 +1166,36 @@ function OrdersPage() {
                               </select>
                             </div>
                             <div className="col-md-6">
+                              <label className="form-label">Objekt / Bauteil</label>
+                              <select
+                                className="form-select"
+                                name="trade_object"
+                                value={managerWizard.trade_object}
+                                onChange={(event) => handleManagerTradeObjectChange(event.target.value)}
+                                disabled={!managerWizard.service_type}
+                              >
+                                <option value="">Objekt / Bauteil auswählen</option>
+                                {managerAvailableTradeObjects.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="col-md-6">
+                              <label className="form-label">Tätigkeit</label>
+                              <select
+                                className="form-select"
+                                name="trade_activity"
+                                value={managerWizard.trade_activity}
+                                onChange={(event) => handleManagerTradeActivityChange(event.target.value)}
+                                disabled={!managerWizard.service_type}
+                              >
+                                <option value="">Tätigkeit auswählen</option>
+                                {managerAvailableTradeActivities.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="col-md-6">
                               <label className="form-label">Kurzbeschreibung</label>
                               <input className="form-control" name="title" value={managerWizard.title} onChange={handleManagerWizardChange} placeholder="z. B. Parkett ersetzen" />
                             </div>
@@ -1410,6 +1531,28 @@ function OrdersPage() {
                                 <option key={option.value} value={option.value}>
                                   {option.label}
                                 </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="col-md-6">
+                          <div className="mb-3">
+                            <label className="form-label">Objekt / Bauteil</label>
+                            <select className="form-select" name="trade_object" value={form.trade_object} onChange={handleChange} disabled={!form.service_type}>
+                              <option value="">Objekt / Bauteil auswählen</option>
+                              {availableTradeObjects.map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="col-md-6">
+                          <div className="mb-3">
+                            <label className="form-label">Tätigkeit</label>
+                            <select className="form-select" name="trade_activity" value={form.trade_activity} onChange={handleChange} disabled={!form.service_type}>
+                              <option value="">Tätigkeit auswählen</option>
+                              {availableTradeActivities.map((option) => (
+                                <option key={option} value={option}>{option}</option>
                               ))}
                             </select>
                           </div>

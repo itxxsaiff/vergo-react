@@ -10,6 +10,7 @@ import {
   TRADE_ACTIVITY_OPTIONS_BY_GROUP,
   TRADE_OBJECT_OPTIONS_BY_GROUP,
   getOptionLabel,
+  normalizeServiceTypeForApi,
 } from '../lib/vergoOptions'
 
 const initialForm = {
@@ -197,7 +198,7 @@ function EmployeePropertyDocumentsPage() {
       payload.append('type', form.document_kind === 'invoice' ? 'invoice' : 'contract')
       payload.append('title', buildDocumentTitle())
       payload.append('file', form.file)
-      payload.append('service_type', form.service_type)
+      payload.append('service_type', normalizeServiceTypeForApi(form.service_type))
       if (form.trade_object) payload.append('trade_object', form.trade_object)
       if (form.trade_activity) payload.append('trade_activity', form.trade_activity)
 

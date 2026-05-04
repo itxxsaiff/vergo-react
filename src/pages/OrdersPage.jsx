@@ -10,6 +10,7 @@ import {
   JOB_TYPE_OPTIONS,
   TRADE_ACTIVITY_OPTIONS_BY_GROUP,
   TRADE_OBJECT_OPTIONS_BY_GROUP,
+  normalizeServiceTypeForApi,
 } from '../lib/vergoOptions'
 
 const initialForm = {
@@ -151,7 +152,9 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
       }
       : null,
     provider_selection: {
-      selected_provider_ids: wizard.selected_provider_ids.map((id) => Number(id)),
+      selected_provider_ids: wizard.selected_provider_ids
+        .filter((id) => id !== null && id !== undefined && id !== '')
+        .map((id) => Number(id)),
       manual_provider: hasManualProviderSelection(wizard)
         ? {
           company_name: wizard.manual_provider_company || null,
@@ -456,13 +459,14 @@ function OrdersPage() {
 
   function toggleProviderSelection(providerId) {
     setManagerWizard((current) => {
-      const exists = current.selected_provider_ids.includes(providerId)
+      const normalizedProviderId = String(providerId)
+      const exists = current.selected_provider_ids.includes(normalizedProviderId)
 
       return {
         ...current,
         selected_provider_ids: exists
-          ? current.selected_provider_ids.filter((id) => id !== providerId)
-          : [...current.selected_provider_ids, providerId],
+          ? current.selected_provider_ids.filter((id) => id !== normalizedProviderId)
+          : [...current.selected_provider_ids, normalizedProviderId],
       }
     })
   }
@@ -635,7 +639,9 @@ function OrdersPage() {
         || (managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'direct_award')
       )
 
-      if (requiresProviderSelection && managerWizard.selected_provider_ids.length === 0 && !hasManualProviderSelection(managerWizard)) {
+      const normalizedSelectedProviderIds = (managerWizard.selected_provider_ids ?? []).filter(Boolean)
+
+      if (requiresProviderSelection && normalizedSelectedProviderIds.length === 0 && !hasManualProviderSelection(managerWizard)) {
         setError('Bitte wählen Sie mindestens eine Firma aus oder erfassen Sie eine manuell.')
         return false
       }
@@ -676,7 +682,7 @@ function OrdersPage() {
           property_object_id: managerWizard.selected_object_ids[0] ? Number(managerWizard.selected_object_ids[0]) : null,
           property_object_ids: managerWizard.selected_object_ids.map((id) => Number(id)),
           title: managerWizard.title.trim(),
-          service_type: managerWizard.service_type,
+          service_type: normalizeServiceTypeForApi(managerWizard.service_type),
           description: managerWizard.description.trim() || null,
           workflow_type: managerWizard.flow_type,
           workflow_status: managerWizard.flow_type === 'inspection'
@@ -752,7 +758,7 @@ function OrdersPage() {
         property_object_id: form.property_object_id ? Number(form.property_object_id) : null,
         requester_name: form.requester_name || null,
         requester_email: form.requester_email || null,
-        service_type: form.service_type || null,
+        service_type: normalizeServiceTypeForApi(form.service_type),
         trade_object: form.trade_object || null,
         trade_activity: form.trade_activity || null,
         description: form.description || null,
@@ -1432,7 +1438,7 @@ function OrdersPage() {
                                   <button
                                     key={provider.id}
                                     type="button"
-                                    className={`vergo-order-choice-card text-start${managerWizard.selected_provider_ids.includes(provider.id) ? ' is-selected' : ''}`}
+                                    className={`vergo-order-choice-card text-start${managerWizard.selected_provider_ids.includes(String(provider.id)) ? ' is-selected' : ''}`}
                                     onClick={() => toggleProviderSelection(provider.id)}
                                   >
                                     <div className="fw-semibold">{provider.company_name}</div>

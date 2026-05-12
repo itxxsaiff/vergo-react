@@ -60,7 +60,7 @@ function BackgroundJobsPage() {
       title="Hintergrundaufgaben"
       subtitle="Verfolgen Sie in der Warteschlange befindliche Gemini-Analysen und überwachen Sie, welche Dokumentaufträge erfolgreich abgeschlossen wurden oder fehlgeschlagen sind."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Hintergrundaufgaben' },
       ]}
     >

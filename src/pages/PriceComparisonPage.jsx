@@ -114,7 +114,7 @@ function PriceComparisonPage() {
       title="Preisvergleich"
       subtitle="Vergleichen Sie Angebote für Aufträge an einem Ort und überprüfen Sie die aktuelle Empfehlung, bevor Sie eine endgültige Entscheidung treffen."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Preisvergleich' },
       ]}
     >

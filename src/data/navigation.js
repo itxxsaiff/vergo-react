@@ -1,7 +1,7 @@
 export const navigationByRole = {
   admin: [
     {
-      title: 'Armaturenbrett',
+      title: 'Dashboard',
       icon: 'ti ti-layout-dashboard',
       href: '/dashboard',
     },
@@ -45,7 +45,7 @@ export const navigationByRole = {
   ],
   employee: [
     {
-      title: 'Armaturenbrett',
+      title: 'Dashboard',
       icon: 'ti ti-layout-dashboard',
       href: '/dashboard',
     },
@@ -74,7 +74,7 @@ export const navigationByRole = {
   ],
   owner: [
     {
-      title: 'Armaturenbrett',
+      title: 'Dashboard',
       icon: 'ti ti-layout-dashboard',
       href: '/dashboard',
     },
@@ -92,7 +92,7 @@ export const navigationByRole = {
   ],
   provider: [
     {
-      title: 'Armaturenbrett',
+      title: 'Dashboard',
       icon: 'ti ti-layout-dashboard',
       href: '/dashboard',
     },
@@ -107,7 +107,7 @@ export const navigationByRole = {
   ],
   manager: [
     {
-      title: 'Armaturenbrett',
+      title: 'Dashboard',
       icon: 'ti ti-layout-dashboard',
       href: '/dashboard',
     },

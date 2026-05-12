@@ -241,7 +241,7 @@ function PropertiesPage() {
           : 'Pflegen Sie Ihre Liegenschaften und springen Sie von der Übersicht direkt in die Objektansicht.'
       }
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Eigenschaften' },
       ]}
     >

@@ -26,6 +26,10 @@ function Sidebar({ navigation, user }) {
     }))
   }
 
+  function handleSectionToggle(title) {
+    toggleSection(title)
+  }
+
   return (
     <aside className="left-sidebar">
       <div>
@@ -74,12 +78,16 @@ function Sidebar({ navigation, user }) {
                           <span className="hide-menu">{item.title}</span>
                         </NavLink>
                       ) : (
-                        <span className="vergo-sidebar-parent-link">
+                        <button
+                          type="button"
+                          className="vergo-sidebar-parent-link vergo-sidebar-parent-button"
+                          onClick={() => handleSectionToggle(item.title)}
+                        >
                           <span className="d-flex">
                             <i className={item.icon}></i>
                           </span>
                           <span className="hide-menu">{item.title}</span>
-                        </span>
+                        </button>
                       )}
 
                       <button
@@ -87,7 +95,7 @@ function Sidebar({ navigation, user }) {
                         className="vergo-sidebar-toggle"
                         aria-expanded={isOpen}
                         aria-label={`${item.title} Untermenü umschalten`}
-                        onClick={() => toggleSection(item.title)}
+                        onClick={() => handleSectionToggle(item.title)}
                       />
                     </div>
 

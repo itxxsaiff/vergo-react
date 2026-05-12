@@ -110,7 +110,7 @@ function AiAnalysisPage() {
       subtitle={user?.role === 'owner'
         ? 'Prüfen Sie Vertrags- und Rechnungsanalysen, die dabei helfen zu erklären, ob die Preisgestaltung fair, niedrig oder zu hoch erscheint.'
         : 'Führen Sie dokumentbasierte Analysen mit Gemini durch und prüfen Sie extrahierte Preis- und Vertragssignale.'}
-      breadcrumbs={[{ label: 'Armaturenbrett', href: '/dashboard' }, { label: 'KI-Analyse' }]}
+      breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'KI-Analyse' }]}
     >
       {error ? <div className="alert alert-danger py-2">{error}</div> : null}
 

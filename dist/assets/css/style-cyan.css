@@ -22547,9 +22547,7 @@ html[dir=rtl] .welcome-bg-img {
   background-color: #01c0c8;
   color: #fff;
 }
-.sidebar-nav ul .sidebar-item.selected .sidebar-link.has-arrow::after {
-  border-color: #fff;
-}
+
 .sidebar-nav .sidebar-list .sidebar-list-item {
   padding: 8px 0;
 }

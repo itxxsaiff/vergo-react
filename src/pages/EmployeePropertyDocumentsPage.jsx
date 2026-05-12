@@ -576,7 +576,7 @@ function EmployeePropertyDocumentsPage() {
       title="Dokumente & Analyse"
       subtitle="Verwalten Sie Verträge und Rechnungen für diese Liegenschaft und starten Sie anschließend die Analyse."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Liegenschaften', href: '/properties' },
         { label: property?.title || 'Dokumente' },
       ]}

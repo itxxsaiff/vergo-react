@@ -205,7 +205,7 @@ function EmployeesPage() {
       title="Mitarbeiter"
       subtitle="Verwalten Sie interne Mitarbeiterkonten, die als Benutzer mit der Rolle employee gespeichert werden."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Mitarbeiter' },
       ]}
       actions={(

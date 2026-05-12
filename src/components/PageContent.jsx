@@ -6,7 +6,7 @@ function PageContent({ title, subtitle, children, breadcrumbs = [], variant = 'd
   return (
     <div className="mb-3">
       {shouldRenderHeader ? (
-        <div className="row align-items-center pb-3 px-3">
+        <div className="row align-items-center pb-2 px-2 px-lg-3">
           <div className="col-12">
             <ol className="breadcrumb justify-content-end mb-0">
               {breadcrumbs.map((crumb, index) => {
@@ -29,7 +29,7 @@ function PageContent({ title, subtitle, children, breadcrumbs = [], variant = 'd
             </ol>
           </div>
           {title ? (
-            <div className="col-12 pt-3">
+            <div className="col-12 pt-2">
               <h2>{title}</h2>
             </div>
           ) : null}

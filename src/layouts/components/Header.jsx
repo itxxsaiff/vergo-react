@@ -181,8 +181,8 @@ function Header({ user, showSidebarToggle = true }) {
                         <i className="ti ti-layout-dashboard fs-6"></i>
                       </span>
                       <div className="w-75 d-inline-block v-middle ps-3">
-                        <h6 className="mb-1 fw-semibold">{user.homePath === '/orders' ? 'Aufträge' : 'Armaturenbrett'}</h6>
-                        <span className="d-block text-dark">{user.homePath === '/orders' ? 'Zu den Aufträgen' : 'Zur Übersicht'}</span>
+                        <h6 className="mb-1 fw-semibold">{user.homePath === '/orders' ? 'Aufträge' : 'Dashboard'}</h6>
+                        <span className="d-block text-dark">{user.homePath === '/orders' ? 'Zu den Aufträgen' : 'Zum Dashboard'}</span>
                       </div>
                     </Link>
                   </div>

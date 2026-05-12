@@ -879,7 +879,7 @@ function OrdersPage() {
               : 'Nur-Lese-Ansicht des Auftragsablaufs auf der gesamten Plattform.'
       }
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Aufträge' },
       ]}
     >

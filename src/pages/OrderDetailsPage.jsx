@@ -178,7 +178,7 @@ function OrderDetailsPage() {
       title="Auftragsdetails"
       subtitle="Überprüfen Sie Angebote, Vergleichsergebnisse und unterstützende Dokumente für diesen Auftrag."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Aufträge', href: '/orders' },
         { label: 'Auftragsdetails' },
       ]}

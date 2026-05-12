@@ -89,7 +89,7 @@ function EmployeeOrdersPage() {
       title="Aufträge"
       subtitle="Sehen Sie alle Aufträge mit Status, Objektbezug und Freigabestand in einer kompakten Übersicht."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Aufträge' },
       ]}
     >

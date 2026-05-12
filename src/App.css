@@ -14,11 +14,11 @@
   --vergo-text-main: #2f3441;
   --vergo-text-soft: #7f8596;
   --vergo-shadow-soft: 0 14px 34px rgba(33, 35, 43, 0.06);
-  --vergo-shell-gap: 16px;
+  --vergo-shell-gap: 10px;
   --vergo-sidebar-base-width: 270px;
-  --vergo-sidebar-float-width: 254px;
-  --vergo-sidebar-mini-width: 84px;
-  --vergo-header-height: 72px;
+  --vergo-sidebar-float-width: 232px;
+  --vergo-sidebar-mini-width: 76px;
+  --vergo-header-height: 60px;
 }
 
 .page-title-right .btn + .btn {
@@ -27,6 +27,7 @@
 
 body {
   background: linear-gradient(180deg, #f7f8fb 0%, #eff3f9 100%);
+  overflow-x: hidden;
 }
 
 #main-wrapper,
@@ -49,7 +50,7 @@ body {
   bottom: var(--vergo-shell-gap);
   width: var(--vergo-sidebar-float-width);
   height: auto;
-  border-radius: 34px;
+  border-radius: 28px;
   border: 1px solid rgba(255, 247, 241, 0.24);
   overflow: hidden;
 }
@@ -66,13 +67,13 @@ body {
 }
 
 .left-sidebar .brand-logo {
-  padding-top: 1.25rem;
-  padding-bottom: 1rem;
+  padding-top: 1rem;
+  padding-bottom: 0.8rem;
 }
 
 .left-sidebar .scroll-sidebar {
-  height: calc(100% - 76px);
-  padding: 0 18px 18px;
+  height: calc(100% - 68px);
+  padding: 0 14px 14px;
 }
 
 .left-sidebar .logo-img,
@@ -93,8 +94,8 @@ body {
 }
 
 .sidebar-nav ul .sidebar-item .sidebar-link {
-  margin: 0.2rem 0.65rem;
-  border-radius: 18px;
+  margin: 0.16rem 0.45rem;
+  border-radius: 16px;
   transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
 }
 
@@ -106,12 +107,14 @@ body {
 .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
   flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
   color: inherit;
   text-decoration: none;
-  padding-right: 2.75rem;
+  padding-right: 2.4rem;
+  overflow: hidden;
 }
 
 .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link:hover,
@@ -119,11 +122,33 @@ body {
   color: inherit;
 }
 
+.sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link .hide-menu {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-nav ul .sidebar-item .vergo-sidebar-parent-button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.sidebar-nav ul .sidebar-item .vergo-sidebar-parent-button:focus-visible {
+  outline: 2px solid rgba(255, 250, 247, 0.8);
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+
 .sidebar-nav ul .sidebar-item .vergo-sidebar-toggle {
   position: absolute;
   top: 0;
   right: 0;
-  width: 2.75rem;
+  width: 2.4rem;
   height: 100%;
   border: 0;
   background: transparent;
@@ -140,8 +165,8 @@ body {
 .sidebar-nav ul .sidebar-item > .sidebar-link.active {
   background: #fffaf7 !important;
   color: var(--vergo-accent-strong) !important;
-  box-shadow: 0 10px 24px rgba(79, 46, 28, 0.14);
-  transform: translateX(6px);
+  box-shadow: 0 8px 20px rgba(79, 46, 28, 0.14);
+  transform: translateX(4px);
 }
 
 .sidebar-nav ul .sidebar-item.selected > .sidebar-link .ti,
@@ -152,12 +177,12 @@ body {
 }
 
 .sidebar-nav ul .sidebar-item .first-level .sidebar-item > .sidebar-link {
-  padding-left: 1.1rem;
+  padding-left: 0.95rem;
   opacity: 0.94;
-  margin-left: 1rem;
-  margin-right: 0.65rem;
+  margin-left: 0.8rem;
+  margin-right: 0.45rem;
   color: rgba(255, 247, 241, 0.9) !important;
-  border-radius: 14px;
+  border-radius: 12px;
   transform: none;
 }
 
@@ -182,12 +207,12 @@ body {
 }
 
 #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav ul .sidebar-item .sidebar-link {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   margin: 0.2rem auto;
   padding: 0;
   justify-content: center;
-  border-radius: 16px;
+  border-radius: 14px;
   transform: none;
 }
 
@@ -196,8 +221,8 @@ body {
 }
 
 #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .scroll-sidebar {
-  padding-left: 10px;
-  padding-right: 10px;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav ul .sidebar-item.selected > .sidebar-link,
@@ -210,16 +235,44 @@ body {
 }
 
 #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .scroll-sidebar {
-  padding-left: 18px;
-  padding-right: 18px;
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .sidebar-nav ul .sidebar-item .sidebar-link {
   width: auto;
   height: auto;
-  margin: 0.2rem 0.65rem;
+  margin: 0.16rem 0.45rem;
   justify-content: flex-start;
-  border-radius: 18px;
+  border-radius: 16px;
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav ul .sidebar-item .vergo-sidebar-group {
+  justify-content: center;
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-button {
+  width: 44px;
+  min-width: 44px;
+  justify-content: center;
+  padding-right: 0;
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav ul .sidebar-item .vergo-sidebar-toggle {
+  display: none;
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-button {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+  padding-right: 2.4rem;
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .sidebar-nav ul .sidebar-item .vergo-sidebar-toggle {
+  display: block;
 }
 
 #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .sidebar-nav ul .sidebar-item.selected > .sidebar-link,
@@ -240,10 +293,10 @@ body {
 
 #main-wrapper[data-layout=vertical][data-header-position=fixed] .app-header .navbar {
   min-height: var(--vergo-header-height);
-  padding: 0.05rem 1rem;
+  padding: 0.05rem 0.85rem;
   border: 1px solid rgba(228, 232, 240, 0.92);
-  border-radius: 30px;
-  box-shadow: 0 14px 32px rgba(33, 35, 43, 0.06);
+  border-radius: 24px;
+  box-shadow: 0 10px 24px rgba(33, 35, 43, 0.06);
 }
 
 #main-wrapper[data-layout=vertical][data-sidebartype=full] .body-wrapper {
@@ -279,7 +332,7 @@ body {
 .vergo-layout-no-sidebar .body-wrapper > .container-lg,
 .vergo-layout-no-sidebar .body-wrapper > .container-xl,
 .vergo-layout-no-sidebar .body-wrapper > .container-xxl {
-  padding-top: calc(var(--vergo-header-height) + var(--vergo-shell-gap) + 18px) !important;
+  padding-top: calc(var(--vergo-header-height) + var(--vergo-shell-gap) + 10px) !important;
 }
 
 .vergo-layout-no-sidebar .app-header {
@@ -293,12 +346,17 @@ body {
 .body-wrapper > .container-lg,
 .body-wrapper > .container-xl,
 .body-wrapper > .container-xxl {
-  padding-top: calc(var(--vergo-header-height) + var(--vergo-shell-gap) + 18px) !important;
+  padding-top: calc(var(--vergo-header-height) + var(--vergo-shell-gap) + 10px) !important;
 }
 
 .card {
   border-color: rgba(234, 237, 244, 0.95);
   box-shadow: var(--vergo-shadow-soft);
+  border-radius: 18px;
+}
+
+.card-body {
+  padding: 1.15rem;
 }
 
 .btn-primary {
@@ -309,28 +367,28 @@ body {
   --bs-btn-active-bg: var(--vergo-accent-strong);
   --bs-btn-active-border-color: var(--vergo-accent-strong);
   --bs-btn-focus-shadow-rgb: 183, 132, 103;
-  border-radius: 14px;
+  border-radius: 12px;
   font-weight: 600;
-  box-shadow: 0 8px 18px rgba(183, 132, 103, 0.2);
+  box-shadow: 0 6px 14px rgba(183, 132, 103, 0.2);
 }
 
 .btn-light-primary {
   background: #f6ece6 !important;
   border-color: #f6ece6 !important;
   color: var(--vergo-accent-strong) !important;
-  border-radius: 14px;
+  border-radius: 12px;
   font-weight: 600;
 }
 
 .form-control,
 .form-select {
   border: 1px solid var(--vergo-input-border);
-  border-radius: 14px;
+  border-radius: 12px;
   background-color: var(--vergo-input-bg);
-  min-height: 46px;
+  min-height: 42px;
   color: var(--vergo-text-main);
-  padding-left: 0.9rem;
-  padding-right: 0.9rem;
+  padding-left: 0.8rem;
+  padding-right: 0.8rem;
   box-shadow: none;
 }
 
@@ -373,7 +431,7 @@ body {
 }
 
 .vergo-filter-bar .btn {
-  min-height: 46px;
+  min-height: 42px;
 }
 
 .vergo-filter-bar-compact {
@@ -392,7 +450,7 @@ body {
 }
 
 .vergo-filter-bar-compact .btn {
-  min-height: 46px;
+  min-height: 42px;
 }
 
 .vergo-filter-reset-wrap {
@@ -400,11 +458,11 @@ body {
 }
 
 .vergo-filter-reset-btn {
-  min-height: 42px;
-  padding: 0.7rem 1rem;
+  min-height: 38px;
+  padding: 0.62rem 0.95rem;
   border-radius: 999px;
   width: auto;
-  min-width: 160px;
+  min-width: 144px;
   box-shadow: none;
 }
 
@@ -455,7 +513,7 @@ body {
 
 .table-responsive.vergo-table-scroll {
   border: 0;
-  border-radius: 24px;
+  border-radius: 18px;
   background: var(--vergo-card-bg);
   box-shadow: none;
 }
@@ -475,8 +533,8 @@ body {
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  padding-top: 1rem !important;
-  padding-bottom: 1rem !important;
+  padding-top: 0.82rem !important;
+  padding-bottom: 0.82rem !important;
 }
 
 .customize-table tbody td {
@@ -485,8 +543,8 @@ body {
   background: #ffffff;
   vertical-align: middle;
   color: var(--vergo-text-main);
-  padding-top: 1.35rem !important;
-  padding-bottom: 1.35rem !important;
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
 }
 
 .customize-table tbody tr:hover td {
@@ -499,8 +557,8 @@ body {
 
 .page-title-right .btn,
 .vergo-page-actions .btn {
-  min-height: 44px;
-  padding-inline: 1.1rem;
+  min-height: 40px;
+  padding-inline: 1rem;
 }
 
 @media (max-width: 1023px) {
@@ -509,7 +567,7 @@ body {
     left: -270px;
     bottom: 0;
     width: var(--vergo-sidebar-base-width);
-    border-radius: 0 30px 30px 0;
+    border-radius: 0 24px 24px 0;
   }
 
   #main-wrapper[data-layout=vertical][data-sidebartype=full].show-sidebar .left-sidebar {
@@ -538,6 +596,21 @@ body {
   #main-wrapper[data-layout=vertical][data-sidebartype=full] .body-wrapper,
   #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .body-wrapper {
     margin-left: 0;
+  }
+
+  .body-wrapper > .container-fluid,
+  .body-wrapper > .container-sm,
+  .body-wrapper > .container-md,
+  .body-wrapper > .container-lg,
+  .body-wrapper > .container-xl,
+  .body-wrapper > .container-xxl,
+  .vergo-layout-no-sidebar .body-wrapper > .container-fluid,
+  .vergo-layout-no-sidebar .body-wrapper > .container-sm,
+  .vergo-layout-no-sidebar .body-wrapper > .container-md,
+  .vergo-layout-no-sidebar .body-wrapper > .container-lg,
+  .vergo-layout-no-sidebar .body-wrapper > .container-xl,
+  .vergo-layout-no-sidebar .body-wrapper > .container-xxl {
+    padding-top: calc(var(--vergo-header-height) + 12px) !important;
   }
 }
 
@@ -1388,7 +1461,7 @@ body {
   border: 1px solid #e8eef7;
   border-radius: 7px;
   background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
 }
 
 .vergo-dashboard-eyebrow {
@@ -1407,43 +1480,43 @@ body {
 
 .vergo-dashboard-analytics-panel {
   height: 100%;
-  padding: 1.5rem;
+  padding: 1.15rem;
   border: 1px solid #e8eef7;
   border-radius: 7px;
   background: #ffffff;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
 }
 
 .vergo-dashboard-metric-card {
   display: flex;
   align-items: center;
   gap: 1rem;
-  min-height: 108px;
-  padding: 1rem 1.05rem;
+  min-height: 88px;
+  padding: 0.85rem 0.95rem;
   border: 1px solid #e6edf7;
   border-radius: 7px;
   background: #f9fbff;
 }
 
 .vergo-dashboard-metric-icon {
-  width: 54px;
-  height: 54px;
-  border-radius: 16px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   background: var(--metric-background);
   color: var(--metric-color);
-  font-size: 1.35rem;
+  font-size: 1.15rem;
 }
 
 .vergo-dashboard-metric-value {
   color: #111827;
-  font-size: 2rem;
+  font-size: 1.65rem;
   font-weight: 800;
   line-height: 1;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.18rem;
 }
 
 .vergo-dashboard-chart-panel {
@@ -1458,9 +1531,9 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.85rem 1.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
   color: #5a6a85;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 500;
 }
 
@@ -1475,10 +1548,10 @@ body {
 }
 
 .vergo-dashboard-chart-empty {
-  min-height: 300px;
-  padding: 1.5rem;
+  min-height: 240px;
+  padding: 1.15rem;
   border: 1px dashed #d9e3f0;
-  border-radius: 22px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1644,14 +1717,14 @@ body {
 .vergo-manager-quick-link,
 .vergo-manager-quick-link:hover,
 .vergo-manager-quick-link:focus {
-  min-width: 190px;
-  min-height: 58px;
+  min-width: 168px;
+  min-height: 50px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.95rem 1.4rem;
+  padding: 0.8rem 1.15rem;
   border: 1px solid #55c778;
-  border-radius: 18px;
+  border-radius: 16px;
   background: linear-gradient(180deg, #9af2a4 0%, #72e087 100%);
   color: #165a2d;
   font-weight: 700;
@@ -1662,10 +1735,10 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding: 1.1rem 1.15rem;
+  gap: 0.7rem;
+  padding: 0.95rem 1rem;
   border: 1px solid #dbe8f5;
-  border-radius: 24px;
+  border-radius: 18px;
   background: linear-gradient(180deg, #215f8f 0%, #174a73 100%);
   color: #ffffff;
   box-shadow: 0 14px 30px rgba(23, 74, 115, 0.22);
@@ -1687,7 +1760,7 @@ body {
 }
 
 .vergo-manager-order-card-value {
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 800;
   line-height: 1.25;
 }
@@ -1702,7 +1775,7 @@ body {
 .vergo-manager-order-card-meta strong,
 .vergo-manager-order-card-grid strong {
   color: #ffffff;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   font-weight: 700;
   line-height: 1.35;
 }
@@ -1793,6 +1866,23 @@ body {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --vergo-shell-gap: 0px;
+    --vergo-header-height: 56px;
+  }
+
+  body {
+    background: #f5f7fb;
+  }
+
+  .card {
+    border-radius: 16px;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
   .vergo-job-card {
     border-radius: 22px;
   }
@@ -1839,20 +1929,25 @@ body {
   }
 
   .vergo-dashboard-analytics-card {
-    border-radius: 24px;
+    border-radius: 16px;
   }
 
   .vergo-dashboard-analytics-panel {
-    padding: 1.2rem;
-    border-radius: 20px;
+    padding: 1rem;
+    border-radius: 16px;
   }
 
   .vergo-dashboard-metric-card {
-    min-height: 96px;
+    min-height: 78px;
+    gap: 0.8rem;
   }
 
   .vergo-dashboard-metric-value {
-    font-size: 1.75rem;
+    font-size: 1.45rem;
+  }
+
+  .vergo-dashboard-chart-empty {
+    min-height: 190px;
   }
 
   .vergo-order-stepper {
@@ -1877,5 +1972,62 @@ body {
 
   .vergo-manager-order-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .customize-table thead th,
+  .vergo-table-scroll thead th {
+    font-size: 0.74rem;
+    padding-top: 0.7rem !important;
+    padding-bottom: 0.7rem !important;
+  }
+
+  .customize-table tbody td {
+    padding-top: 0.85rem !important;
+    padding-bottom: 0.85rem !important;
+  }
+}
+
+@media (max-width: 575px) {
+  .left-sidebar .brand-logo {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+
+  #main-wrapper[data-layout=vertical][data-header-position=fixed] .app-header .navbar {
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
+  }
+
+  .body-wrapper > .container-fluid,
+  .body-wrapper > .container-sm,
+  .body-wrapper > .container-md,
+  .body-wrapper > .container-lg,
+  .body-wrapper > .container-xl,
+  .body-wrapper > .container-xxl,
+  .vergo-layout-no-sidebar .body-wrapper > .container-fluid,
+  .vergo-layout-no-sidebar .body-wrapper > .container-sm,
+  .vergo-layout-no-sidebar .body-wrapper > .container-md,
+  .vergo-layout-no-sidebar .body-wrapper > .container-lg,
+  .vergo-layout-no-sidebar .body-wrapper > .container-xl,
+  .vergo-layout-no-sidebar .body-wrapper > .container-xxl {
+    padding-top: calc(var(--vergo-header-height) + 10px) !important;
+    padding-left: max(0.75rem, env(safe-area-inset-left)) !important;
+    padding-right: max(0.75rem, env(safe-area-inset-right)) !important;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  .vergo-dashboard-chart-summary {
+    gap: 0.55rem;
+    font-size: 0.82rem;
+  }
+
+  .vergo-dashboard-year-filter {
+    min-width: 118px;
+  }
+
+  .vergo-manager-quick-link,
+  .vergo-manager-quick-link:hover,
+  .vergo-manager-quick-link:focus {
+    min-height: 46px;
+    padding: 0.72rem 0.95rem;
   }
 }

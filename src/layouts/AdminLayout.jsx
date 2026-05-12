@@ -22,7 +22,7 @@ function AdminLayout({ navigation, user }) {
       {!hideSidebar ? <Sidebar navigation={navigation} user={user} /> : null}
       <div className="body-wrapper">
         <Header user={user} showSidebarToggle={!hideSidebar} />
-        <div className="container-fluid px-3" style={{"maxWidth": "100%"}}>
+        <div className="container-fluid px-2 px-lg-3" style={{ maxWidth: '100%' }}>
           <Outlet />
         </div>
       </div>

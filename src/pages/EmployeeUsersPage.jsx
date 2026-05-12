@@ -242,7 +242,7 @@ function EmployeeUsersPage() {
       title="Nutzer"
       subtitle={activeCategory.subtitle}
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Nutzer' },
         { label: activeCategory.label },
       ]}

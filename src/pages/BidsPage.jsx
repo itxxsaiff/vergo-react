@@ -176,7 +176,7 @@ function BidsPage() {
           : 'Überprüfen Sie die Angebotsaktivitäten über alle Aufträge hinweg.'
       }
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: isProvider ? 'Eingereichte Angebote' : 'Angebote' },
       ]}
     >

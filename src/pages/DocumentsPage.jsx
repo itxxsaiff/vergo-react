@@ -163,7 +163,7 @@ function DocumentsPage() {
       subtitle={isOwner
         ? 'Laden Sie Verträge und Rechnungen hoch, damit Vergo die Preise vergleichen und Ihnen zeigen kann, ob Sie möglicherweise zu viel bezahlen.'
         : 'Laden Sie Verträge, Rechnungen und Anlagendokumente hoch, die später in den Preisvergleich und die Gemini-Analyse einfließen.'}
-      breadcrumbs={[{ label: 'Armaturenbrett', href: '/dashboard' }, { label: 'Unterlagen' }]}
+      breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Unterlagen' }]}
       actions={canUpload ? (
         <button type="button" className="btn btn-primary" onClick={openModal}>
           <i className="ti ti-plus me-1"></i>

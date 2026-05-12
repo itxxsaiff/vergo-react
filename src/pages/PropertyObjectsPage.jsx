@@ -232,7 +232,7 @@ function PropertyObjectsPage() {
           : 'Sehen Sie die verfügbaren Objekte unter Ihren zugewiesenen Immobilien ein.'
       }
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Objekte der Immobilien' },
       ]}
       actions={canManageObjects ? (

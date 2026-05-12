@@ -95,7 +95,7 @@ function PropertyManagersPage() {
       title="Immobilienverwalter"
       subtitle="Überprüfen Sie OTP-basierte Immobilienverwalter, die mit Li-Nummern verknüpft sind, sowie deren Auftragshistorie."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Immobilienverwalter' },
       ]}
     >

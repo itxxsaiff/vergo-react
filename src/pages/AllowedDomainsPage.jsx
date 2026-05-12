@@ -164,7 +164,7 @@ function AllowedDomainsPage() {
       title="Erlaubte Domains"
       subtitle="Verwalten Sie, welche E-Mail-Domains für jede Immobilie berechtigt sind, OTP-Zugang anzufordern."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Erlaubte Domains' },
       ]}
       actions={(

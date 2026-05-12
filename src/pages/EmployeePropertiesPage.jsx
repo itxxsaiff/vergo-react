@@ -206,7 +206,7 @@ function EmployeePropertiesPage() {
       title="Liegenschaften"
       subtitle="Erstellen Sie neue Liegenschaften, pflegen Sie Stammdaten und springen Sie von der Übersicht direkt in die Objektansicht."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Liegenschaften' },
       ]}
     >

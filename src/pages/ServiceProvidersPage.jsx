@@ -187,7 +187,7 @@ if (!emailPattern.test(form.contact_email.trim())) {
       title="Dienstleister"
       subtitle="Verwalten Sie Anbieterunternehmen, die für Ausschreibungen und die Teilnahme an Aufträgen verfügbar sind."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Dienstleister' },
       ]}
       actions={(

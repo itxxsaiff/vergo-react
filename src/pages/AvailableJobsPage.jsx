@@ -212,7 +212,7 @@ function AvailableJobsPage() {
       title="Verfügbare Aufträge"
       subtitle="Offene Aufträge, auf die Dienstleister Angebote abgeben können."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Verfügbare Aufträge' },
       ]}
     >

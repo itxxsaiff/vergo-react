@@ -7,28 +7,25 @@ import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
 const summaryCards = [
   {
-    title: 'Gesamtimmobilien',
+    title: 'Immobilien',
     key: 'properties',
     icon: 'ti ti-building-estate',
     color: 'primary',
+    helper: 'Gesamtzahl der Liegenschaften',
   },
   {
-    title: 'Aktive Aufträge',
-    key: 'orders',
-    icon: 'ti ti-file-invoice',
+    title: 'Eigentümer',
+    key: 'owners',
+    icon: 'ti ti-building-community',
     color: 'secondary',
+    helper: 'Gesamtzahl der Eigentümer',
   },
   {
-    title: 'Dokumentenverarbeitung',
-    key: 'documents',
-    icon: 'ti ti-file-analytics',
-    color: 'warning',
-  },
-  {
-    title: 'Anbieter',
+    title: 'Dienstleister',
     key: 'service_providers',
     icon: 'ti ti-users',
     color: 'success',
+    helper: 'Gesamtzahl der Dienstleister',
   },
 ]
 
@@ -295,10 +292,10 @@ function DashboardPage({ role }) {
 
   return (
     <PageContent
-      title={isManager ? '' : 'Vergo Armaturenbrett'}
-      subtitle={`Willkommen im Armaturenbrett als ${role}.`}
+      title={isManager ? '' : 'Vergo Dashboard'}
+      subtitle={`Willkommen im Dashboard als ${role}.`}
       variant="dashboard"
-      breadcrumbs={isManager ? [] : ['Armaturenbrett']}
+      breadcrumbs={isManager ? [] : ['Dashboard']}
     >
       {isManager ? (
         <>
@@ -486,13 +483,14 @@ function DashboardPage({ role }) {
         <>
           <div className="row">
             {summaryCards.map((card) => (
-              <div className="col-xl-3 col-md-6" key={card.key}>
+              <div className="col-xl-4 col-md-6" key={card.key}>
                 <div className="card overflow-hidden">
                   <div className="card-body">
                     <div className="d-flex align-items-center">
                       <div className="flex-grow-1">
                         <p className="text-muted fw-medium">{card.title}</p>
                         <h3 className="mb-0 fw-semibold">{overview[card.key] ?? 0}</h3>
+                        <div className="text-muted small mt-1">{card.helper}</div>
                       </div>
                       <div className="flex-shrink-0 ms-3">
                         <div className={`round-48 rounded-circle bg-light-${card.color} d-flex align-items-center justify-content-center`}>

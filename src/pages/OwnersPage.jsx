@@ -177,7 +177,7 @@ function OwnersPage() {
       title="Eigentümer"
       subtitle="Erstellen Sie Eigentümerkonten und verfolgen Sie die ihnen zugewiesenen Objekte."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Eigentümer' },
       ]}
     >

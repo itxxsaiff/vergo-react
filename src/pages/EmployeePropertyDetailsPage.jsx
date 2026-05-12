@@ -164,7 +164,7 @@ function EmployeePropertyDetailsPage() {
       title="Objekte"
       subtitle="Öffnen Sie die einzelnen Objekte einer Liegenschaft als Kartenansicht und legen Sie bei Bedarf neue Objekte an."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Liegenschaften', href: '/properties' },
         { label: property?.title || 'Objekte' },
       ]}

@@ -84,7 +84,7 @@ function PropertyDetailsPage() {
       title="Objektdetails"
       subtitle="Überprüfen Sie die Immobilie, ihre Dokumente, verknüpfte Bestellungen und das Ergebnis des Preisvergleichs auf Objektebene."
       breadcrumbs={[
-        { label: 'Armaturenbrett', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Eigenschaften', href: '/properties' },
         { label: 'Objektdetails' },
       ]}

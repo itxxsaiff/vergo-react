@@ -9,7 +9,7 @@ export const navigationByRole = {
       title: 'Immobilienverwaltung',
       icon: 'ti ti-building-estate',
       children: [
-        { title: 'Eigenschaften', href: '/properties' },
+        { title: 'Liegenschaften', href: '/properties' },
         { title: 'Eigentümer', href: '/owners' },
         { title: 'Eigenschaftenobjekte', href: '/property-objects' },
       ],

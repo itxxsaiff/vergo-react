@@ -17,6 +17,8 @@ const initialForm = {
   lot_area: '',
 }
 
+const requiredFields = ['title', 'management', 'postal_code', 'city', 'usage', 'manager_domains', 'lot_area']
+
 function normalizeDomains(value) {
   return value
     .split(/[\n,]/)
@@ -43,6 +45,7 @@ function PropertiesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const isAdmin = user?.role === 'admin'
   const canManageProperties = ['admin', 'owner'].includes(user?.role)
 
@@ -113,6 +116,16 @@ function PropertiesPage() {
       ...current,
       [name]: value,
     }))
+
+    setFieldErrors((current) => {
+      if (!current[name]) {
+        return current
+      }
+
+      const nextErrors = { ...current }
+      delete nextErrors[name]
+      return nextErrors
+    })
   }
 
   function handleFilterChange(event) {
@@ -128,6 +141,7 @@ function PropertiesPage() {
     setEditingProperty(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -144,6 +158,7 @@ function PropertiesPage() {
       lot_area: property.lot_area ?? '',
     })
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -151,31 +166,42 @@ function PropertiesPage() {
     setEditingProperty(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(false)
+  }
+
+  function validateForm() {
+    const nextErrors = {}
+
+    requiredFields.forEach((fieldName) => {
+      const value = form[fieldName]
+      const normalizedValue = typeof value === 'string' ? value.trim() : value
+
+      if (normalizedValue === '' || normalizedValue === null || normalizedValue === undefined) {
+        nextErrors[fieldName] = true
+      }
+    })
+
+    if (isAdmin && !String(form.owner_id || '').trim()) {
+      nextErrors.owner_id = true
+    }
+
+    return nextErrors
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setIsSaving(true)
     setError('')
+    const validationErrors = validateForm()
 
-    if (!form.title.trim()) {
-      setError('Bezeichnung ist erforderlich.')
-      setIsSaving(false)
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors)
+      setError('Bitte alle Pflichtfelder ausfüllen.')
       return
     }
 
-    if (isAdmin && !form.owner_id) {
-      setError('Eigentümer ist erforderlich.')
-      setIsSaving(false)
-      return
-    }
-
-    if (!form.usage) {
-      setError('Nutzung ist erforderlich.')
-      setIsSaving(false)
-      return
-    }
+    setFieldErrors({})
+    setIsSaving(true)
 
     try {
       const payload = {
@@ -234,7 +260,7 @@ function PropertiesPage() {
 
   return (
     <PageContent
-      title="Eigenschaften"
+      title="Liegenschaften"
       subtitle={
         isAdmin
           ? 'Erstellen Sie Liegenschaften mit Eigentümer, Nutzung und Domains und öffnen Sie anschließend die zugehörigen Objektkarten.'
@@ -242,7 +268,7 @@ function PropertiesPage() {
       }
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Eigenschaften' },
+        { label: 'Liegenschaften' },
       ]}
     >
       <div className="card">
@@ -386,13 +412,13 @@ function PropertiesPage() {
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Bezeichnung</label>
-                          <input className="form-control" name="title" value={form.title} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.title ? ' is-invalid' : ''}`} name="title" value={form.title} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Bewirtschaftung</label>
-                          <input className="form-control" name="management" value={form.management} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.management ? ' is-invalid' : ''}`} name="management" value={form.management} onChange={handleChange} />
                         </div>
                       </div>
 
@@ -400,7 +426,7 @@ function PropertiesPage() {
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label className="form-label">Eigentümer</label>
-                            <select className="form-select" name="owner_id" value={form.owner_id} onChange={handleChange}>
+                            <select className={`form-select${fieldErrors.owner_id ? ' is-invalid' : ''}`} name="owner_id" value={form.owner_id} onChange={handleChange}>
                               <option value="">Eigentümer auswählen</option>
                               {owners.map((owner) => (
                                 <option key={owner.id} value={owner.id}>
@@ -415,19 +441,19 @@ function PropertiesPage() {
                       <div className={isAdmin ? 'col-md-3' : 'col-md-6'}>
                         <div className="mb-3">
                           <label className="form-label">PLZ</label>
-                          <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
                         </div>
                       </div>
                       <div className={isAdmin ? 'col-md-3' : 'col-md-6'}>
                         <div className="mb-3">
                           <label className="form-label">Ort</label>
-                          <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Nutzung</label>
-                          <select className="form-select" name="usage" value={form.usage} onChange={handleChange}>
+                          <select className={`form-select${fieldErrors.usage ? ' is-invalid' : ''}`} name="usage" value={form.usage} onChange={handleChange}>
                             <option value="">Nutzung auswählen</option>
                             {PROPERTY_USAGE_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>{option.label}</option>
@@ -438,14 +464,14 @@ function PropertiesPage() {
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Grundstücksfläche</label>
-                          <input className="form-control" name="lot_area" type="number" min="0" step="0.01" value={form.lot_area} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.lot_area ? ' is-invalid' : ''}`} name="lot_area" type="number" min="0" step="0.01" value={form.lot_area} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-12">
                         <div className="mb-0">
                           <label className="form-label">Domains</label>
                           <textarea
-                            className="form-control"
+                            className={`form-control${fieldErrors.manager_domains ? ' is-invalid' : ''}`}
                             rows="3"
                             name="manager_domains"
                             value={form.manager_domains}

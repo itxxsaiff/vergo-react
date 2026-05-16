@@ -15,6 +15,14 @@ const initialForm = {
   status: 'active',
 }
 
+function getAllowedObjectUsageOptions(propertyUsage) {
+  if (propertyUsage === 'mixed') {
+    return PROPERTY_USAGE_OPTIONS
+  }
+
+  return PROPERTY_USAGE_OPTIONS.filter((option) => option.value === propertyUsage)
+}
+
 function EmployeePropertyDetailsPage() {
   const { propertyId } = useParams()
   const [property, setProperty] = useState(null)
@@ -62,7 +70,14 @@ function EmployeePropertyDetailsPage() {
   }
 
   function openModal() {
-    setForm(initialForm)
+    const allowedUsageOptions = getAllowedObjectUsageOptions(property?.usage)
+
+    setForm({
+      ...initialForm,
+      postal_code: property?.postal_code || '',
+      city: property?.city || '',
+      type: allowedUsageOptions.length === 1 ? allowedUsageOptions[0].value : '',
+    })
     setError('')
     setIsModalOpen(true)
   }
@@ -108,12 +123,18 @@ function EmployeePropertyDetailsPage() {
       return
     }
 
+    if (!allowedObjectUsageOptions.some((option) => option.value === form.type)) {
+      setError('Die gewählte Nutzung ist für diese Liegenschaft nicht zulässig.')
+      setIsSaving(false)
+      return
+    }
+
     try {
       const response = await api.createPropertyObject({
         property_id: Number(propertyId),
         address: form.address.trim(),
-        postal_code: form.postal_code.trim() || null,
-        city: form.city.trim() || null,
+        postal_code: property?.postal_code || null,
+        city: property?.city || null,
         type: form.type,
         floors: form.floors ? Number(form.floors) : null,
         apartment_count: form.type === 'commercial' ? null : (form.apartment_count ? Number(form.apartment_count) : null),
@@ -138,6 +159,8 @@ function EmployeePropertyDetailsPage() {
   const ownerLabel = useMemo(() => {
     return (property?.owners ?? []).map((owner) => owner.name).filter(Boolean).join(', ') || '-'
   }, [property])
+
+  const allowedObjectUsageOptions = useMemo(() => getAllowedObjectUsageOptions(property?.usage), [property?.usage])
 
   const filteredObjects = useMemo(() => {
     return (property?.objects ?? []).filter((object) => {
@@ -177,19 +200,27 @@ function EmployeePropertyDetailsPage() {
           <div className="card mb-4">
             <div className="card-body">
               <div className="row g-3">
-                <div className="col-lg-3 col-sm-6">
+                <div className="col-xl-2 col-md-4 col-sm-6">
                   <div className="vergo-stat-label">Bezeichnung</div>
                   <div className="vergo-stat-value">{property.title || '-'}</div>
                 </div>
-                <div className="col-lg-3 col-sm-6">
+                <div className="col-xl-2 col-md-4 col-sm-6">
                   <div className="vergo-stat-label">Bewirtschaftung</div>
                   <div className="vergo-stat-value">{property.management || '-'}</div>
                 </div>
-                <div className="col-lg-3 col-sm-6">
+                <div className="col-xl-2 col-md-4 col-sm-6">
                   <div className="vergo-stat-label">Eigentümer</div>
                   <div className="vergo-stat-value">{ownerLabel}</div>
                 </div>
-                <div className="col-lg-3 col-sm-6">
+                <div className="col-xl-2 col-md-4 col-sm-6">
+                  <div className="vergo-stat-label">PLZ</div>
+                  <div className="vergo-stat-value">{property.postal_code || '-'}</div>
+                </div>
+                <div className="col-xl-2 col-md-4 col-sm-6">
+                  <div className="vergo-stat-label">Ort</div>
+                  <div className="vergo-stat-value">{property.city || '-'}</div>
+                </div>
+                <div className="col-xl-2 col-md-4 col-sm-6">
                   <div className="vergo-stat-label">Nutzung</div>
                   <div className="vergo-stat-value">{getOptionLabel(PROPERTY_USAGE_OPTIONS, property.usage)}</div>
                 </div>
@@ -317,13 +348,13 @@ function EmployeePropertyDetailsPage() {
                       <div className="col-md-3">
                         <div className="mb-3">
                           <label className="form-label">PLZ</label>
-                          <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                          <input className="form-control" name="postal_code" value={form.postal_code} readOnly disabled />
                         </div>
                       </div>
                       <div className="col-md-3">
                         <div className="mb-3">
                           <label className="form-label">Ort</label>
-                          <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                          <input className="form-control" name="city" value={form.city} readOnly disabled />
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -331,7 +362,7 @@ function EmployeePropertyDetailsPage() {
                           <label className="form-label">Nutzung</label>
                           <select className="form-select" name="type" value={form.type} onChange={handleChange}>
                             <option value="">Nutzung auswählen</option>
-                            {PROPERTY_USAGE_OPTIONS.map((option) => (
+                            {allowedObjectUsageOptions.map((option) => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </select>

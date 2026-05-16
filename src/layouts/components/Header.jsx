@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../lib/api'
 import { toggleSidebar } from '../../lib/sidebarLayout'
 
@@ -8,6 +9,7 @@ const HEADER_PLACEHOLDER_IMAGE = 'https://static.vecteezy.com/system/resources/t
 
 function Header({ user, showSidebarToggle = true }) {
   const { logout } = useAuth()
+  const { language, changeLanguage, languages, t } = useLanguage()
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -41,6 +43,15 @@ function Header({ user, showSidebarToggle = true }) {
 
   async function handleLogout() {
     await logout()
+  }
+
+  function handleLanguageChange(nextLanguage) {
+    if (nextLanguage === language) {
+      return
+    }
+
+    changeLanguage(nextLanguage)
+    window.location.reload()
   }
 
   async function handleMarkAllRead() {
@@ -102,6 +113,41 @@ function Header({ user, showSidebarToggle = true }) {
               <button
                 type="button"
                 className="nav-link nav-icon-hover border-0 bg-transparent position-relative"
+                id="vergo-language-dropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label={t('Sprache')}
+                title={t('Sprache')}
+              >
+                <i className="ti ti-language"></i>
+              </button>
+              <div
+                className="dropdown-menu dropdown-menu-end dropdown-menu-animate-up"
+                aria-labelledby="vergo-language-dropdown"
+              >
+                <div className="py-3 px-4 pb-2">
+                  <h5 className="mb-0 fs-5 fw-semibold">{t('Sprache')}</h5>
+                </div>
+                <div className="px-2 pb-2" data-no-translate="true">
+                  {languages.map((entry) => (
+                    <button
+                      key={entry.value}
+                      type="button"
+                      className={`dropdown-item d-flex align-items-center justify-content-between rounded-2${language === entry.value ? ' bg-light-primary text-primary' : ''}`}
+                      onClick={() => handleLanguageChange(entry.value)}
+                    >
+                      <span>{entry.label}</span>
+                      <span className="small fw-semibold">{entry.shortLabel}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </li>
+
+            <li className="nav-item dropdown">
+              <button
+                type="button"
+                className="nav-link nav-icon-hover border-0 bg-transparent position-relative"
                 id="vergo-notifications-dropdown"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
@@ -114,12 +160,12 @@ function Header({ user, showSidebarToggle = true }) {
                 aria-labelledby="vergo-notifications-dropdown"
               >
                 <div className="d-flex align-items-center justify-content-between py-3 px-4">
-                  <h5 className="mb-0 fs-5 fw-semibold">Benachrichtigungen</h5>
+                  <h5 className="mb-0 fs-5 fw-semibold">{t('Benachrichtigungen')}</h5>
                   <div className="d-flex align-items-center gap-2">
-                    <span className="badge bg-primary rounded-4 px-3 py-1 lh-sm">{unreadCount} neu</span>
+                    <span className="badge bg-primary rounded-4 px-3 py-1 lh-sm">{unreadCount} {t('neu')}</span>
                     {unreadCount > 0 ? (
                       <button type="button" className="btn btn-link text-primary p-0 border-0" onClick={handleMarkAllRead}>
-                        Als gelesen markieren
+                        {t('Als gelesen markieren')}
                       </button>
                     ) : null}
                   </div>
@@ -140,7 +186,7 @@ function Header({ user, showSidebarToggle = true }) {
                       </div>
                     </Link>
                   )) : (
-                    <div className="py-4 px-4 text-muted">Noch keine Benachrichtigungen.</div>
+                    <div className="py-4 px-4 text-muted">{t('Noch keine Benachrichtigungen.')}</div>
                   )}
                 </div>
               </div>
@@ -166,7 +212,7 @@ function Header({ user, showSidebarToggle = true }) {
               >
                 <div className="profile-dropdown position-relative">
                   <div className="py-3 px-4 pb-0">
-                    <h5 className="mb-0 fs-5 fw-semibold">Benutzerprofil</h5>
+                    <h5 className="mb-0 fs-5 fw-semibold">{t('Benutzerprofil')}</h5>
                   </div>
                   <div className="d-flex align-items-center py-4 mx-4 border-bottom">
                     <img src={user.avatar || HEADER_PLACEHOLDER_IMAGE} className="rounded-circle" width="80" height="80" alt={user.name} onError={handleAvatarError} />
@@ -181,14 +227,14 @@ function Header({ user, showSidebarToggle = true }) {
                         <i className="ti ti-layout-dashboard fs-6"></i>
                       </span>
                       <div className="w-75 d-inline-block v-middle ps-3">
-                        <h6 className="mb-1 fw-semibold">{user.homePath === '/orders' ? 'Aufträge' : 'Dashboard'}</h6>
-                        <span className="d-block text-dark">{user.homePath === '/orders' ? 'Zu den Aufträgen' : 'Zum Dashboard'}</span>
+                        <h6 className="mb-1 fw-semibold">{user.homePath === '/orders' ? t('Aufträge') : t('Dashboard')}</h6>
+                        <span className="d-block text-dark">{user.homePath === '/orders' ? t('Zu den Aufträgen') : t('Zum Dashboard')}</span>
                       </div>
                     </Link>
                   </div>
                   <div className="d-grid py-4 px-4 pt-3">
                     <button type="button" className="btn btn-outline-primary" onClick={handleLogout}>
-                      Abmelden
+                      {t('Abmelden')}
                     </button>
                   </div>
                 </div>

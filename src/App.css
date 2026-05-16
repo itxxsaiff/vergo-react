@@ -436,17 +436,6 @@ body {
 
 .vergo-filter-bar-compact {
   align-items: end;
-  justify-content: space-between;
-}
-
-.vergo-filter-bar-compact > [class*="col-"]:first-child {
-  flex: 0 1 620px;
-  max-width: 620px;
-}
-
-.vergo-filter-bar-compact > [class*="col-"]:last-child {
-  flex: 0 0 248px;
-  max-width: 248px;
 }
 
 .vergo-filter-bar-compact .btn {

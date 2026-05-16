@@ -1,5 +1,16 @@
 import Swal from 'sweetalert2'
 import 'sweetalert2/dist/sweetalert2.min.css'
+import { translateText } from '../i18n/translations'
+
+const LANGUAGE_STORAGE_KEY = 'vergo-language'
+
+function getCurrentLanguage() {
+  if (typeof window === 'undefined') {
+    return 'de'
+  }
+
+  return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) || 'de'
+}
 
 const swalWithTemplateButtons = Swal.mixin({
   customClass: {
@@ -10,13 +21,14 @@ const swalWithTemplateButtons = Swal.mixin({
 })
 
 export async function confirmDelete(itemLabel = 'record') {
+  const language = getCurrentLanguage()
   const result = await swalWithTemplateButtons.fire({
-    title: 'Bist du sicher?',
-    text: `Dadurch werden die Daten endgültig gelöscht. ${itemLabel}.`,
+    title: translateText('Bist du sicher?', language),
+    text: `${translateText('Dadurch werden die Daten endgültig gelöscht.', language)} ${translateText(itemLabel, language)}.`,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Ja, löschen!',
-    cancelButtonText: 'Abbrechen',
+    confirmButtonText: translateText('Ja, löschen!', language),
+    cancelButtonText: translateText('Abbrechen', language),
     reverseButtons: true,
   })
 
@@ -24,9 +36,10 @@ export async function confirmDelete(itemLabel = 'record') {
 }
 
 export function showDeleteSuccess(itemLabel = 'record') {
+  const language = getCurrentLanguage()
   return swalWithTemplateButtons.fire({
-    title: 'Gelöscht!',
-    text: `Das ${itemLabel} wurde erfolgreich gelöscht.`,
+    title: translateText('Gelöscht!', language),
+    text: `${translateText('Das', language)} ${translateText(itemLabel, language)} ${translateText('wurde erfolgreich gelöscht.', language)}`,
     icon: 'success',
     timer: 1600,
     showConfirmButton: false,

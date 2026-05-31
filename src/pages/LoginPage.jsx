@@ -36,7 +36,7 @@ function formatLiNumber(prefix, number) {
 function LoginPage() {
   const navigate = useNavigate()
   const secondInputRef = useRef(null)
-  const { isAuthenticated, requestManagerOtp, verifyManagerOtp } = useAuth()
+  const { isAuthenticated, requestUserOtp, verifyUserOtp } = useAuth()
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
   const [step, setStep] = useState('li')
   const [liPrefix, setLiPrefix] = useState('')
@@ -116,7 +116,7 @@ function LoginPage() {
     setError('')
 
     try {
-      const response = await requestManagerOtp({
+      const response = await requestUserOtp({
         li_number: liNumber,
         email: email.trim().toLowerCase(),
       })
@@ -136,7 +136,7 @@ function LoginPage() {
     setError('')
 
     try {
-      const loggedInUser = await verifyManagerOtp({
+      const loggedInUser = await verifyUserOtp({
         li_number: liNumber,
         email: email.trim().toLowerCase(),
         code,

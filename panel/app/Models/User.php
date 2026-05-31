@@ -29,6 +29,14 @@ class User extends Authenticatable
         'password',
         'phone',
         'status',
+        'access_level',
+        'owner_type',
+        'company_name',
+        'address',
+        'postal_code',
+        'city',
+        'domain_suffix',
+        'login_email',
     ];
 
     protected $hidden = [
@@ -69,5 +77,23 @@ class User extends Authenticatable
     public function serviceProvider(): HasOne
     {
         return $this->hasOne(ServiceProvider::class);
+    }
+
+    public function getDisplayNameAttribute(): string
+    {
+        if ($this->owner_type === 'company' && $this->company_name) {
+            return $this->company_name;
+        }
+
+        $personName = trim(implode(' ', array_filter([
+            $this->first_name,
+            $this->last_name,
+        ])));
+
+        if ($personName !== '') {
+            return $personName;
+        }
+
+        return $this->name;
     }
 }

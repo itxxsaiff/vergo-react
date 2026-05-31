@@ -38,14 +38,7 @@ class OwnerController extends Controller
                 ['label' => 'Owner'],
             );
 
-            return User::query()->create([
-                'role_id' => $ownerRole->id,
-                'name' => $request->string('name')->toString(),
-                'email' => $request->string('email')->toString(),
-                'password' => $request->string('password')->toString(),
-                'phone' => $request->input('phone'),
-                'status' => $request->input('status', 'active'),
-            ]);
+            return User::query()->create($this->buildOwnerPayload($request, $ownerRole->id));
         });
 
         $owner->load('role')->loadCount('ownedProperties');
@@ -58,13 +51,7 @@ class OwnerController extends Controller
         abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
         abort_unless($owner->role?->name === 'owner', 404);
 
-        $payload = $request->safe()->toArray();
-
-        if (empty($payload['password'])) {
-            unset($payload['password']);
-        }
-
-        $owner->update($payload);
+        $owner->update($this->buildOwnerPayload($request, $owner->role_id, $owner));
         $owner->load('role')->loadCount('ownedProperties');
 
         return new OwnerResource($owner);
@@ -80,5 +67,37 @@ class OwnerController extends Controller
         return response()->json([
             'message' => 'Owner deleted successfully.',
         ]);
+    }
+
+    private function buildOwnerPayload(Request $request, int $roleId, ?User $existingOwner = null): array
+    {
+        $ownerType = $request->string('owner_type')->toString();
+        $isCompany = $ownerType === 'company';
+        $companyName = $isCompany ? $request->string('company_name')->trim()->toString() : null;
+        $firstName = $isCompany ? null : $request->string('first_name')->trim()->toString();
+        $lastName = $isCompany ? null : $request->string('last_name')->trim()->toString();
+        $displayName = $isCompany
+            ? $companyName
+            : trim(implode(' ', array_filter([$firstName, $lastName])));
+        $ownerEmail = strtolower($request->string('email')->trim()->toString());
+        $domainSuffix = $isCompany ? ltrim(strtolower($request->string('domain_suffix')->trim()->toString()), '@') : null;
+
+        return [
+            'role_id' => $roleId,
+            'owner_type' => $ownerType,
+            'name' => $displayName,
+            'company_name' => $companyName,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'address' => $request->string('address')->trim()->toString(),
+            'postal_code' => $request->string('postal_code')->trim()->toString(),
+            'city' => $request->string('city')->trim()->toString(),
+            'domain_suffix' => $domainSuffix,
+            'login_email' => $ownerEmail,
+            'email' => $ownerEmail,
+            'phone' => $isCompany ? null : $request->string('phone')->trim()->toString(),
+            'status' => $request->input('status', $existingOwner?->status ?? 'active'),
+            'password' => $existingOwner?->password ?? bin2hex(random_bytes(16)),
+        ];
     }
 }

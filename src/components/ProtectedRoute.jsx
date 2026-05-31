@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-function ProtectedRoute({ allowRoles, allowManagerAccessModes, children }) {
+function ProtectedRoute({ allowRoles, allowNavigationRoles, allowManagerAccessModes, children }) {
   const location = useLocation()
   const { isAuthenticated, isBooting, user } = useAuth()
 
@@ -18,6 +18,10 @@ function ProtectedRoute({ allowRoles, allowManagerAccessModes, children }) {
   }
 
   if (allowRoles && !allowRoles.includes(user.role)) {
+    return <Navigate to={getFallbackPath()} replace />
+  }
+
+  if (allowNavigationRoles && !allowNavigationRoles.includes(user.navigationRole ?? user.navigation_role ?? user.role)) {
     return <Navigate to={getFallbackPath()} replace />
   }
 

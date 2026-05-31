@@ -25,7 +25,7 @@ function PropertyObjectsPage() {
   const [form, setForm] = useState(initialForm)
   const [filters, setFilters] = useState({
     search: '',
-    status: '',
+    type: '',
   })
   const [editingObjectId, setEditingObjectId] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -130,6 +130,19 @@ function PropertyObjectsPage() {
       setIsSaving(false)
       return
     }
+
+    if (form.type !== 'commercial' && !String(form.apartment_count ?? '').trim()) {
+      setError('Bitte geben Sie die Anzahl Wohnungen ein.')
+      setIsSaving(false)
+      return
+    }
+
+    if (form.type !== 'residential' && !String(form.commercial_area ?? '').trim()) {
+      setError('Bitte geben Sie die Quadratmeter Gewerbefläche ein.')
+      setIsSaving(false)
+      return
+    }
+
     try {
       const payload = {
         property_id: Number(form.property_id),
@@ -204,21 +217,16 @@ function PropertyObjectsPage() {
 
   const filteredObjects = objects.filter((object) => {
     const searchValue = [
-      object.name,
       object.address,
-      object.postal_code,
-      object.city,
-      object.type,
-      object.property?.li_number,
-      object.property?.title,
+      object.name,
     ]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
     const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
-    const statusMatch = !filters.status || String(object.status || '').toLowerCase() === filters.status.toLowerCase()
+    const typeMatch = !filters.type || String(object.type || '').toLowerCase() === filters.type.toLowerCase()
 
-    return searchMatch && statusMatch
+    return searchMatch && typeMatch
   })
 
   return (
@@ -256,18 +264,20 @@ function PropertyObjectsPage() {
                       name="search"
                       value={filters.search}
                       onChange={handleFilterChange}
-                      placeholder="Nach Adresse, Ort, Nutzung oder Immobilie suchen"
+                      placeholder="Nach Adresse suchen"
                     />
                   </div>
                 </div>
                 <div className="col-md-3">
                   <div className="vergo-select-input-wrap">
                     <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
-                    <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                      <option value="">All Status</option>
-                      <option value="active">Aktiv</option>
-                      <option value="inactive">Inaktiv</option>
-                      <option value="archived">Archiviert</option>
+                    <select aria-label="Nutzung filtern" className="form-select" name="type" value={filters.type} onChange={handleFilterChange}>
+                      <option value="">Alle Nutzungen</option>
+                      {PROPERTY_OBJECT_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -275,7 +285,7 @@ function PropertyObjectsPage() {
                   <button
                     type="button"
                     className="btn btn-light-primary vergo-filter-reset-btn"
-                    onClick={() => setFilters({ search: '', status: '' })}
+                    onClick={() => setFilters({ search: '', type: '' })}
                   >
                     <i className="ti ti-refresh me-1" aria-hidden="true"></i>
                     Zurücksetzen

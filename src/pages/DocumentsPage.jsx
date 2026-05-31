@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
@@ -16,11 +17,12 @@ const initialForm = {
 
 function DocumentsPage() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [documents, setDocuments] = useState([])
   const [properties, setProperties] = useState([])
   const [orders, setOrders] = useState([])
   const [form, setForm] = useState(initialForm)
-  const [filters, setFilters] = useState({ search: '', status: '' })
+  const [filters, setFilters] = useState({ search: '', status: '', type: searchParams.get('type') || '' })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -73,6 +75,13 @@ function DocumentsPage() {
     const { name, value } = event.target
     setFilters((current) => ({ ...current, [name]: value }))
   }
+
+  useEffect(() => {
+    setFilters((current) => ({
+      ...current,
+      type: searchParams.get('type') || '',
+    }))
+  }, [searchParams])
 
   function handleChange(event) {
     const { name, value, files } = event.target
@@ -154,7 +163,8 @@ function DocumentsPage() {
 
     const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
     const statusMatch = !filters.status || String(document.status || '').toLowerCase() === filters.status.toLowerCase()
-    return searchMatch && statusMatch
+    const typeMatch = !filters.type || String(document.type || '').toLowerCase() === filters.type.toLowerCase()
+    return searchMatch && statusMatch && typeMatch
   })
 
   return (

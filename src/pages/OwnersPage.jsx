@@ -1,14 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import PageContent from '../components/PageContent'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
 const initialForm = {
-  name: '',
+  owner_type: 'company',
+  company_name: '',
+  first_name: '',
+  last_name: '',
+  address: '',
+  postal_code: '',
+  city: '',
+  domain_suffix: '',
   email: '',
-  password: '',
   phone: '',
+}
+
+function getDisplayName(owner) {
+  if (owner.owner_type === 'company') {
+    return owner.company_name || owner.name || '-'
+  }
+
+  return [owner.first_name, owner.last_name].filter(Boolean).join(' ') || owner.name || '-'
 }
 
 function OwnersPage() {
@@ -41,13 +55,53 @@ function OwnersPage() {
     loadOwners()
   }, [])
 
+  const isCompany = form.owner_type === 'company'
+
+  const filteredOwners = useMemo(() => {
+    return owners.filter((owner) => {
+      const searchValue = [
+        owner.name,
+        owner.company_name,
+        owner.first_name,
+        owner.last_name,
+        owner.address,
+        owner.city,
+        owner.email,
+        owner.domain_suffix,
+        owner.phone,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
+      const statusMatch = !filters.status || String(owner.status || '').toLowerCase() === filters.status.toLowerCase()
+
+      return searchMatch && statusMatch
+    })
+  }, [filters.search, filters.status, owners])
+
   function handleChange(event) {
     const { name, value } = event.target
 
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }))
+    setForm((current) => {
+      const next = {
+        ...current,
+        [name]: value,
+      }
+
+      if (name === 'owner_type') {
+        if (value === 'company') {
+          next.first_name = ''
+          next.last_name = ''
+          next.phone = ''
+        } else {
+          next.company_name = ''
+          next.domain_suffix = ''
+        }
+      }
+
+      return next
+    })
   }
 
   function handleFilterChange(event) {
@@ -64,41 +118,19 @@ function OwnersPage() {
     setIsSaving(true)
     setError('')
 
-    if (!form.name.trim()) {
-      setError('Name des Eigentümers ist erforderlich.')
-      setIsSaving(false)
-      return
-    }
-
-    if (!form.email.trim()) {
-      setError('E-Mail des Eigentümers ist erforderlich.')
-      setIsSaving(false)
-      return
-    }
-
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-    if (!emailPattern.test(form.email.trim())) {
-      setError('Bitte geben Sie eine gültige E-Mail-Adresse des Eigentümers ein.')
-      setIsSaving(false)
-      return
-    }
-
-    if (!editingOwnerId && !form.password.trim()) {
-      setError('Für einen neuen Eigentümer ist ein Passwort erforderlich.')
-      setIsSaving(false)
-      return
-    }
-
-    if (form.password && form.password.length < 8) {
-      setError('Das Passwort muss mindestens 8 Zeichen lang sein.')
-      setIsSaving(false)
-      return
-    }
     try {
       const payload = {
-        ...form,
-        password: form.password || undefined,
+        owner_type: form.owner_type,
+        company_name: isCompany ? form.company_name.trim() : null,
+        first_name: isCompany ? null : form.first_name.trim(),
+        last_name: isCompany ? null : form.last_name.trim(),
+        address: form.address.trim(),
+        postal_code: form.postal_code.trim(),
+        city: form.city.trim(),
+        domain_suffix: isCompany ? form.domain_suffix.trim().replace(/^@+/, '').toLowerCase() : null,
+        email: form.email.trim().toLowerCase(),
+        phone: isCompany ? null : form.phone.trim(),
+        status: 'active',
       }
 
       if (editingOwnerId) {
@@ -123,9 +155,15 @@ function OwnersPage() {
   function handleEdit(owner) {
     setEditingOwnerId(owner.id)
     setForm({
-      name: owner.name,
-      email: owner.email,
-      password: '',
+      owner_type: owner.owner_type || 'company',
+      company_name: owner.company_name || '',
+      first_name: owner.first_name || '',
+      last_name: owner.last_name || '',
+      address: owner.address || '',
+      postal_code: owner.postal_code || '',
+      city: owner.city || '',
+      domain_suffix: owner.domain_suffix || '',
+      email: owner.email || '',
       phone: owner.phone || '',
     })
     setError('')
@@ -157,32 +195,17 @@ function OwnersPage() {
     }
   }
 
-  const filteredOwners = owners.filter((owner) => {
-    const searchValue = [
-      owner.name,
-      owner.email,
-      owner.phone,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-    const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
-    const statusMatch = !filters.status || String(owner.status || '').toLowerCase() === filters.status.toLowerCase()
-
-    return searchMatch && statusMatch
-  })
-
   return (
     <PageContent
       title="Eigentümer"
-      subtitle="Erstellen Sie Eigentümerkonten und verfolgen Sie die ihnen zugewiesenen Objekte."
+      subtitle="Erstellen Sie Eigentümer als Firma oder Privatperson und hinterlegen Sie nur die für den Login benötigten Stammdaten."
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Eigentümer' },
       ]}
     >
       <div className="row">
-        <div className="col-xl-4">
+        <div className="col-xl-5">
           <div className="card">
             <div className="card-body">
               <h4 className="card-title mb-4">Eigentümer erstellen</h4>
@@ -190,8 +213,59 @@ function OwnersPage() {
 
               <form onSubmit={handleSubmit}>
                 <div className="mb-3">
-                  <label className="form-label">Name</label>
-                  <input className="form-control" name="name" value={form.name} onChange={handleChange} />
+                  <label className="form-label d-block">Typ</label>
+                  <div className="d-flex flex-wrap gap-3">
+                    <label className="form-check mb-0">
+                      <input className="form-check-input" type="radio" name="owner_type" value="company" checked={form.owner_type === 'company'} onChange={handleChange} />
+                      <span className="form-check-label ms-2">Firma</span>
+                    </label>
+                    <label className="form-check mb-0">
+                      <input className="form-check-input" type="radio" name="owner_type" value="private_individual" checked={form.owner_type === 'private_individual'} onChange={handleChange} />
+                      <span className="form-check-label ms-2">Privatperson</span>
+                    </label>
+                  </div>
+                </div>
+
+                {isCompany ? (
+                  <div className="mb-3">
+                    <label className="form-label">Firmenname</label>
+                    <input className="form-control" name="company_name" value={form.company_name} onChange={handleChange} />
+                  </div>
+                ) : (
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">Vorname</label>
+                        <input className="form-control" name="first_name" value={form.first_name} onChange={handleChange} />
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">Nachname</label>
+                        <input className="form-control" name="last_name" value={form.last_name} onChange={handleChange} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mb-3">
+                  <label className="form-label">Adresse</label>
+                  <input className="form-control" name="address" value={form.address} onChange={handleChange} />
+                </div>
+
+                <div className="row">
+                  <div className="col-md-4">
+                    <div className="mb-3">
+                      <label className="form-label">PLZ</label>
+                      <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                    </div>
+                  </div>
+                  <div className="col-md-8">
+                    <div className="mb-3">
+                      <label className="form-label">Ort</label>
+                      <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mb-3">
@@ -199,14 +273,24 @@ function OwnersPage() {
                   <input type="email" className="form-control" name="email" value={form.email} onChange={handleChange} />
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Telefon</label>
-                  <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
-                </div>
+                {isCompany ? (
+                  <div className="mb-3">
+                    <label className="form-label">Domain-Endung</label>
+                    <input className="form-control" name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+                  </div>
+                ) : (
+                  <> 
+                    <div className="mb-3">
+                      <label className="form-label">Telefon</label>
+                      <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
+                    </div>
+                  </>
+                )}
 
-                <div className="mb-3">
-                  <label className="form-label">Passwort</label>
-                  <input type="password" className="form-control" name="password" value={form.password} onChange={handleChange} />
+                <div className="alert alert-light border small">
+                  {isCompany
+                    ? 'Firmen-Eigentümer melden sich mit genau dieser E-Mail-Adresse und einem Code per E-Mail an. Die Domain-Endung dient nur zur Stammdatenpflege. Ein Passwort wird nicht gesetzt.'
+                    : 'Privatpersonen melden sich mit genau dieser E-Mail-Adresse und einem Code per E-Mail an. Ein Passwort wird nicht gesetzt.'}
                 </div>
 
                 {error ? <div className="alert alert-danger py-2">{error}</div> : null}
@@ -226,7 +310,7 @@ function OwnersPage() {
           </div>
         </div>
 
-        <div className="col-xl-8">
+        <div className="col-xl-7">
           <div className="card">
             <div className="px-4 py-3 border-bottom">
               <h5 className="card-title fw-semibold mb-0 lh-sm">Eigentümerliste</h5>
@@ -243,7 +327,7 @@ function OwnersPage() {
                       name="search"
                       value={filters.search}
                       onChange={handleFilterChange}
-                      placeholder="Suche nach Name, E-Mail oder Telefon"
+                      placeholder="Suche nach Name, Domain, E-Mail oder Ort"
                     />
                   </div>
                 </div>
@@ -255,7 +339,6 @@ function OwnersPage() {
                       <option value="">All Status</option>
                       <option value="active">Aktiv</option>
                       <option value="inactive">Inaktiv</option>
-                      <option value="pending">Ausstehend</option>
                     </select>
                   </div>
                 </div>
@@ -278,10 +361,11 @@ function OwnersPage() {
                   <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                     <thead className="text-dark fs-4">
                       <tr>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Typ</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Name</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">E-Mail</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Telefon</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Objekte</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Login</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Liegenschaften</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
                         <th width="90"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
                       </tr>
@@ -289,9 +373,10 @@ function OwnersPage() {
                     <tbody>
                       {filteredOwners.map((owner) => (
                         <tr key={owner.id}>
-                          <td>{owner.name}</td>
-                          <td>{owner.email}</td>
-                          <td>{owner.phone || '-'}</td>
+                          <td>{owner.owner_type === 'company' ? 'Firma' : 'Privatperson'}</td>
+                          <td className="fw-semibold">{getDisplayName(owner)}</td>
+                          <td>{owner.owner_type === 'company' ? `@${owner.domain_suffix || '-'}` : owner.email || '-'}</td>
+                          <td>{[owner.postal_code, owner.city].filter(Boolean).join(' ') || '-'}</td>
                           <td>{owner.properties_count ?? 0}</td>
                           <td>
                             <span className={getStatusBadgeClass(owner.status)}>
@@ -323,7 +408,7 @@ function OwnersPage() {
 
                       {filteredOwners.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="text-center text-muted py-4">
+                          <td colSpan="7" className="text-center text-muted py-4">
                             Keine Eigentümer gefunden.
                           </td>
                         </tr>

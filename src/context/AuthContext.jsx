@@ -6,6 +6,20 @@ const TOKEN_STORAGE_KEY = 'vergo_auth_token'
 
 const AuthContext = createContext(null)
 
+function normalizeUser(user) {
+  if (!user) {
+    return null
+  }
+
+  return {
+    ...user,
+    accessLevel: user.accessLevel ?? user.access_level ?? 'admin',
+    navigationRole: user.navigationRole ?? user.navigation_role ?? user.role,
+    roleLabel: user.roleLabel ?? user.role_label ?? user.role,
+    homePath: user.homePath ?? user.home_path ?? '/dashboard',
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(() => {
@@ -26,7 +40,7 @@ export function AuthProvider({ children }) {
 
     api.getMe()
       .then((response) => {
-        setUser(response.data ?? null)
+        setUser(normalizeUser(response.data ?? null))
       })
       .catch(() => {
         localStorage.removeItem(TOKEN_STORAGE_KEY)
@@ -41,7 +55,7 @@ export function AuthProvider({ children }) {
 
   function applySession(authPayload) {
     const nextToken = authPayload.token
-    const nextUser = authPayload.user
+    const nextUser = normalizeUser(authPayload.user)
 
     localStorage.setItem(TOKEN_STORAGE_KEY, nextToken)
     setAuthToken(nextToken)

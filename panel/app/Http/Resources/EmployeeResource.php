@@ -16,6 +16,7 @@ class EmployeeResource extends JsonResource
             'phone' => $this->phone,
             'status' => $this->status,
             'role' => $this->role?->name,
+            'access_level' => $this->access_level ?? 'admin',
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
     }

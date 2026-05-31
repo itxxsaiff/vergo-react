@@ -7,6 +7,7 @@ import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib
 
 const initialForm = {
   email: '',
+  li_number: '',
   code: '',
 }
 
@@ -34,7 +35,11 @@ function EmailOtpLoginPage() {
 
     setForm((current) => ({
       ...current,
-      [name]: name === 'code' ? value.replace(/\D/g, '').slice(0, 6) : value,
+      [name]: name === 'code'
+        ? value.replace(/\D/g, '').slice(0, 6)
+        : name === 'li_number'
+          ? value.slice(0, 20)
+          : value,
     }))
   }
 
@@ -44,11 +49,16 @@ function EmailOtpLoginPage() {
 
     try {
       const normalizedEmail = form.email.trim().toLowerCase()
-      const response = await requestUserOtp({ email: normalizedEmail })
+      const normalizedLiNumber = form.li_number.trim()
+      const response = await requestUserOtp({
+        email: normalizedEmail,
+        li_number: normalizedLiNumber || undefined,
+      })
 
       setForm((current) => ({
         ...current,
         email: response.data?.email ?? normalizedEmail,
+        li_number: response.data?.li_number ?? normalizedLiNumber,
         code: '',
       }))
       setOtpSentMessage(`Wir haben einen Anmeldecode an ${response.data?.email ?? normalizedEmail} gesendet.`)
@@ -73,6 +83,7 @@ function EmailOtpLoginPage() {
     try {
       const loggedInUser = await verifyUserOtp({
         email: form.email.trim().toLowerCase(),
+        li_number: form.li_number.trim() || undefined,
         code: form.code,
       })
       sessionStorage.removeItem(EMAIL_OTP_LOGIN_ACCESS_KEY)
@@ -88,6 +99,7 @@ function EmailOtpLoginPage() {
     setStep('email')
     setForm((current) => ({
       ...current,
+      li_number: '',
       code: '',
     }))
     setOtpSentMessage('')
@@ -96,8 +108,8 @@ function EmailOtpLoginPage() {
 
   const contentByStep = {
     email: {
-      title: 'Benutzeranmeldung',
-      subtitle: 'Geben Sie Ihre E-Mail-Adresse ein, um einen Login-Code zu erhalten.',
+      title: 'Eigentümeranmeldung',
+      subtitle: 'Geben Sie Ihre E-Mail-Adresse ein. Optional können Sie zusätzlich eine LI-Nummer angeben.',
     },
     otp: {
       title: 'Code eingeben',
@@ -116,6 +128,17 @@ function EmailOtpLoginPage() {
     >
       {step === 'email' ? (
         <form onSubmit={handleRequestOtp}>
+          <div className="mb-3">
+            <label className="form-label">LI-Nummer (optional)</label>
+            <input
+              className="form-control"
+              name="li_number"
+              value={form.li_number}
+              onChange={handleChange}
+              placeholder="Li-10001"
+            />
+          </div>
+
           <div className="mb-3">
             <label className="form-label">E-Mail</label>
             <input
@@ -147,6 +170,18 @@ function EmailOtpLoginPage() {
 
       {step === 'otp' ? (
         <form onSubmit={handleVerifyOtp}>
+          {form.li_number ? (
+            <div className="mb-3">
+              <label className="form-label">LI-Nummer</label>
+              <input
+                className="form-control"
+                name="li_number"
+                value={form.li_number}
+                readOnly
+              />
+            </div>
+          ) : null}
+
           <div className="mb-3">
             <label className="form-label">E-Mail</label>
             <div className="input-group">

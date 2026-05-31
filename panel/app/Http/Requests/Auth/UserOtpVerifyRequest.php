@@ -15,6 +15,7 @@ class UserOtpVerifyRequest extends FormRequest
     {
         return [
             'email' => ['required', 'email'],
+            'li_number' => ['nullable', 'string', 'max:20'],
             'code' => ['required', 'string', 'size:6'],
         ];
     }

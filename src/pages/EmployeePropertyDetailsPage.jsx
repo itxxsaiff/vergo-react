@@ -129,6 +129,18 @@ function EmployeePropertyDetailsPage() {
       return
     }
 
+    if (form.type !== 'commercial' && !String(form.apartment_count ?? '').trim()) {
+      setError('Bitte geben Sie die Anzahl Wohnungen ein.')
+      setIsSaving(false)
+      return
+    }
+
+    if (form.type !== 'residential' && !String(form.commercial_area ?? '').trim()) {
+      setError('Bitte geben Sie die Quadratmeter Gewerbefläche ein.')
+      setIsSaving(false)
+      return
+    }
+
     try {
       const response = await api.createPropertyObject({
         property_id: Number(propertyId),
@@ -167,9 +179,6 @@ function EmployeePropertyDetailsPage() {
       const searchValue = [
         object.address,
         object.name,
-        object.postal_code,
-        object.city,
-        object.type,
       ]
         .filter(Boolean)
         .join(' ')
@@ -240,7 +249,7 @@ function EmployeePropertyDetailsPage() {
                       name="search"
                       value={filters.search}
                       onChange={handleFilterChange}
-                      placeholder="Nach Adresse, PLZ, Ort oder Nutzung suchen"
+                      placeholder="Nach Adresse suchen"
                     />
                   </div>
                 </div>

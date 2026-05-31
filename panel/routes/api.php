@@ -31,6 +31,12 @@ Route::prefix('auth')->group(function (): void {
     Route::post('/manager/verify-otp', [AuthController::class, 'verifyManagerOtp']);
 });
 
+Route::get('test-api', function(){
+    return response()->json([
+        "working"
+    ]);
+});
+
 Route::get('/cron/run-ai-analysis', [CronController::class, 'runAiAnalysis']);
 
 Route::middleware('auth:sanctum')->group(function (): void {

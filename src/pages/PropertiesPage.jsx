@@ -13,18 +13,10 @@ const initialForm = {
   postal_code: '',
   city: '',
   usage: '',
-  manager_domains: '',
   lot_area: '',
 }
 
-const requiredFields = ['title', 'management', 'postal_code', 'city', 'usage', 'manager_domains', 'lot_area']
-
-function normalizeDomains(value) {
-  return value
-    .split(/[\n,]/)
-    .map((domain) => domain.trim().toLowerCase())
-    .filter(Boolean)
-}
+const requiredFields = ['title', 'management', 'postal_code', 'city', 'usage', 'lot_area']
 
 function getOwnerCompanyLabel(property) {
   const ownerNames = (property?.owners ?? [])
@@ -154,7 +146,6 @@ function PropertiesPage() {
       postal_code: property.postal_code || '',
       city: property.city || '',
       usage: property.usage || '',
-      manager_domains: (property.manager_domains ?? []).map((domain) => domain.domain).join(', '),
       lot_area: property.lot_area ?? '',
     })
     setError('')
@@ -210,7 +201,6 @@ function PropertiesPage() {
         postal_code: form.postal_code.trim() || null,
         city: form.city.trim() || null,
         usage: form.usage,
-        manager_domains: normalizeDomains(form.manager_domains),
         lot_area: form.lot_area ? Number(form.lot_area) : null,
         size: form.lot_area ? Number(form.lot_area) : null,
         status: 'active',
@@ -263,7 +253,7 @@ function PropertiesPage() {
       title="Liegenschaften"
       subtitle={
         isAdmin
-          ? 'Erstellen Sie Liegenschaften mit Eigentümer, Nutzung und Domains und öffnen Sie anschließend die zugehörigen Objektkarten.'
+          ? 'Erstellen Sie Liegenschaften mit Eigentümer und Nutzung und öffnen Sie anschließend die zugehörigen Objektkarten.'
           : 'Pflegen Sie Ihre Liegenschaften und springen Sie von der Übersicht direkt in die Objektansicht.'
       }
       breadcrumbs={[
@@ -401,7 +391,7 @@ function PropertiesPage() {
                 <div className="modal-header border-bottom">
                   <div>
                     <h5 className="modal-title mb-1">{editingProperty ? 'Liegenschaft bearbeiten' : 'Liegenschaft erstellen'}</h5>
-                    <p className="text-muted mb-0">Pflegen Sie die Stammdaten der Liegenschaft inklusive Eigentümer, Nutzung und Domains.</p>
+                    <p className="text-muted mb-0">Pflegen Sie die Stammdaten der Liegenschaft inklusive Eigentümer und Nutzung.</p>
                   </div>
                   <button type="button" className="btn-close" aria-label="Schließen" onClick={closeModal}></button>
                 </div>
@@ -465,19 +455,6 @@ function PropertiesPage() {
                         <div className="mb-3">
                           <label className="form-label">Grundstücksfläche</label>
                           <input className={`form-control${fieldErrors.lot_area ? ' is-invalid' : ''}`} name="lot_area" type="number" min="0" step="0.01" value={form.lot_area} onChange={handleChange} />
-                        </div>
-                      </div>
-                      <div className="col-12">
-                        <div className="mb-0">
-                          <label className="form-label">Domains</label>
-                          <textarea
-                            className={`form-control${fieldErrors.manager_domains ? ' is-invalid' : ''}`}
-                            rows="3"
-                            name="manager_domains"
-                            value={form.manager_domains}
-                            onChange={handleChange}
-                            placeholder="beispiel.de, vergo.ch"
-                          />
                         </div>
                       </div>
                     </div>

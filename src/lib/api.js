@@ -1,5 +1,5 @@
 const LOCAL_API_BASE_URL = '/api'
-const REMOTE_API_BASE_URL = 'https://vergo.huzmark.tech/panel/public/api'
+const REMOTE_API_BASE_URL = 'https://work.vergo.ch/panel/public/api'
 
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1'])
 

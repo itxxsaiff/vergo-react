@@ -23,6 +23,7 @@ class UpdateEmployeeRequest extends FormRequest
             'password' => ['sometimes', 'nullable', 'string', Password::min(8)],
             'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             'status' => ['sometimes', 'nullable', 'in:active,inactive'],
+            'access_level' => ['sometimes', 'nullable', 'in:admin,power_user'],
         ];
     }
 
@@ -34,6 +35,7 @@ class UpdateEmployeeRequest extends FormRequest
             'email.email' => 'Please enter a valid employee email address.',
             'email.unique' => 'This employee email is already in use.',
             'status.in' => 'Please select a valid employee status.',
+            'access_level.in' => 'Please select a valid employee access level.',
         ];
     }
 }

@@ -9,8 +9,8 @@ const TYPE_OPTIONS = [
   {
     value: 'email',
     icon: 'ti ti-user',
-    title: 'E-Mail-Anmeldung',
-    description: 'Mit E-Mail und OTP direkt zu Ihren Aufträgen anmelden.',
+    title: 'Eigentümeranmeldung',
+    description: 'Mit E-Mail und OTP als Eigentümer anmelden, optional mit LI-Nummer.',
   },
   {
     value: 'property',

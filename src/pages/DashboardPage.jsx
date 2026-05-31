@@ -295,7 +295,6 @@ function DashboardPage({ role }) {
       title={isManager ? '' : 'Vergo Dashboard'}
       subtitle={`Willkommen im Dashboard als ${role}.`}
       variant="dashboard"
-      breadcrumbs={isManager ? [] : ['Dashboard']}
     >
       {isManager ? (
         <>

@@ -45,6 +45,7 @@ class EmployeeController extends Controller
                 'password' => $request->string('password')->toString(),
                 'phone' => $request->input('phone'),
                 'status' => $request->input('status', 'active'),
+                'access_level' => $request->input('access_level', 'admin'),
             ]);
         });
 

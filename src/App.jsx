@@ -233,7 +233,7 @@ function App() {
         <Route
           path="employees"
           element={
-            <ProtectedRoute allowRoles={['admin']}>
+            <ProtectedRoute allowRoles={['admin', 'employee']} allowNavigationRoles={['admin', 'employee_power_user']}>
               <EmployeesPage />
             </ProtectedRoute>
           }
@@ -241,7 +241,7 @@ function App() {
         <Route
           path="property-managers"
           element={
-            <ProtectedRoute allowRoles={['admin']}>
+            <ProtectedRoute allowRoles={['admin', 'employee']}>
               <PropertyManagersPage />
             </ProtectedRoute>
           }
@@ -257,7 +257,7 @@ function App() {
         <Route
           path="documents"
           element={
-            <ProtectedRoute allowRoles={['admin', 'owner', 'manager']} allowManagerAccessModes={['full']}>
+            <ProtectedRoute allowRoles={['admin', 'owner', 'manager', 'employee']} allowManagerAccessModes={['full']}>
               <DocumentsPage />
             </ProtectedRoute>
           }

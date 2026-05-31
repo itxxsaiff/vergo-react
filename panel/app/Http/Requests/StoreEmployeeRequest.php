@@ -20,6 +20,7 @@ class StoreEmployeeRequest extends FormRequest
             'password' => ['required', 'string', Password::min(8)],
             'phone' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', 'in:active,inactive'],
+            'access_level' => ['nullable', 'in:admin,power_user'],
         ];
     }
 
@@ -32,6 +33,7 @@ class StoreEmployeeRequest extends FormRequest
             'email.unique' => 'This employee email is already in use.',
             'password.required' => 'Password is required for a new employee.',
             'status.in' => 'Please select a valid employee status.',
+            'access_level.in' => 'Please select a valid employee access level.',
         ];
     }
 }

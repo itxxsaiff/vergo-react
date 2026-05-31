@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Mail\OwnerOtpMail;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\ManagerLiLookupRequest;
@@ -26,9 +27,14 @@ class AuthController extends Controller
     public function requestUserOtp(UserOtpRequest $request): JsonResponse
     {
         $email = $request->string('email')->trim()->lower()->toString();
-        [$property, $message, $status] = $this->resolvePropertyForEmailLogin($email);
+        $liNumber = $request->string('li_number')->trim()->toString();
+        [$owner, $property, $message, $status] = $this->resolveOwnerForOtp($email, $liNumber);
 
-        if (! $property) {
+        if (! $owner) {
+            [$property, $message, $status] = $this->resolvePropertyForEmailLogin($email, $liNumber ?: null);
+        }
+
+        if (! $owner && ! $property) {
             return response()->json([
                 'message' => $message,
             ], $status);
@@ -36,33 +42,43 @@ class AuthController extends Controller
 
         ManagerLoginCode::query()
             ->where('email', $email)
-            ->where('purpose', 'email_login')
+            ->where('purpose', $owner ? 'owner_login' : 'email_login')
             ->whereNull('consumed_at')
             ->delete();
 
         $code = (string) random_int(100000, 999999);
 
         $loginCode = ManagerLoginCode::query()->create([
-            'property_id' => $property->id,
+            'property_id' => $property?->id,
+            'owner_id' => $owner?->id,
             'email' => $email,
             'code' => Hash::make($code),
-            'purpose' => 'email_login',
+            'purpose' => $owner ? 'owner_login' : 'email_login',
             'expires_at' => now()->addMinutes(10),
             'ip_address' => $request->ip(),
         ]);
 
         try {
-            Mail::to($email)->send(new ManagerOtpMail(
-                code: $code,
-                liNumber: $property->li_number,
-                propertyTitle: $property->title,
-            ));
+            if ($owner) {
+                Mail::to($email)->send(new OwnerOtpMail(
+                    code: $code,
+                    ownerName: $owner->display_name,
+                    liNumber: $property?->li_number,
+                ));
+            } else {
+                Mail::to($email)->send(new ManagerOtpMail(
+                    code: $code,
+                    liNumber: $property->li_number,
+                    propertyTitle: $property->title,
+                ));
+            }
         } catch (Throwable $exception) {
             $loginCode->delete();
 
-            Log::error('Vergo email-only manager OTP email failed', [
+            Log::error($owner ? 'Vergo owner OTP email failed' : 'Vergo email-only manager OTP email failed', [
                 'email' => $email,
-                'property_id' => $property->id,
+                'property_id' => $property?->id,
+                'owner_id' => $owner?->id,
                 'error' => $exception->getMessage(),
             ]);
 
@@ -75,8 +91,9 @@ class AuthController extends Controller
             'message' => 'OTP sent successfully.',
             'data' => [
                 'email' => $email,
-                'li_number' => $property->li_number,
-                'property_title' => $property->title,
+                'li_number' => $property?->li_number,
+                'property_title' => $property?->title,
+                'owner_name' => $owner?->display_name,
             ],
         ]);
     }
@@ -249,12 +266,13 @@ class AuthController extends Controller
     public function verifyUserOtp(UserOtpVerifyRequest $request): JsonResponse
     {
         $email = $request->string('email')->trim()->lower()->toString();
+        $liNumber = $request->string('li_number')->trim()->toString();
         $plainCode = $request->string('code')->toString();
 
         $loginCode = ManagerLoginCode::query()
-            ->with('property')
+            ->with(['property', 'owner.role'])
             ->where('email', $email)
-            ->where('purpose', 'email_login')
+            ->whereIn('purpose', ['email_login', 'owner_login'])
             ->whereNull('consumed_at')
             ->where('expires_at', '>', now())
             ->latest()
@@ -264,6 +282,36 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Invalid or expired OTP code.',
             ], 422);
+        }
+
+        if ($loginCode->purpose === 'owner_login') {
+            $owner = $loginCode->owner;
+
+            if (! $owner || $owner->status !== 'active') {
+                return response()->json([
+                    'message' => 'This owner account is inactive.',
+                ], 403);
+            }
+
+            if ($liNumber !== '' && ! $owner->ownedProperties()->where('properties.li_number', $liNumber)->exists()) {
+                return response()->json([
+                    'message' => 'The selected LI number is not linked to this owner.',
+                ], 422);
+            }
+
+            $loginCode->update([
+                'consumed_at' => now(),
+            ]);
+
+            $token = $owner->createToken('vergo-owner')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Login successful.',
+                'data' => [
+                    'token' => $token,
+                    'user' => $this->transformUserActor($owner),
+                ],
+            ]);
         }
 
         $property = $loginCode->property;
@@ -327,8 +375,38 @@ class AuthController extends Controller
         ]);
     }
 
-    private function resolvePropertyForEmailLogin(string $email): array
+    private function resolvePropertyForEmailLogin(string $email, ?string $liNumber = null): array
     {
+        if ($liNumber) {
+            $property = Property::query()
+                ->where('li_number', $liNumber)
+                ->first();
+
+            if (! $property) {
+                return [null, 'No property was found for the provided LI number.', 422];
+            }
+
+            $profileMatch = $property->managerProfiles()
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->exists();
+
+            if ($profileMatch) {
+                return [$property, null, 200];
+            }
+
+            $domain = strtolower((string) str($email)->after('@'));
+            $domainMatch = $property->managerDomains()
+                ->where('domain', $domain)
+                ->where('is_active', true)
+                ->exists();
+
+            if (! $domainMatch) {
+                return [null, 'This email is not linked to the selected LI number.', 422];
+            }
+
+            return [$property, null, 200];
+        }
+
         $profileMatches = Property::query()
             ->select('properties.*')
             ->join('property_manager_profiles', 'property_manager_profiles.property_id', '=', 'properties.id')
@@ -365,9 +443,49 @@ class AuthController extends Controller
         return [$domainMatches->first(), null, 200];
     }
 
+    private function resolveOwnerForOtp(string $email, ?string $liNumber = null): array
+    {
+        $property = null;
+
+        if ($liNumber) {
+            $property = Property::query()
+                ->where('li_number', $liNumber)
+                ->first();
+
+            if (! $property) {
+                return [null, null, 'No property was found for the provided LI number.', 422];
+            }
+        }
+
+        $matchingOwner = User::query()
+            ->with('role')
+            ->whereHas('role', fn ($query) => $query->where('name', 'owner'))
+            ->whereRaw('LOWER(login_email) = ?', [$email])
+            ->first();
+
+        if ($matchingOwner) {
+            if ($property && ! $matchingOwner->ownedProperties()->where('properties.id', $property->id)->exists()) {
+                return [null, null, 'This email is not linked to the selected LI number.', 422];
+            }
+
+            return [$matchingOwner, $property, null, 200];
+        }
+
+        if ($property) {
+            return [null, null, 'This email is not linked to the selected LI number.', 422];
+        }
+
+        return [null, null, null, 422];
+    }
+
     private function transformUserActor(User $user): array
     {
         $role = $user->role?->name ?? 'user';
+        $accessLevel = $user->access_level ?: 'admin';
+        $navigationRole = $role === 'employee'
+            ? ($accessLevel === 'power_user' ? 'employee_power_user' : 'employee_admin')
+            : $role;
+        $homePath = $role === 'owner' ? '/properties' : '/dashboard';
 
         return [
             'id' => $user->id,
@@ -376,7 +494,10 @@ class AuthController extends Controller
             'email' => $user->email,
             'image' => $user->image,
             'role' => $role,
+            'access_level' => $accessLevel,
+            'navigation_role' => $navigationRole,
             'status' => $user->status,
+            'home_path' => $homePath,
         ];
     }
 

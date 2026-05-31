@@ -12,6 +12,7 @@ class ManagerLoginCode extends Model
 
     protected $fillable = [
         'property_id',
+        'owner_id',
         'email',
         'code',
         'purpose',
@@ -31,5 +32,10 @@ class ManagerLoginCode extends Model
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_id');
     }
 }

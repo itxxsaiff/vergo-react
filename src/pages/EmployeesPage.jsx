@@ -10,6 +10,7 @@ const initialForm = {
   password: '',
   phone: '',
   status: 'active',
+  access_level: 'admin',
 }
 
 function EmployeesPage() {
@@ -160,6 +161,7 @@ function EmployeesPage() {
       password: '',
       phone: employee.phone || '',
       status: employee.status || 'active',
+      access_level: employee.access_level || 'admin',
     })
     setError('')
     setIsModalOpen(true)
@@ -266,6 +268,7 @@ function EmployeesPage() {
                     <th><h6 className="fs-4 fw-semibold mb-0">Name</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">E-Mail</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Telefon</h6></th>
+                    <th><h6 className="fs-4 fw-semibold mb-0">Zugriff</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
                     <th width="90"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
                   </tr>
@@ -276,6 +279,7 @@ function EmployeesPage() {
                       <td>{employee.name}</td>
                       <td>{employee.email}</td>
                       <td>{employee.phone || '-'}</td>
+                      <td>{employee.access_level === 'power_user' ? 'Power User' : 'Admin'}</td>
                       <td>
                         <span className={getStatusBadgeClass(employee.status)}>
                           {formatStatusLabel(employee.status)}
@@ -306,7 +310,7 @@ function EmployeesPage() {
 
                   {filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="text-center text-muted py-4">
+                      <td colSpan="6" className="text-center text-muted py-4">
                         Keine Mitarbeiter gefunden.
                       </td>
                     </tr>
@@ -352,6 +356,14 @@ function EmployeesPage() {
                         <select className="form-select" name="status" value={form.status} onChange={handleChange}>
                           <option value="active">Aktiv</option>
                           <option value="inactive">Inaktiv</option>
+                        </select>
+                      </div>
+
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Zugriffsebene</label>
+                        <select className="form-select" name="access_level" value={form.access_level} onChange={handleChange}>
+                          <option value="admin">Admin</option>
+                          <option value="power_user">Power User</option>
                         </select>
                       </div>
 

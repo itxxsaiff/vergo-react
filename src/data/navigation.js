@@ -1,74 +1,106 @@
 export const navigationByRole = {
   admin: [
     {
-      title: 'Dashboard',
-      icon: 'ti ti-layout-dashboard',
-      href: '/dashboard',
-    },
-    {
-      title: 'Immobilienverwaltung',
+      title: 'Immobilien',
       icon: 'ti ti-building-estate',
       children: [
         { title: 'Liegenschaften', href: '/properties' },
-        { title: 'Eigentümer', href: '/owners' },
-        { title: 'Eigenschaftenobjekte', href: '/property-objects' },
-      ],
-    },
-    {
-      title: 'Bestellungen & Gebote',
-      icon: 'ti ti-file-invoice',
-      children: [
-        { title: 'Bestellungen', href: '/orders' },
-        { title: 'Gebote', href: '/bids' },
-        { title: 'Preisvergleich', href: '/price-comparison' },
-      ],
-    },
-    {
-      title: 'Dokumente & KI',
-      icon: 'ti ti-file-analytics',
-      children: [
-        { title: 'Unterlagen', href: '/documents' },
-        { title: 'KI-Analyse', href: '/ai-analysis' },
-        { title: 'Hintergrundjobs', href: '/background-jobs' },
       ],
     },
     {
       title: 'Benutzer',
       icon: 'ti ti-users',
       children: [
+        { title: 'Eigentümer', href: '/owners' },
+        { title: 'Bewirtschaftung', href: '/property-managers' },
         { title: 'Dienstleister', href: '/service-providers' },
-        { title: 'Immobilienverwalter', href: '/property-managers' },
-        { title: 'Erlaubte Domänen', href: '/allowed-domains' },
-        { title: 'Mitarbeiter', href: '/employees' },
+      ],
+    },
+    {
+      title: 'Dokumente',
+      icon: 'ti ti-file-analytics',
+      children: [
+        { title: 'Verträge', href: '/documents?type=contract' },
+        { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
     },
   ],
-  employee: [
+  employee_admin: [
     {
-      title: 'Dashboard',
-      icon: 'ti ti-layout-dashboard',
-      href: '/dashboard',
-    },
-    {
-      title: 'Liegenschaften',
+      title: 'Immobilien',
       icon: 'ti ti-building-estate',
-      href: '/properties',
       children: [
-        { title: 'Objekte', href: '/property-objects' },
+        { title: 'Liegenschaften', href: '/properties' },
       ],
-    },
-    {
-      title: 'Aufträge',
-      icon: 'ti ti-file-invoice',
-      href: '/orders',
     },
     {
       title: 'Nutzer',
       icon: 'ti ti-users',
       children: [
         { title: 'Eigentümer', href: '/users/owners' },
+        { title: 'Bewirtschaftung', href: '/property-managers' },
         { title: 'Dienstleister', href: '/users/service-providers' },
-        { title: 'Admins', href: '/users/admins' },
+      ],
+    },
+    {
+      title: 'Dokumente',
+      icon: 'ti ti-file-analytics',
+      children: [
+        { title: 'Verträge', href: '/documents?type=contract' },
+        { title: 'Rechnungen', href: '/documents?type=invoice' },
+      ],
+    },
+  ],
+  employee_power_user: [
+    {
+      title: 'Immobilien',
+      icon: 'ti ti-building-estate',
+      children: [
+        { title: 'Liegenschaften', href: '/properties' },
+      ],
+    },
+    {
+      title: 'Nutzer',
+      icon: 'ti ti-users',
+      children: [
+        { title: 'Eigentümer', href: '/users/owners' },
+        { title: 'Bewirtschaftung', href: '/property-managers' },
+        { title: 'Dienstleister', href: '/users/service-providers' },
+        { title: 'Admins', href: '/employees' },
+      ],
+    },
+    {
+      title: 'Dokumente',
+      icon: 'ti ti-file-analytics',
+      children: [
+        { title: 'Verträge', href: '/documents?type=contract' },
+        { title: 'Rechnungen', href: '/documents?type=invoice' },
+      ],
+    },
+  ],
+  employee: [
+    {
+      title: 'Immobilien',
+      icon: 'ti ti-building-estate',
+      children: [
+        { title: 'Liegenschaften', href: '/properties' },
+      ],
+    },
+    {
+      title: 'Nutzer',
+      icon: 'ti ti-users',
+      children: [
+        { title: 'Eigentümer', href: '/users/owners' },
+        { title: 'Bewirtschaftung', href: '/property-managers' },
+        { title: 'Dienstleister', href: '/users/service-providers' },
+      ],
+    },
+    {
+      title: 'Dokumente',
+      icon: 'ti ti-file-analytics',
+      children: [
+        { title: 'Verträge', href: '/documents?type=contract' },
+        { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
     },
   ],

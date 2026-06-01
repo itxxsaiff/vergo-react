@@ -145,7 +145,7 @@ function App() {
         <Route
           path="owners"
           element={
-            <ProtectedRoute allowRoles={['admin']}>
+            <ProtectedRoute allowRoles={['admin', 'employee']}>
               <OwnersPage />
             </ProtectedRoute>
           }
@@ -225,7 +225,7 @@ function App() {
         <Route
           path="service-providers"
           element={
-            <ProtectedRoute allowRoles={['admin']}>
+            <ProtectedRoute allowRoles={['admin', 'employee']}>
               <ServiceProvidersPage />
             </ProtectedRoute>
           }
@@ -233,7 +233,7 @@ function App() {
         <Route
           path="employees"
           element={
-            <ProtectedRoute allowRoles={['admin', 'employee']} allowNavigationRoles={['admin', 'employee_power_user']}>
+            <ProtectedRoute allowRoles={['employee']} allowNavigationRoles={['employee_power_user']}>
               <EmployeesPage />
             </ProtectedRoute>
           }

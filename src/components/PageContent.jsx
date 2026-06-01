@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-function PageContent({ title, subtitle, children, breadcrumbs = [], variant = 'default' }) {
+function PageContent({ title, subtitle, actions = null, children, breadcrumbs = [], variant = 'default' }) {
   const shouldRenderHeader = Boolean(title) || breadcrumbs.length > 0
 
   return (
@@ -28,10 +28,18 @@ function PageContent({ title, subtitle, children, breadcrumbs = [], variant = 'd
               })}
             </ol>
           </div>
-          {title ? (
-            <div className="col-12 pt-2">
-              <h2>{title}</h2>
-            </div>
+          {title || actions ? (
+            <>
+              <div className={actions ? 'col-lg-8 col-md-7 col-12 pt-2' : 'col-12 pt-2'}>
+                {title ? <h2 className="mb-1">{title}</h2> : null}
+                {subtitle ? <p className="text-muted mb-0">{subtitle}</p> : null}
+              </div>
+              {actions ? (
+                <div className="col-lg-4 col-md-5 col-12 pt-2 d-flex justify-content-md-end">
+                  {actions}
+                </div>
+              ) : null}
+            </>
           ) : null}
         </div>
       ) : null}

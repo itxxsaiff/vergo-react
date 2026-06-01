@@ -16,7 +16,7 @@ class OwnerController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        abort_unless($request->user() instanceof User && in_array($request->user()->role?->name, ['admin', 'employee'], true), 403);
 
         $owners = User::query()
             ->with('role')
@@ -30,7 +30,7 @@ class OwnerController extends Controller
 
     public function store(StoreOwnerRequest $request): OwnerResource
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        abort_unless($request->user() instanceof User && in_array($request->user()->role?->name, ['admin', 'employee'], true), 403);
 
         $owner = DB::transaction(function () use ($request) {
             $ownerRole = Role::query()->firstOrCreate(
@@ -48,7 +48,7 @@ class OwnerController extends Controller
 
     public function update(UpdateOwnerRequest $request, User $owner): OwnerResource
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        abort_unless($request->user() instanceof User && in_array($request->user()->role?->name, ['admin', 'employee'], true), 403);
         abort_unless($owner->role?->name === 'owner', 404);
 
         $owner->update($this->buildOwnerPayload($request, $owner->role_id, $owner));
@@ -59,7 +59,7 @@ class OwnerController extends Controller
 
     public function destroy(Request $request, User $owner)
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        abort_unless($request->user() instanceof User && in_array($request->user()->role?->name, ['admin', 'employee'], true), 403);
         abort_unless($owner->role?->name === 'owner', 404);
 
         $owner->delete();

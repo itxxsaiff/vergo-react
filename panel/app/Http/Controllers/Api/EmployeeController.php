@@ -17,7 +17,7 @@ class EmployeeController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        $this->authorizeEmployeeAdminManagement($request);
 
         $employees = User::query()
             ->with('role')
@@ -30,7 +30,7 @@ class EmployeeController extends Controller
 
     public function store(StoreEmployeeRequest $request): EmployeeResource
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        $this->authorizeEmployeeAdminManagement($request);
 
         $employee = DB::transaction(function () use ($request) {
             $employeeRole = Role::query()->firstOrCreate(
@@ -56,7 +56,7 @@ class EmployeeController extends Controller
 
     public function update(UpdateEmployeeRequest $request, User $employee): EmployeeResource
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        $this->authorizeEmployeeAdminManagement($request);
         abort_unless($employee->role?->name === 'employee', 404);
 
         $payload = $request->safe()->toArray();
@@ -73,7 +73,7 @@ class EmployeeController extends Controller
 
     public function destroy(Request $request, User $employee): JsonResponse
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        $this->authorizeEmployeeAdminManagement($request);
         abort_unless($employee->role?->name === 'employee', 404);
 
         $employee->delete();
@@ -81,5 +81,16 @@ class EmployeeController extends Controller
         return response()->json([
             'message' => 'Employee deleted successfully.',
         ]);
+    }
+
+    private function authorizeEmployeeAdminManagement(Request $request): void
+    {
+        abort_unless($request->user() instanceof User, 403);
+
+        abort_unless(
+            $request->user()->role?->name === 'employee'
+            && $request->user()->access_level === 'power_user',
+            403
+        );
     }
 }

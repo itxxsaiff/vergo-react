@@ -179,6 +179,11 @@ function EmployeePropertyDetailsPage() {
       const searchValue = [
         object.address,
         object.name,
+        object.postal_code,
+        object.city,
+        object.type,
+        property?.li_number,
+        property?.title,
       ]
         .filter(Boolean)
         .join(' ')
@@ -249,7 +254,7 @@ function EmployeePropertyDetailsPage() {
                       name="search"
                       value={filters.search}
                       onChange={handleFilterChange}
-                      placeholder="Nach Adresse suchen"
+                      placeholder="Nach Adresse, Ort, Nutzung oder Immobilie suchen"
                     />
                   </div>
                 </div>

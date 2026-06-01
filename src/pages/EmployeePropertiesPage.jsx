@@ -6,12 +6,15 @@ import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
 const initialForm = {
   title: '',
+  address_line_1: '',
   management: '',
   owner_id: '',
   postal_code: '',
   city: '',
   usage: '',
   lot_area: '',
+  apartment_count: '',
+  commercial_area: '',
 }
 
 function getOwnerCompanyLabel(property) {
@@ -26,12 +29,13 @@ function EmployeePropertiesPage() {
   const [properties, setProperties] = useState([])
   const [owners, setOwners] = useState([])
   const [form, setForm] = useState(initialForm)
-  const [filters, setFilters] = useState({ search: '' })
+  const [filters, setFilters] = useState({ search: '', usage: '' })
   const [editingProperty, setEditingProperty] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     async function loadData() {
@@ -74,21 +78,18 @@ function EmployeePropertiesPage() {
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
       const searchValue = [
-        property.li_number,
-        property.title,
-        property.management,
-        property.postal_code,
-        property.city,
-        property.usage,
-        ...(property.owners ?? []).map((owner) => owner?.name),
+        property.address_line_1,
       ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
 
-      return !filters.search || searchValue.includes(filters.search.toLowerCase())
+      const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
+      const usageMatch = !filters.usage || property.usage === filters.usage
+
+      return searchMatch && usageMatch
     })
-  }, [filters.search, properties])
+  }, [filters.search, filters.usage, properties])
 
   function handleChange(event) {
     const { name, value } = event.target
@@ -97,6 +98,16 @@ function EmployeePropertiesPage() {
       ...current,
       [name]: value,
     }))
+
+    setFieldErrors((current) => {
+      if (!current[name]) {
+        return current
+      }
+
+      const nextErrors = { ...current }
+      delete nextErrors[name]
+      return nextErrors
+    })
   }
 
   function handleFilterChange(event) {
@@ -112,6 +123,7 @@ function EmployeePropertiesPage() {
     setEditingProperty(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -119,14 +131,18 @@ function EmployeePropertiesPage() {
     setEditingProperty(property)
     setForm({
       title: property.title || '',
+      address_line_1: property.address_line_1 || '',
       management: property.management || '',
       owner_id: property.owners?.[0]?.id ? String(property.owners[0].id) : '',
       postal_code: property.postal_code || '',
       city: property.city || '',
       usage: property.usage || '',
       lot_area: property.lot_area ?? '',
+      apartment_count: property.apartment_count ?? '',
+      commercial_area: property.commercial_area ?? '',
     })
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -134,41 +150,78 @@ function EmployeePropertiesPage() {
     setEditingProperty(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(false)
+  }
+
+  function validateForm() {
+    const nextErrors = {}
+
+    if (!form.title.trim()) {
+      nextErrors.title = true
+    }
+
+    if (!form.address_line_1.trim()) {
+      nextErrors.address_line_1 = true
+    }
+
+    if (!form.owner_id) {
+      nextErrors.owner_id = true
+    }
+
+    if (!form.usage) {
+      nextErrors.usage = true
+    }
+
+    if (!String(form.postal_code || '').trim()) {
+      nextErrors.postal_code = true
+    }
+
+    if (!String(form.city || '').trim()) {
+      nextErrors.city = true
+    }
+
+    if (!String(form.lot_area || '').trim()) {
+      nextErrors.lot_area = true
+    }
+
+    if (form.usage !== 'commercial' && !String(form.apartment_count || '').trim()) {
+      nextErrors.apartment_count = true
+    }
+
+    if (form.usage !== 'residential' && !String(form.commercial_area || '').trim()) {
+      nextErrors.commercial_area = true
+    }
+
+    return nextErrors
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setIsSaving(true)
     setError('')
+    const validationErrors = validateForm()
 
-    if (!form.title.trim()) {
-      setError('Bezeichnung ist erforderlich.')
-      setIsSaving(false)
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors)
+      setError('Bitte alle Pflichtfelder ausfüllen.')
       return
     }
 
-    if (!form.owner_id) {
-      setError('Eigentümer ist erforderlich.')
-      setIsSaving(false)
-      return
-    }
-
-    if (!form.usage) {
-      setError('Nutzung ist erforderlich.')
-      setIsSaving(false)
-      return
-    }
+    setFieldErrors({})
+    setIsSaving(true)
 
     try {
       const payload = {
         title: form.title.trim(),
+        address_line_1: form.address_line_1.trim(),
         management: form.management.trim() || null,
         owner_id: Number(form.owner_id),
         postal_code: form.postal_code.trim() || null,
         city: form.city.trim() || null,
         usage: form.usage,
         lot_area: form.lot_area ? Number(form.lot_area) : null,
+        apartment_count: form.usage === 'commercial' ? null : Number(form.apartment_count),
+        commercial_area: form.usage === 'residential' ? null : Number(form.commercial_area),
         size: form.lot_area ? Number(form.lot_area) : null,
         status: 'active',
       }
@@ -212,18 +265,27 @@ function EmployeePropertiesPage() {
                   name="search"
                   value={filters.search}
                   onChange={handleFilterChange}
-                  placeholder="Nach Code, Bezeichnung, Bewirtschaftung, Ort oder Eigentümer suchen"
+                  placeholder="Nach Adresse suchen"
                 />
               </div>
             </div>
 
-            <div className="col-xl-4 col-lg-5 col-md-12">
+            <div className="col-xl-2 col-lg-5 col-md-6">
+              <select className="form-select" name="usage" value={filters.usage} onChange={handleFilterChange}>
+                <option value="">Nutzung auswählen</option>
+                {PROPERTY_USAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-xl-2 col-lg-5 col-md-6">
               <div className="d-flex justify-content-lg-end gap-2 flex-nowrap vergo-action-buttons">
 
                 <button
                   type="button"
                   className="btn btn-light-primary text-nowrap"
-                  onClick={() => setFilters({ search: '' })}
+                  onClick={() => setFilters({ search: '', usage: '' })}
                 >
                   <i className="ti ti-refresh me-1"></i>
                   Zurücksetzen
@@ -252,6 +314,7 @@ function EmployeePropertiesPage() {
                   <tr>
                     <th><h6 className="fs-4 fw-semibold mb-0">Code</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Bezeichnung</h6></th>
+                    <th><h6 className="fs-4 fw-semibold mb-0">Adresse</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">PLZ</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Anzahl</h6></th>
@@ -268,6 +331,7 @@ function EmployeePropertiesPage() {
                         <div className="fw-semibold">{property.title || '-'}</div>
                         <div className="text-muted small">{getOptionLabel(PROPERTY_USAGE_OPTIONS, property.usage)}</div>
                       </td>
+                      <td>{property.address_line_1 || '-'}</td>
                       <td>{property.postal_code || '-'}</td>
                       <td>{property.city || '-'}</td>
                       <td>{property.objects_count ?? 0}</td>
@@ -303,7 +367,7 @@ function EmployeePropertiesPage() {
 
                   {filteredProperties.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="text-center text-muted py-4">
+                      <td colSpan="8" className="text-center text-muted py-4">
                         Keine Liegenschaften gefunden.
                       </td>
                     </tr>
@@ -334,19 +398,25 @@ function EmployeePropertiesPage() {
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Bezeichnung</label>
-                          <input className="form-control" name="title" value={form.title} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.title ? ' is-invalid' : ''}`} name="title" value={form.title} onChange={handleChange} />
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Adresse</label>
+                          <input className={`form-control${fieldErrors.address_line_1 ? ' is-invalid' : ''}`} name="address_line_1" value={form.address_line_1} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Bewirtschaftung</label>
-                          <input className="form-control" name="management" value={form.management} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.management ? ' is-invalid' : ''}`} name="management" value={form.management} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Eigentümer</label>
-                          <select className="form-select" name="owner_id" value={form.owner_id} onChange={handleChange}>
+                          <select className={`form-select${fieldErrors.owner_id ? ' is-invalid' : ''}`} name="owner_id" value={form.owner_id} onChange={handleChange}>
                             <option value="">Eigentümer auswählen</option>
                             {owners.map((owner) => (
                               <option key={owner.id} value={owner.id}>{owner.company_name || owner.name || owner.customer_number}</option>
@@ -357,19 +427,19 @@ function EmployeePropertiesPage() {
                       <div className="col-md-3">
                         <div className="mb-3">
                           <label className="form-label">PLZ</label>
-                          <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-3">
                         <div className="mb-3">
                           <label className="form-label">Ort</label>
-                          <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Gemischte Nutzung</label>
-                          <select className="form-select" name="usage" value={form.usage} onChange={handleChange}>
+                          <label className="form-label">Nutzung</label>
+                          <select className={`form-select${fieldErrors.usage ? ' is-invalid' : ''}`} name="usage" value={form.usage} onChange={handleChange}>
                             <option value="">Nutzung auswählen</option>
                             {PROPERTY_USAGE_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>{option.label}</option>
@@ -380,9 +450,25 @@ function EmployeePropertiesPage() {
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Grundstücksfläche</label>
-                          <input className="form-control" name="lot_area" type="number" min="0" step="0.01" value={form.lot_area} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.lot_area ? ' is-invalid' : ''}`} name="lot_area" type="number" min="0" step="0.01" value={form.lot_area} onChange={handleChange} />
                         </div>
                       </div>
+                      {form.usage !== 'commercial' ? (
+                        <div className="col-md-6">
+                          <div className="mb-3">
+                            <label className="form-label">Anzahl Wohnungen</label>
+                            <input className={`form-control${fieldErrors.apartment_count ? ' is-invalid' : ''}`} name="apartment_count" type="number" min="0" value={form.apartment_count} onChange={handleChange} />
+                          </div>
+                        </div>
+                      ) : null}
+                      {form.usage !== 'residential' ? (
+                        <div className="col-md-6">
+                          <div className="mb-3">
+                            <label className="form-label">Quadratmeter Gewerbefläche</label>
+                            <input className={`form-control${fieldErrors.commercial_area ? ' is-invalid' : ''}`} name="commercial_area" type="number" min="0" step="0.01" value={form.commercial_area} onChange={handleChange} />
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                     {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
                   </div>

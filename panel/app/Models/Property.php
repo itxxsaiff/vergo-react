@@ -25,6 +25,8 @@ class Property extends Model
         'postal_code',
         'usage',
         'lot_area',
+        'apartment_count',
+        'commercial_area',
         'description',
         'status',
         'created_by',
@@ -35,6 +37,7 @@ class Property extends Model
         return [
             'size' => 'decimal:2',
             'lot_area' => 'decimal:2',
+            'commercial_area' => 'decimal:2',
         ];
     }
 

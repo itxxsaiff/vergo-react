@@ -276,6 +276,12 @@ export const api = {
   getPropertyManagers() {
     return request('/property-managers')
   },
+  createPropertyManager(data) {
+    return request('/property-managers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
   updatePropertyManager(id, data) {
     return request(`/property-managers/${id}`, {
       method: 'PUT',

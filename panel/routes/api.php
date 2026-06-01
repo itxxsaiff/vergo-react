@@ -95,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('/service-providers/{serviceProvider}', [ServiceProviderController::class, 'destroy']);
 
     Route::get('/property-managers', [PropertyManagerProfileController::class, 'index']);
+    Route::post('/property-managers', [PropertyManagerProfileController::class, 'store']);
     Route::put('/property-managers/{propertyManagerProfile}', [PropertyManagerProfileController::class, 'update']);
     Route::delete('/property-managers/{propertyManagerProfile}', [PropertyManagerProfileController::class, 'destroy']);
 

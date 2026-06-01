@@ -457,22 +457,47 @@ class AuthController extends Controller
             }
         }
 
-        $matchingOwner = User::query()
+        $privateOwner = User::query()
             ->with('role')
             ->whereHas('role', fn ($query) => $query->where('name', 'owner'))
+            ->where('owner_type', 'private_individual')
             ->whereRaw('LOWER(login_email) = ?', [$email])
             ->first();
 
-        if ($matchingOwner) {
-            if ($property && ! $matchingOwner->ownedProperties()->where('properties.id', $property->id)->exists()) {
+        if ($privateOwner) {
+            if ($property && ! $privateOwner->ownedProperties()->where('properties.id', $property->id)->exists()) {
                 return [null, null, 'This email is not linked to the selected LI number.', 422];
             }
 
-            return [$matchingOwner, $property, null, 200];
+            return [$privateOwner, $property, null, 200];
         }
 
+        $domain = strtolower((string) str($email)->after('@'));
+        $companyOwners = User::query()
+            ->with('role')
+            ->whereHas('role', fn ($query) => $query->where('name', 'owner'))
+            ->where('owner_type', 'company')
+            ->where('domain_suffix', $domain)
+            ->get();
+
         if ($property) {
-            return [null, null, 'This email is not linked to the selected LI number.', 422];
+            $matchingOwner = $companyOwners->first(function (User $owner) use ($property) {
+                return $owner->ownedProperties()->where('properties.id', $property->id)->exists();
+            });
+
+            return $matchingOwner
+                ? [$matchingOwner, $property, null, 200]
+                : [null, null, 'This email domain is not linked to the selected LI number.', 422];
+        }
+
+        if ($companyOwners->count() > 1) {
+            return [null, null, 'This email domain is linked to multiple owners. Please enter the LI number as well.', 409];
+        }
+
+        if ($companyOwners->count() === 1) {
+            $matchingOwner = $companyOwners->first();
+
+            return [$matchingOwner, $matchingOwner->ownedProperties()->select('properties.id', 'li_number', 'title')->first(), null, 200];
         }
 
         return [null, null, null, 422];

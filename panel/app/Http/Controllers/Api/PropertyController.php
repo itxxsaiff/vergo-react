@@ -139,7 +139,7 @@ class PropertyController extends Controller
         if ($actor->role?->name === 'owner') {
             abort_unless($property->owners()->where('users.id', $actor->id)->exists(), 403);
         } else {
-            abort_unless($actor->role?->name === 'admin', 403);
+            abort_unless(in_array($actor->role?->name, ['admin', 'employee'], true), 403);
         }
 
         $property->delete();

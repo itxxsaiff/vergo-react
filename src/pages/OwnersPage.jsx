@@ -289,7 +289,7 @@ function OwnersPage() {
 
                 <div className="alert alert-light border small">
                   {isCompany
-                    ? 'Firmen-Eigentümer melden sich mit genau dieser E-Mail-Adresse und einem Code per E-Mail an. Die Domain-Endung dient nur zur Stammdatenpflege. Ein Passwort wird nicht gesetzt.'
+                    ? 'Firmen-Eigentümer melden sich über die Domain-Endung und einen Code an. Die E-Mail-Adresse dient hier nur als Kontaktoption. Ein Passwort wird nicht gesetzt.'
                     : 'Privatpersonen melden sich mit genau dieser E-Mail-Adresse und einem Code per E-Mail an. Ein Passwort wird nicht gesetzt.'}
                 </div>
 

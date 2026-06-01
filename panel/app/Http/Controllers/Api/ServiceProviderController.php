@@ -20,7 +20,7 @@ class ServiceProviderController extends Controller
     {
         $actor = $request->user();
         abort_unless(
-            ($actor instanceof User && $actor->role?->name === 'admin')
+            ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true))
             || $actor instanceof PropertyManagerProfile,
             403
         );
@@ -32,7 +32,7 @@ class ServiceProviderController extends Controller
 
     public function store(StoreServiceProviderRequest $request): ServiceProviderResource
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        abort_unless($request->user() instanceof User && in_array($request->user()->role?->name, ['admin', 'employee'], true), 403);
 
         $provider = DB::transaction(function () use ($request) {
             $providerRole = Role::query()->where('name', 'provider')->firstOrFail();
@@ -62,7 +62,7 @@ class ServiceProviderController extends Controller
 
     public function update(UpdateServiceProviderRequest $request, ServiceProvider $serviceProvider): ServiceProviderResource
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        abort_unless($request->user() instanceof User && in_array($request->user()->role?->name, ['admin', 'employee'], true), 403);
 
         DB::transaction(function () use ($request, $serviceProvider) {
             $serviceProvider->update($request->safe()->except('password'));
@@ -103,7 +103,7 @@ class ServiceProviderController extends Controller
 
     public function destroy(Request $request, ServiceProvider $serviceProvider)
     {
-        abort_unless($request->user() instanceof User && $request->user()->role?->name === 'admin', 403);
+        abort_unless($request->user() instanceof User && in_array($request->user()->role?->name, ['admin', 'employee'], true), 403);
 
         DB::transaction(function () use ($serviceProvider) {
             $linkedUser = $serviceProvider->user;

@@ -37,9 +37,9 @@ export const navigationByRole = {
       title: 'Nutzer',
       icon: 'ti ti-users',
       children: [
-        { title: 'Eigentümer', href: '/users/owners' },
+        { title: 'Eigentümer', href: '/owners' },
         { title: 'Bewirtschaftung', href: '/property-managers' },
-        { title: 'Dienstleister', href: '/users/service-providers' },
+        { title: 'Dienstleister', href: '/service-providers' },
       ],
     },
     {
@@ -63,9 +63,9 @@ export const navigationByRole = {
       title: 'Nutzer',
       icon: 'ti ti-users',
       children: [
-        { title: 'Eigentümer', href: '/users/owners' },
+        { title: 'Eigentümer', href: '/owners' },
         { title: 'Bewirtschaftung', href: '/property-managers' },
-        { title: 'Dienstleister', href: '/users/service-providers' },
+        { title: 'Dienstleister', href: '/service-providers' },
         { title: 'Admins', href: '/employees' },
       ],
     },
@@ -90,9 +90,9 @@ export const navigationByRole = {
       title: 'Nutzer',
       icon: 'ti ti-users',
       children: [
-        { title: 'Eigentümer', href: '/users/owners' },
+        { title: 'Eigentümer', href: '/owners' },
         { title: 'Bewirtschaftung', href: '/property-managers' },
-        { title: 'Dienstleister', href: '/users/service-providers' },
+        { title: 'Dienstleister', href: '/service-providers' },
       ],
     },
     {

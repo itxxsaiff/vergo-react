@@ -4,26 +4,53 @@ import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
+const initialForm = {
+  property_id: '',
+  name: '',
+  email: '',
+}
+
 function PropertyManagersPage() {
   const [managers, setManagers] = useState([])
+  const [properties, setProperties] = useState([])
   const [filters, setFilters] = useState({ search: '', status: '' })
   const [editingManager, setEditingManager] = useState(null)
-  const [name, setName] = useState('')
+  const [form, setForm] = useState(initialForm)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    loadManagers()
+    loadData()
   }, [])
 
-  async function loadManagers() {
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.classList.add('modal-open')
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.classList.remove('modal-open')
+      document.body.style.overflow = ''
+    }
+
+    return () => {
+      document.body.classList.remove('modal-open')
+      document.body.style.overflow = ''
+    }
+  }, [isModalOpen])
+
+  async function loadData() {
     setIsLoading(true)
     setError('')
 
     try {
-      const response = await api.getPropertyManagers()
-      setManagers(response.data ?? [])
+      const [managersResponse, propertiesResponse] = await Promise.all([
+        api.getPropertyManagers(),
+        api.getProperties(),
+      ])
+      setManagers(managersResponse.data ?? [])
+      setProperties(propertiesResponse.data ?? [])
     } catch (loadError) {
       setError(loadError.message)
     } finally {
@@ -36,16 +63,34 @@ function PropertyManagersPage() {
     setFilters((current) => ({ ...current, [name]: value }))
   }
 
+  function handleChange(event) {
+    const { name, value } = event.target
+    setForm((current) => ({ ...current, [name]: value }))
+  }
+
+  function openCreateModal() {
+    setEditingManager(null)
+    setForm(initialForm)
+    setError('')
+    setIsModalOpen(true)
+  }
+
   function handleEdit(manager) {
     setEditingManager(manager)
-    setName(manager.name || '')
+    setForm({
+      property_id: String(manager.property?.id ?? manager.property_id ?? ''),
+      name: manager.name || '',
+      email: manager.email || '',
+    })
     setError('')
+    setIsModalOpen(true)
   }
 
   function closeModal() {
     setEditingManager(null)
-    setName('')
+    setForm(initialForm)
     setError('')
+    setIsModalOpen(false)
   }
 
   async function handleSubmit(event) {
@@ -54,8 +99,18 @@ function PropertyManagersPage() {
     setError('')
 
     try {
-      const response = await api.updatePropertyManager(editingManager.id, { name: name || null })
-      setManagers((current) => current.map((manager) => (manager.id === editingManager.id ? response.data : manager)))
+      if (editingManager) {
+        const response = await api.updatePropertyManager(editingManager.id, { name: form.name || null })
+        setManagers((current) => current.map((manager) => (manager.id === editingManager.id ? response.data : manager)))
+      } else {
+        const response = await api.createPropertyManager({
+          property_id: Number(form.property_id),
+          name: form.name || null,
+          email: form.email.trim().toLowerCase(),
+        })
+        setManagers((current) => [response.data, ...current])
+      }
+
       closeModal()
     } catch (saveError) {
       setError(saveError.message)
@@ -93,7 +148,7 @@ function PropertyManagersPage() {
   return (
     <PageContent
       title="Immobilienverwalter"
-      subtitle="Überprüfen Sie OTP-basierte Immobilienverwalter, die mit Li-Nummern verknüpft sind, sowie deren Auftragshistorie."
+      subtitle="Verwalten Sie OTP-basierte Immobilienverwalter, die mit Li-Nummern verknüpft sind, sowie deren Auftragshistorie."
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Immobilienverwalter' },
@@ -104,8 +159,8 @@ function PropertyManagersPage() {
           <h5 className="card-title fw-semibold mb-0 lh-sm">Liste der Immobilienverwalter</h5>
         </div>
         <div className="card-body p-4">
-          <div className="row g-3 mb-4 vergo-filter-bar">
-            <div className="col-md-7">
+          <div className="row g-3 mb-4 vergo-filter-bar vergo-filter-bar-compact">
+            <div className="col-xl-5 col-lg-6 col-md-12">
               <label className="form-label">Suche</label>
               <div className="vergo-search-input-wrap">
                 <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
@@ -119,7 +174,7 @@ function PropertyManagersPage() {
                 />
               </div>
             </div>
-            <div className="col-md-3">
+            <div className="col-xl-3 col-lg-6 col-md-6">
               <label className="form-label">Status</label>
               <div className="vergo-select-input-wrap">
                 <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
@@ -129,15 +184,21 @@ function PropertyManagersPage() {
                 </select>
               </div>
             </div>
-            <div className="col-md-2 d-flex align-items-end justify-content-end vergo-filter-reset-wrap">
-              <button type="button" className="btn btn-light-primary vergo-filter-reset-btn" onClick={() => setFilters({ search: '', status: '' })}>
-                <i className="ti ti-refresh me-1" aria-hidden="true"></i>
-                Zurücksetzen
-              </button>
+            <div className="col-xl-4 col-lg-12 col-md-6">
+              <div className="d-flex align-items-end justify-content-xl-end gap-2 flex-nowrap vergo-action-buttons">
+                <button type="button" className="btn btn-light-primary vergo-filter-reset-btn text-nowrap" onClick={() => setFilters({ search: '', status: '' })}>
+                  <i className="ti ti-refresh me-1" aria-hidden="true"></i>
+                  Zurücksetzen
+                </button>
+                <button type="button" className="btn btn-primary text-nowrap" onClick={openCreateModal}>
+                  <i className="ti ti-plus me-1"></i>
+                  Immobilienverwalter erstellen
+                </button>
+              </div>
             </div>
           </div>
 
-          {error && !editingManager ? <div className="alert alert-danger py-2">{error}</div> : null}
+          {error && !isModalOpen ? <div className="alert alert-danger py-2">{error}</div> : null}
           {isLoading ? <p className="text-muted mb-0">Immobilienverwalter werden geladen...</p> : null}
 
           {!isLoading ? (
@@ -189,32 +250,44 @@ function PropertyManagersPage() {
         </div>
       </div>
 
-      {editingManager ? (
+      {isModalOpen ? (
         <>
           <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
             <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
-                  <h5 className="modal-title">Immobilienverwalter bearbeiten</h5>
+                  <h5 className="modal-title">{editingManager ? 'Immobilienverwalter bearbeiten' : 'Immobilienverwalter erstellen'}</h5>
                   <button type="button" className="btn-close" onClick={closeModal}></button>
                 </div>
                 <form onSubmit={handleSubmit}>
                   <div className="modal-body">
+                    {!editingManager ? (
+                      <>
+                        <div className="mb-3">
+                          <label className="form-label">Immobilie</label>
+                          <select className="form-select" name="property_id" value={form.property_id} onChange={handleChange}>
+                            <option value="">Immobilie auswählen</option>
+                            {properties.map((property) => (
+                              <option key={property.id} value={property.id}>{property.li_number} - {property.title}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label">E-Mail</label>
+                          <input className="form-control" name="email" value={form.email} onChange={handleChange} />
+                        </div>
+                      </>
+                    ) : null}
                     <div className="mb-3">
                       <label className="form-label">Name</label>
-                      <input
-                        className="form-control"
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                        placeholder="Immobilienverwalter"
-                      />
+                      <input className="form-control" name="name" value={form.name} onChange={handleChange} placeholder="Immobilienverwalter" />
                     </div>
                     {error ? <div className="alert alert-danger py-2 mb-0">{error}</div> : null}
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>Abbrechen</button>
                     <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                      {isSaving ? 'Wird gespeichert...' : 'Verwalter aktualisieren'}
+                      {isSaving ? 'Wird gespeichert...' : editingManager ? 'Verwalter aktualisieren' : 'Verwalter erstellen'}
                     </button>
                   </div>
                 </form>

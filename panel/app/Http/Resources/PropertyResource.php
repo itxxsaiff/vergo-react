@@ -23,6 +23,8 @@ class PropertyResource extends JsonResource
             'postal_code' => $this->postal_code,
             'usage' => $this->usage,
             'lot_area' => $this->lot_area !== null ? (float) $this->lot_area : null,
+            'apartment_count' => $this->apartment_count,
+            'commercial_area' => $this->commercial_area !== null ? (float) $this->commercial_area : null,
             'description' => $this->description,
             'status' => $this->status,
             'owners' => $this->whenLoaded('owners', function () {

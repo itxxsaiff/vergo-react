@@ -34,6 +34,10 @@ class PropertyManagerProfileController extends Controller
             'property_id' => $request->integer('property_id'),
             'name' => $request->input('name'),
             'email' => strtolower($request->string('email')->trim()->toString()),
+            'address' => $request->string('address')->trim()->toString(),
+            'postal_code' => $request->string('postal_code')->trim()->toString(),
+            'city' => $request->string('city')->trim()->toString(),
+            'domain_suffix' => strtolower(ltrim($request->string('domain_suffix')->trim()->toString(), '@')),
         ]);
 
         return new PropertyManagerProfileResource(

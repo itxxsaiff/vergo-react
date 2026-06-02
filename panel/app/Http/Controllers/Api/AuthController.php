@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Mail\OwnerOtpMail;
+use App\Mail\UserOtpMail;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\ManagerLiLookupRequest;
 use App\Http\Requests\Auth\ManagerOtpRequest;
 use App\Http\Requests\Auth\ManagerOtpVerifyRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Mail\ManagerOtpMail;
 use App\Models\ManagerLoginCode;
 use App\Models\Property;
 use App\Models\PropertyManagerProfile;
+use App\Models\ServiceProvider;
 use App\Models\User;
 use App\Http\Requests\Auth\UserOtpRequest;
 use App\Http\Requests\Auth\UserOtpVerifyRequest;
@@ -20,6 +23,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Throwable;
 
 class AuthController extends Controller
@@ -28,21 +33,25 @@ class AuthController extends Controller
     {
         $email = $request->string('email')->trim()->lower()->toString();
         $liNumber = $request->string('li_number')->trim()->toString();
-        [$owner, $property, $message, $status] = $this->resolveOwnerForOtp($email, $liNumber);
+        $customerNumber = $request->string('customer_number')->trim()->toString();
+        [$owner, $property, $message, $status] = $this->resolveOwnerForOtp($email, $liNumber, $customerNumber);
+        [$provider, $providerMessage, $providerStatus] = $owner
+            ? [null, null, 200]
+            : $this->resolveProviderForOtp($email, $customerNumber);
 
-        if (! $owner) {
+        if (! $owner && ! $provider) {
             [$property, $message, $status] = $this->resolvePropertyForEmailLogin($email, $liNumber ?: null);
         }
 
-        if (! $owner && ! $property) {
+        if (! $owner && ! $provider && ! $property) {
             return response()->json([
-                'message' => $message,
-            ], $status);
+                'message' => $providerMessage ?: $message,
+            ], $providerMessage ? $providerStatus : $status);
         }
 
         ManagerLoginCode::query()
             ->where('email', $email)
-            ->where('purpose', $owner ? 'owner_login' : 'email_login')
+            ->where('purpose', $owner ? 'owner_login' : ($provider ? 'provider_login' : 'email_login'))
             ->whereNull('consumed_at')
             ->delete();
 
@@ -53,7 +62,7 @@ class AuthController extends Controller
             'owner_id' => $owner?->id,
             'email' => $email,
             'code' => Hash::make($code),
-            'purpose' => $owner ? 'owner_login' : 'email_login',
+            'purpose' => $owner ? 'owner_login' : ($provider ? 'provider_login' : 'email_login'),
             'expires_at' => now()->addMinutes(10),
             'ip_address' => $request->ip(),
         ]);
@@ -65,6 +74,11 @@ class AuthController extends Controller
                     ownerName: $owner->display_name,
                     liNumber: $property?->li_number,
                 ));
+            } elseif ($provider) {
+                Mail::to($email)->send(new UserOtpMail(
+                    code: $code,
+                    userName: $provider->company_name,
+                ));
             } else {
                 Mail::to($email)->send(new ManagerOtpMail(
                     code: $code,
@@ -75,10 +89,11 @@ class AuthController extends Controller
         } catch (Throwable $exception) {
             $loginCode->delete();
 
-            Log::error($owner ? 'Vergo owner OTP email failed' : 'Vergo email-only manager OTP email failed', [
+            Log::error($owner ? 'Vergo owner OTP email failed' : ($provider ? 'Vergo provider OTP email failed' : 'Vergo email-only manager OTP email failed'), [
                 'email' => $email,
                 'property_id' => $property?->id,
                 'owner_id' => $owner?->id,
+                'provider_id' => $provider?->id,
                 'error' => $exception->getMessage(),
             ]);
 
@@ -94,6 +109,10 @@ class AuthController extends Controller
                 'li_number' => $property?->li_number,
                 'property_title' => $property?->title,
                 'owner_name' => $owner?->display_name,
+                'customer_number' => $owner
+                    ? $this->formatOwnerCustomerNumber($owner->id)
+                    : ($provider ? $this->formatProviderCustomerNumber($provider->id) : null),
+                'provider_name' => $provider?->company_name,
             ],
         ]);
     }
@@ -143,6 +162,29 @@ class AuthController extends Controller
                 'token' => $token,
                 'user' => $this->transformUserActor($user),
             ],
+        ]);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $status = Password::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => $password,
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json([
+                'message' => __($status),
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Password reset successful.',
         ]);
     }
 
@@ -267,12 +309,13 @@ class AuthController extends Controller
     {
         $email = $request->string('email')->trim()->lower()->toString();
         $liNumber = $request->string('li_number')->trim()->toString();
+        $customerNumber = $request->string('customer_number')->trim()->toString();
         $plainCode = $request->string('code')->toString();
 
         $loginCode = ManagerLoginCode::query()
             ->with(['property', 'owner.role'])
             ->where('email', $email)
-            ->whereIn('purpose', ['email_login', 'owner_login'])
+            ->whereIn('purpose', ['email_login', 'owner_login', 'provider_login'])
             ->whereNull('consumed_at')
             ->where('expires_at', '>', now())
             ->latest()
@@ -310,6 +353,30 @@ class AuthController extends Controller
                 'data' => [
                     'token' => $token,
                     'user' => $this->transformUserActor($owner),
+                ],
+            ]);
+        }
+
+        if ($loginCode->purpose === 'provider_login') {
+            [$provider] = $this->resolveProviderForOtp($email, $customerNumber);
+
+            if (! $provider || ! $provider->user || $provider->user->status !== 'active') {
+                return response()->json([
+                    'message' => 'This service provider account is inactive.',
+                ], 403);
+            }
+
+            $loginCode->update([
+                'consumed_at' => now(),
+            ]);
+
+            $token = $provider->user->createToken('vergo-provider')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Login successful.',
+                'data' => [
+                    'token' => $token,
+                    'user' => $this->transformUserActor($provider->user->load('role')),
                 ],
             ]);
         }
@@ -443,7 +510,7 @@ class AuthController extends Controller
         return [$domainMatches->first(), null, 200];
     }
 
-    private function resolveOwnerForOtp(string $email, ?string $liNumber = null): array
+    private function resolveOwnerForOtp(string $email, ?string $liNumber = null, ?string $customerNumber = null): array
     {
         $property = null;
 
@@ -457,10 +524,13 @@ class AuthController extends Controller
             }
         }
 
+        $ownerIdFromCustomer = $this->parseCustomerNumber($customerNumber, 'KND');
+
         $privateOwner = User::query()
             ->with('role')
             ->whereHas('role', fn ($query) => $query->where('name', 'owner'))
             ->where('owner_type', 'private_individual')
+            ->when($ownerIdFromCustomer, fn ($query) => $query->where('id', $ownerIdFromCustomer))
             ->whereRaw('LOWER(login_email) = ?', [$email])
             ->first();
 
@@ -477,6 +547,7 @@ class AuthController extends Controller
             ->with('role')
             ->whereHas('role', fn ($query) => $query->where('name', 'owner'))
             ->where('owner_type', 'company')
+            ->when($ownerIdFromCustomer, fn ($query) => $query->where('id', $ownerIdFromCustomer))
             ->where('domain_suffix', $domain)
             ->get();
 
@@ -500,7 +571,64 @@ class AuthController extends Controller
             return [$matchingOwner, $matchingOwner->ownedProperties()->select('properties.id', 'li_number', 'title')->first(), null, 200];
         }
 
-        return [null, null, null, 422];
+        return [null, null, $customerNumber ? 'This customer number and email domain do not match an owner account.' : null, $customerNumber ? 422 : 422];
+    }
+
+    private function resolveProviderForOtp(string $email, ?string $customerNumber = null): array
+    {
+        $providerId = $this->parseCustomerNumber($customerNumber, 'DLS');
+        $domain = strtolower((string) str($email)->after('@'));
+
+        $query = ServiceProvider::query()
+            ->with('user.role')
+            ->where('domain_suffix', $domain);
+
+        if ($providerId) {
+            $query->where('id', $providerId);
+        }
+
+        $providers = $query->get();
+
+        if ($providers->count() > 1) {
+            return [null, 'This email domain is linked to multiple service providers. Please enter the customer number as well.', 409];
+        }
+
+        if ($providers->count() === 1) {
+            return [$providers->first(), null, 200];
+        }
+
+        if ($customerNumber) {
+            return [null, 'This customer number and email domain do not match a service provider account.', 422];
+        }
+
+        return [null, null, 422];
+    }
+
+    private function parseCustomerNumber(?string $value, string $prefix): ?int
+    {
+        if (! $value) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim($value));
+
+        if (! str_starts_with($normalized, $prefix.'-')) {
+            return null;
+        }
+
+        $digits = substr($normalized, strlen($prefix) + 1);
+
+        return ctype_digit($digits) ? (int) $digits : null;
+    }
+
+    private function formatOwnerCustomerNumber(int $id): string
+    {
+        return 'KND-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+    }
+
+    private function formatProviderCustomerNumber(int $id): string
+    {
+        return 'DLS-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
     }
 
     private function transformUserActor(User $user): array

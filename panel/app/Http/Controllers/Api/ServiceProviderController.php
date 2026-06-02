@@ -37,22 +37,21 @@ class ServiceProviderController extends Controller
         $provider = DB::transaction(function () use ($request) {
             $providerRole = Role::query()->where('name', 'provider')->firstOrFail();
             $status = $request->input('status', 'active');
+            $providerPayload = $this->buildProviderPayload($request);
 
             $user = User::query()->create([
                 'role_id' => $providerRole->id,
-                'name' => $request->input('contact_name') ?: $request->string('company_name')->toString(),
-                'email' => $request->string('contact_email')->toString(),
-                'password' => $request->string('password')->toString(),
+                'name' => $providerPayload['contact_name'] ?: $providerPayload['company_name'],
+                'email' => $providerPayload['order_email'],
+                'password' => bin2hex(random_bytes(16)),
+                'domain_suffix' => $providerPayload['domain_suffix'],
                 'status' => $status === 'pending' ? 'inactive' : $status,
-                'phone' => $request->input('phone'),
+                'phone' => $providerPayload['phone'],
             ]);
 
             return ServiceProvider::query()->create([
                 'user_id' => $user->id,
-                'company_name' => $request->string('company_name')->toString(),
-                'contact_name' => $request->input('contact_name'),
-                'contact_email' => $request->string('contact_email')->toString(),
-                'phone' => $request->input('phone'),
+                ...$providerPayload,
                 'status' => $status,
             ]);
         });
@@ -65,7 +64,10 @@ class ServiceProviderController extends Controller
         abort_unless($request->user() instanceof User && in_array($request->user()->role?->name, ['admin', 'employee'], true), 403);
 
         DB::transaction(function () use ($request, $serviceProvider) {
-            $serviceProvider->update($request->safe()->except('password'));
+            $providerPayload = $this->buildProviderPayload($request);
+            $serviceProvider->update($providerPayload + [
+                'status' => $request->input('status', $serviceProvider->status),
+            ]);
 
             $user = $serviceProvider->user;
 
@@ -74,25 +76,23 @@ class ServiceProviderController extends Controller
 
                 $user = User::query()->create([
                     'role_id' => $providerRole->id,
-                    'name' => $request->input('contact_name') ?: $request->input('company_name', $serviceProvider->company_name),
-                    'email' => $request->input('contact_email', $serviceProvider->contact_email),
-                    'password' => $request->input('password', 'password123'),
+                    'name' => $providerPayload['contact_name'] ?: $providerPayload['company_name'],
+                    'email' => $providerPayload['order_email'],
+                    'password' => bin2hex(random_bytes(16)),
+                    'domain_suffix' => $providerPayload['domain_suffix'],
                     'status' => $request->input('status', $serviceProvider->status) === 'pending' ? 'inactive' : $request->input('status', $serviceProvider->status),
-                    'phone' => $request->input('phone', $serviceProvider->phone),
+                    'phone' => $providerPayload['phone'],
                 ]);
 
                 $serviceProvider->update(['user_id' => $user->id]);
             } else {
                 $userPayload = [
-                    'name' => $request->input('contact_name', $serviceProvider->contact_name) ?: $request->input('company_name', $serviceProvider->company_name),
-                    'email' => $request->input('contact_email', $serviceProvider->contact_email),
+                    'name' => $providerPayload['contact_name'] ?: $providerPayload['company_name'],
+                    'email' => $providerPayload['order_email'],
+                    'domain_suffix' => $providerPayload['domain_suffix'],
                     'status' => $request->input('status', $serviceProvider->status) === 'pending' ? 'inactive' : $request->input('status', $serviceProvider->status),
-                    'phone' => $request->input('phone', $serviceProvider->phone),
+                    'phone' => $providerPayload['phone'],
                 ];
-
-                if ($request->filled('password')) {
-                    $userPayload['password'] = $request->string('password')->toString();
-                }
 
                 $user->update($userPayload);
             }
@@ -114,5 +114,18 @@ class ServiceProviderController extends Controller
         return response()->json([
             'message' => 'Service provider deleted successfully.',
         ]);
+    }
+
+    private function buildProviderPayload(Request $request): array
+    {
+        return [
+            'company_name' => $request->string('company_name')->trim()->toString(),
+            'contact_name' => $request->filled('contact_name') ? $request->string('contact_name')->trim()->toString() : null,
+            'contact_email' => strtolower($request->string('contact_email')->trim()->toString()),
+            'order_email' => strtolower($request->string('order_email')->trim()->toString()),
+            'domain_suffix' => ltrim(strtolower($request->string('domain_suffix')->trim()->toString()), '@'),
+            'trade_groups' => array_values($request->input('trade_groups', [])),
+            'phone' => $request->filled('phone') ? $request->string('phone')->trim()->toString() : null,
+        ];
     }
 }

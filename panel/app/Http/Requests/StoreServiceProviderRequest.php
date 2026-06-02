@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class StoreServiceProviderRequest extends FormRequest
 {
@@ -18,8 +17,11 @@ class StoreServiceProviderRequest extends FormRequest
         return [
             'company_name' => ['required', 'string', 'max:255'],
             'contact_name' => ['nullable', 'string', 'max:255'],
-            'contact_email' => ['required', 'email', 'max:255', 'unique:service_providers,contact_email', 'unique:users,email'],
-            'password' => ['required', 'string', Password::min(8)],
+            'contact_email' => ['required', 'email', 'max:255', 'unique:service_providers,contact_email'],
+            'order_email' => ['required', 'email', 'max:255', 'unique:service_providers,order_email', 'unique:users,email'],
+            'domain_suffix' => ['required', 'string', 'max:255'],
+            'trade_groups' => ['required', 'array', 'min:1'],
+            'trade_groups.*' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', Rule::in(['active', 'inactive', 'pending'])],
         ];
@@ -32,7 +34,11 @@ class StoreServiceProviderRequest extends FormRequest
             'contact_email.required' => 'Contact email is required.',
             'contact_email.email' => 'Please enter a valid contact email address.',
             'contact_email.unique' => 'This contact email is already in use.',
-            'password.required' => 'Password is required for a new provider.',
+            'order_email.required' => 'Order email is required.',
+            'order_email.email' => 'Please enter a valid order email address.',
+            'order_email.unique' => 'This order email is already in use.',
+            'domain_suffix.required' => 'Domain suffix is required.',
+            'trade_groups.required' => 'Please select at least one trade group.',
             'status.in' => 'Please select a valid provider status.',
         ];
     }

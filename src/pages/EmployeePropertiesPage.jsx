@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PageContent from '../components/PageContent'
+import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
 const initialForm = {
   title: '',
   address_line_1: '',
+  property_manager_profile_id: '',
   management: '',
   owner_id: '',
   postal_code: '',
@@ -28,6 +30,7 @@ function getOwnerCompanyLabel(property) {
 function EmployeePropertiesPage() {
   const [properties, setProperties] = useState([])
   const [owners, setOwners] = useState([])
+  const [propertyManagers, setPropertyManagers] = useState([])
   const [form, setForm] = useState(initialForm)
   const [filters, setFilters] = useState({ search: '', usage: '' })
   const [editingProperty, setEditingProperty] = useState(null)
@@ -43,13 +46,15 @@ function EmployeePropertiesPage() {
       setError('')
 
       try {
-        const [propertiesResponse, ownersResponse] = await Promise.all([
+        const [propertiesResponse, ownersResponse, propertyManagersResponse] = await Promise.all([
           api.getProperties(),
           api.getUserDirectoryOwners(),
+          api.getPropertyManagers(),
         ])
 
         setProperties(propertiesResponse.data ?? [])
         setOwners(ownersResponse.data ?? [])
+        setPropertyManagers(propertyManagersResponse.data ?? [])
       } catch (loadError) {
         setError(loadError.message)
       } finally {
@@ -132,6 +137,12 @@ function EmployeePropertiesPage() {
     setForm({
       title: property.title || '',
       address_line_1: property.address_line_1 || '',
+      property_manager_profile_id: String(
+        propertyManagers.find((manager) => {
+          const managerLabel = (manager.name || manager.email || '').trim().toLowerCase()
+          return managerLabel && managerLabel === String(property.management || '').trim().toLowerCase()
+        })?.id ?? ''
+      ),
       management: property.management || '',
       owner_id: property.owners?.[0]?.id ? String(property.owners[0].id) : '',
       postal_code: property.postal_code || '',
@@ -167,6 +178,10 @@ function EmployeePropertiesPage() {
 
     if (!form.owner_id) {
       nextErrors.owner_id = true
+    }
+
+    if (!String(form.property_manager_profile_id || '').trim()) {
+      nextErrors.property_manager_profile_id = true
     }
 
     if (!form.usage) {
@@ -241,6 +256,26 @@ function EmployeePropertiesPage() {
       setError(saveError.message)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleDelete(propertyId) {
+    const shouldDelete = await confirmDelete('property')
+
+    if (!shouldDelete) {
+      return
+    }
+
+    try {
+      await api.deleteProperty(propertyId)
+      setProperties((current) => current.filter((property) => property.id !== propertyId))
+      showDeleteSuccess('property')
+
+      if (editingProperty?.id === propertyId) {
+        closeModal()
+      }
+    } catch (deleteError) {
+      setError(deleteError.message)
     }
   }
 
@@ -360,6 +395,14 @@ function EmployeePropertiesPage() {
                           >
                             <i className="ti ti-pencil"></i>
                           </button>
+                          <button
+                            type="button"
+                            className="table-action-btn table-action-delete"
+                            onClick={() => handleDelete(property.id)}
+                            title="Liegenschaft löschen"
+                          >
+                            <i className="ti ti-trash"></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -410,7 +453,33 @@ function EmployeePropertiesPage() {
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Bewirtschaftung</label>
-                          <input className={`form-control${fieldErrors.management ? ' is-invalid' : ''}`} name="management" value={form.management} onChange={handleChange} />
+                          <select
+                            className={`form-select${fieldErrors.property_manager_profile_id ? ' is-invalid' : ''}`}
+                            name="property_manager_profile_id"
+                            value={form.property_manager_profile_id}
+                            onChange={(event) => {
+                              const selectedId = event.target.value
+                              const selectedManager = propertyManagers.find((manager) => String(manager.id) === selectedId)
+                              setForm((current) => ({
+                                ...current,
+                                property_manager_profile_id: selectedId,
+                                management: selectedManager?.name || selectedManager?.email || '',
+                              }))
+                              setFieldErrors((current) => {
+                                const nextErrors = { ...current }
+                                delete nextErrors.property_manager_profile_id
+                                delete nextErrors.management
+                                return nextErrors
+                              })
+                            }}
+                          >
+                            <option value="">Verwalter auswählen</option>
+                            {propertyManagers.map((manager) => (
+                              <option key={manager.id} value={manager.id}>
+                                {manager.name || 'Immobilienverwalter'}{manager.email ? ` (${manager.email})` : ''}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -449,7 +518,7 @@ function EmployeePropertiesPage() {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Grundstücksfläche</label>
+                          <label className="form-label">Grundstücksfläche (m²)</label>
                           <input className={`form-control${fieldErrors.lot_area ? ' is-invalid' : ''}`} name="lot_area" type="number" min="0" step="0.01" value={form.lot_area} onChange={handleChange} />
                         </div>
                       </div>

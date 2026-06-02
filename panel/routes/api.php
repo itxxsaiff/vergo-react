@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function (): void {
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     Route::post('/user/request-otp', [AuthController::class, 'requestUserOtp']);
     Route::post('/user/verify-otp', [AuthController::class, 'verifyUserOtp']);
     Route::post('/manager/check-li', [AuthController::class, 'checkManagerLi']);
@@ -60,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/employees', [EmployeeController::class, 'store']);
     Route::put('/employees/{employee}', [EmployeeController::class, 'update']);
     Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy']);
+    Route::post('/employees/{employee}/send-password-reset', [EmployeeController::class, 'sendPasswordReset']);
 
     Route::get('/properties', [PropertyController::class, 'index']);
     Route::post('/properties', [PropertyController::class, 'store']);

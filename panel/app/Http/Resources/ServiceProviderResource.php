@@ -11,10 +11,14 @@ class ServiceProviderResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'customer_number' => 'DLS-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT),
             'user_id' => $this->user_id,
             'company_name' => $this->company_name,
             'contact_name' => $this->contact_name,
             'contact_email' => $this->contact_email,
+            'order_email' => $this->order_email,
+            'domain_suffix' => $this->domain_suffix,
+            'trade_groups' => $this->trade_groups ?? [],
             'phone' => $this->phone,
             'rating' => $this->getAverageRatingValue(),
             'completed_jobs_count' => $this->getCompletedJobsCountValue(),

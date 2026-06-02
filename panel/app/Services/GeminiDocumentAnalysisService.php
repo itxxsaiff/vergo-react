@@ -205,7 +205,7 @@ PROMPT;
     private function buildDocumentTask(Document $document): string
     {
         return match ($document->type) {
-            'fm_contract' => 'Treat this as a facility management contract for owner benchmarking. Focus on recurring services, intervals, property size, and whether the owner may be overpaying.',
+            'fm_contract', 'contract' => 'Treat this as a facility management contract for owner benchmarking. Focus on recurring services, intervals, property size, total contract value, line-item services, and whether the owner may be overpaying.',
             'invoice' => 'Treat this as a historical invoice. Focus on work type, completed scope, unit pricing, prior contractor history, and benchmark value for future one-time jobs.',
             'proposal' => 'Treat this as a provider proposal. Focus on scope completeness, commercial terms, timing, and how useful it is for later bid comparison.',
             default => 'Treat this as a general property document and extract pricing, scope, dates, and benchmarking signals if present.',
@@ -215,7 +215,7 @@ PROMPT;
     private function getDocumentUseCase(Document $document): string
     {
         return match ($document->type) {
-            'fm_contract' => 'owner_contract_benchmark',
+            'fm_contract', 'contract' => 'owner_contract_benchmark',
             'invoice' => 'historical_invoice_benchmark',
             'proposal' => 'proposal_supporting_document',
             default => 'general_document_analysis',

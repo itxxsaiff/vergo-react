@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import {
-  DOCUMENT_TYPE_OPTIONS,
   JOB_TYPE_OPTIONS,
   TRADE_ACTIVITY_OPTIONS_BY_GROUP,
   TRADE_OBJECT_OPTIONS_BY_GROUP,
@@ -48,6 +48,7 @@ function getDocumentObjectScope(document) {
 
 function EmployeePropertyDocumentsPage() {
   const { propertyId } = useParams()
+  const { t, language } = useLanguage()
   const [property, setProperty] = useState(null)
   const [latestPropertyAnalysis, setLatestPropertyAnalysis] = useState(null)
   const [form, setForm] = useState(initialForm)
@@ -58,6 +59,130 @@ function EmployeePropertyDocumentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
   const [analysisNotice, setAnalysisNotice] = useState('')
+
+  function translateAnalysisText(value) {
+    if (!value) {
+      return '-'
+    }
+
+    const fixedTranslations = {
+      'No property benchmark or order bid data is available yet.': {
+        de: 'Es sind noch keine Immobilien-Benchmarks oder Auftragsgebote verfügbar.',
+        en: 'No property benchmarks or order bids are available yet.',
+        it: 'Non sono ancora disponibili benchmark immobiliari o offerte per ordini.',
+        fr: 'Aucun benchmark immobilier ou devis de commande n’est encore disponible.',
+      },
+      'Upload and analyze property-level documents or collect bids from orders.': {
+        de: 'Laden Sie Dokumente auf Liegenschaftsebene hoch und analysieren Sie diese oder sammeln Sie Gebote aus Aufträgen.',
+        en: 'Upload and analyze property-level documents or collect bids from orders.',
+        it: 'Carica e analizza documenti a livello di immobile oppure raccogli offerte dagli ordini.',
+        fr: 'Téléchargez et analysez des documents au niveau du bien ou collectez des offres à partir des commandes.',
+      },
+      'Property pricing currently looks above the analyzed benchmark range.': {
+        de: 'Die Preisgestaltung der Liegenschaft liegt derzeit über dem analysierten Benchmark-Bereich.',
+        en: 'Property pricing currently looks above the analyzed benchmark range.',
+        it: 'Il prezzo dell’immobile sembra attualmente superiore all’intervallo di benchmark analizzato.',
+        fr: 'Le prix du bien semble actuellement supérieur à la plage de benchmark analysée.',
+      },
+      'Property pricing currently looks below the analyzed benchmark range.': {
+        de: 'Die Preisgestaltung der Liegenschaft liegt derzeit unter dem analysierten Benchmark-Bereich.',
+        en: 'Property pricing currently looks below the analyzed benchmark range.',
+        it: 'Il prezzo dell’immobile sembra attualmente inferiore all’intervallo di benchmark analizzato.',
+        fr: 'Le prix du bien semble actuellement inférieur à la plage de benchmark analysée.',
+      },
+      'Property pricing currently looks within the analyzed benchmark range.': {
+        de: 'Die Preisgestaltung der Liegenschaft liegt derzeit innerhalb des analysierten Benchmark-Bereichs.',
+        en: 'Property pricing currently looks within the analyzed benchmark range.',
+        it: 'Il prezzo dell’immobile sembra attualmente rientrare nell’intervallo di benchmark analizzato.',
+        fr: 'Le prix du bien semble actuellement se situer dans la plage de benchmark analysée.',
+      },
+      'Property pricing recommendation could not be finalized yet.': {
+        de: 'Die Preisempfehlung für die Liegenschaft konnte noch nicht abgeschlossen werden.',
+        en: 'The property pricing recommendation could not be finalized yet.',
+        it: 'La raccomandazione di prezzo per l’immobile non può ancora essere finalizzata.',
+        fr: 'La recommandation de prix du bien ne peut pas encore être finalisée.',
+      },
+      'This property already has matching historical price evidence.': {
+        de: 'Für diese Liegenschaft liegen bereits passende historische Preisnachweise vor.',
+        en: 'This property already has matching historical price evidence.',
+        it: 'Per questo immobile esistono già prove storiche di prezzo corrispondenti.',
+        fr: 'Ce bien dispose déjà d’éléments historiques de prix correspondants.',
+      },
+      'Benchmark includes properties of similar size.': {
+        de: 'Der Benchmark enthält Liegenschaften mit ähnlicher Größe.',
+        en: 'The benchmark includes properties of similar size.',
+        it: 'Il benchmark include immobili di dimensioni simili.',
+        fr: 'Le benchmark inclut des biens de taille similaire.',
+      },
+      'Benchmark includes similar service intervals.': {
+        de: 'Der Benchmark enthält ähnliche Serviceintervalle.',
+        en: 'The benchmark includes similar service intervals.',
+        it: 'Il benchmark include intervalli di servizio simili.',
+        fr: 'Le benchmark inclut des intervalles de service similaires.',
+      },
+    }
+
+    if (fixedTranslations[value]) {
+      return fixedTranslations[value][language] ?? value
+    }
+
+    const directTranslation = t(value)
+
+    if (directTranslation !== value) {
+      return directTranslation
+    }
+
+    const benchmarkMatch = /^Average analyzed property benchmark is (.+)\.$/.exec(value)
+
+    if (benchmarkMatch) {
+      const amount = benchmarkMatch[1]
+      return {
+        de: `Der durchschnittliche analysierte Immobilien-Benchmark beträgt ${amount}.`,
+        en: `The average analyzed property benchmark is ${amount}.`,
+        it: `Il benchmark medio analizzato per l'immobile è ${amount}.`,
+        fr: `Le benchmark immobilier moyen analysé est de ${amount}.`,
+      }[language] ?? value
+    }
+
+    const bidMatch = /^Lowest property-linked bid is (.+) from (.+)\.$/.exec(value)
+
+    if (bidMatch) {
+      const amount = bidMatch[1]
+      const provider = bidMatch[2]
+      return {
+        de: `Das niedrigste mit der Liegenschaft verknüpfte Angebot beträgt ${amount} von ${provider}.`,
+        en: `The lowest bid linked to the property is ${amount} from ${provider}.`,
+        it: `L'offerta più bassa collegata all'immobile è ${amount} da ${provider}.`,
+        fr: `L'offre la plus basse liée au bien est de ${amount} provenant de ${provider}.`,
+      }[language] ?? value
+    }
+
+    const varianceMatch = /^Variance against the current benchmark is (.+)%\.$/.exec(value)
+
+    if (varianceMatch) {
+      const percentage = varianceMatch[1]
+      return {
+        de: `Die Abweichung gegenüber dem aktuellen Benchmark beträgt ${percentage}%.`,
+        en: `Variance against the current benchmark is ${percentage}%.`,
+        it: `La variazione rispetto al benchmark attuale è ${percentage}%.`,
+        fr: `L'écart par rapport au benchmark actuel est de ${percentage} %.`,
+      }[language] ?? value
+    }
+
+    const sourceMatch = /^(\d+) similar invoices\/contracts were used for this benchmark\.$/.exec(value)
+
+    if (sourceMatch) {
+      const count = sourceMatch[1]
+      return {
+        de: `Für diesen Benchmark wurden ${count} ähnliche Rechnungen oder Verträge verwendet.`,
+        en: `${count} similar invoices/contracts were used for this benchmark.`,
+        it: `Per questo benchmark sono state utilizzate ${count} fatture o contratti simili.`,
+        fr: `${count} factures ou contrats similaires ont été utilisés pour ce benchmark.`,
+      }[language] ?? value
+    }
+
+    return value
+  }
 
   useEffect(() => {
     loadProperty()
@@ -280,7 +405,7 @@ function EmployeePropertyDocumentsPage() {
       setAnalysisNotice(
         analysis
           ? 'Analyse abgeschlossen. Das Ergebnis sehen Sie unten auf dieser Seite im Bereich Analyseergebnis.'
-          : 'Analyse wurde ausgelöst, aber es liegt noch kein sichtbares Vergleichsergebnis vor.',
+          : 'Analyse konnte nicht abgeschlossen werden. Prüfen Sie die Dokumentdaten und versuchen Sie es erneut.',
       )
     } catch (analysisError) {
       setError(analysisError.message)
@@ -292,13 +417,6 @@ function EmployeePropertyDocumentsPage() {
   function handleExportAnalysisPdf() {
     if (!propertyPriceRecommendation) {
       setAnalysisNotice('Bitte führen Sie zuerst eine Analyse durch, bevor Sie den PDF-Bericht exportieren.')
-      return
-    }
-
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1120,height=900')
-
-    if (!printWindow) {
-      setError('Der PDF-Bericht konnte nicht geöffnet werden. Bitte erlauben Sie Pop-ups für diese Seite.')
       return
     }
 
@@ -344,7 +462,7 @@ function EmployeePropertyDocumentsPage() {
     }).join('')
 
     const reasons = (propertyPriceRecommendation.comparison_data?.reasons ?? [])
-      .map((reason) => `<li>${escapeHtml(reason)}</li>`)
+      .map((reason) => `<li>${escapeHtml(translateAnalysisText(reason))}</li>`)
       .join('')
 
     const benchmarkSources = (propertyPriceRecommendation.comparison_data?.benchmark_sources ?? [])
@@ -438,6 +556,14 @@ function EmployeePropertyDocumentsPage() {
               }
             }
           </style>
+          <script>
+            window.addEventListener('load', () => {
+              window.setTimeout(() => {
+                window.focus();
+                window.print();
+              }, 350);
+            });
+          </script>
         </head>
         <body>
           <h1>Analysebericht</h1>
@@ -447,7 +573,7 @@ function EmployeePropertyDocumentsPage() {
           <div class="section">
             <div class="summary">
               <h2>Zusammenfassung</h2>
-              <div>${escapeHtml(propertyPriceRecommendation.summary || '-')}</div>
+              <div>${escapeHtml(translateAnalysisText(propertyPriceRecommendation.summary))}</div>
             </div>
           </div>
 
@@ -537,12 +663,19 @@ function EmployeePropertyDocumentsPage() {
         </body>
       </html>
     `
+    const reportBlob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const reportUrl = window.URL.createObjectURL(reportBlob)
+    const printWindow = window.open(reportUrl, '_blank', 'width=1120,height=900')
 
-    printWindow.document.open()
-    printWindow.document.write(html)
-    printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
+    if (!printWindow) {
+      window.URL.revokeObjectURL(reportUrl)
+      setError('Der PDF-Bericht konnte nicht geöffnet werden. Bitte erlauben Sie Pop-ups für diese Seite.')
+      return
+    }
+
+    window.setTimeout(() => {
+      window.URL.revokeObjectURL(reportUrl)
+    }, 60_000)
   }
 
   const propertyDocuments = property?.documents ?? []
@@ -611,7 +744,7 @@ function EmployeePropertyDocumentsPage() {
                 </div>
               </div>
               <div className="text-muted small mt-3">
-                Die Analyse nutzt die hochgeladenen Verträge und Rechnungen dieser Liegenschaft. Eine PDF-Ausgabe ist im aktuellen Frontend noch nicht angebunden.
+                Die Analyse nutzt die hochgeladenen Verträge und Rechnungen dieser Liegenschaft. Den Bericht können Sie unten direkt als PDF exportieren.
               </div>
             </div>
           </div>
@@ -841,7 +974,7 @@ function EmployeePropertyDocumentsPage() {
                       : 'alert-light-success'
                   } border mb-4`}>
                     <div className="fw-semibold mb-1">Zusammenfassung</div>
-                    <div>{propertyPriceRecommendation.summary || '-'}</div>
+                    <div>{translateAnalysisText(propertyPriceRecommendation.summary)}</div>
                   </div>
 
                   <div className="row g-3">
@@ -882,7 +1015,7 @@ function EmployeePropertyDocumentsPage() {
                       <h6 className="fw-semibold">Begründung</h6>
                       <ul className="mb-0 ps-3">
                         {propertyPriceRecommendation.comparison_data.reasons.map((reason, index) => (
-                          <li key={`${reason}-${index}`}>{reason}</li>
+                          <li key={`${reason}-${index}`}>{translateAnalysisText(reason)}</li>
                         ))}
                       </ul>
                     </div>
@@ -1020,17 +1153,6 @@ function EmployeePropertyDocumentsPage() {
                             value={form.title}
                             onChange={handleChange}
                             placeholder="Optional, wird sonst automatisch gesetzt"
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-6">
-                        <div className="mb-3">
-                          <label className="form-label">Backend-Typ</label>
-                          <input
-                            className="form-control"
-                            value={getOptionLabel(DOCUMENT_TYPE_OPTIONS, form.document_kind === 'invoice' ? 'invoice' : 'contract')}
-                            disabled
-                            readOnly
                           />
                         </div>
                       </div>

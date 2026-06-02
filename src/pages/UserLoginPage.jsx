@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { USER_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
 
 const initialForm = {
@@ -13,6 +14,7 @@ const initialForm = {
 function UserLoginPage() {
   const navigate = useNavigate()
   const { isAuthenticated, login } = useAuth()
+  const { t } = useLanguage()
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState('')
@@ -54,16 +56,16 @@ function UserLoginPage() {
 
   return (
     <AuthShell
-      title="Benutzeranmeldung"
-      subtitle="Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."
+      title={t('Benutzeranmeldung')}
+      subtitle={t('Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.')}
       logoHref="/user-login"
       backgroundStyle={backgroundStyle}
       {...immersiveAuthShellProps}
-      footer={<Link className="text-primary fw-medium" to="/login">Zurück</Link>}
+      footer={<Link className="text-primary fw-medium" to="/login">{t('Zurück')}</Link>}
     >
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <label className="form-label">E-Mail</label>
+          <label className="form-label">{t('E-Mail')}</label>
           <input
             type="email"
             className="form-control"
@@ -75,7 +77,7 @@ function UserLoginPage() {
         </div>
 
         <div className="mb-3">
-          <label className="form-label">Passwort</label>
+          <label className="form-label">{t('Passwort')}</label>
           <input
             type="password"
             className="form-control"
@@ -90,7 +92,7 @@ function UserLoginPage() {
 
         <div className="mt-3 d-grid">
           <button className="btn vergo-type-continue mb-4 rounded-2" type="submit" disabled={isSubmitting}>
-            <span className="vergo-type-continue-label">{isSubmitting ? 'Anmeldung läuft...' : 'Anmelden'}</span>
+            <span className="vergo-type-continue-label">{isSubmitting ? t('Anmeldung läuft...') : t('Anmelden')}</span>
             <span className="vergo-type-continue-icon" aria-hidden="true">
               <i className="ti ti-arrow-right"></i>
             </span>

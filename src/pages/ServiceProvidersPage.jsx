@@ -3,12 +3,15 @@ import PageContent from '../components/PageContent'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
+import { JOB_TYPE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
 const initialForm = {
   company_name: '',
   contact_name: '',
   contact_email: '',
-  password: '',
+  order_email: '',
+  domain_suffix: '',
+  trade_groups: [],
   phone: '',
   status: 'active',
 }
@@ -57,8 +60,13 @@ function ServiceProvidersPage() {
   }
 
   function handleChange(event) {
-    const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
+    const { name, value, selectedOptions } = event.target
+    setForm((current) => ({
+      ...current,
+      [name]: name === 'trade_groups'
+        ? Array.from(selectedOptions, (option) => option.value)
+        : value,
+    }))
   }
 
   function handleFilterChange(event) {
@@ -79,7 +87,9 @@ function ServiceProvidersPage() {
       company_name: provider.company_name || '',
       contact_name: provider.contact_name || '',
       contact_email: provider.contact_email || '',
-      password: '',
+      order_email: provider.order_email || '',
+      domain_suffix: provider.domain_suffix || '',
+      trade_groups: provider.trade_groups || [],
       phone: provider.phone || '',
       status: provider.status || 'active',
     })
@@ -111,14 +121,20 @@ if (!form.contact_email.trim()) {
   return
 }
 
-if (!editingId && !form.password.trim()) {
-  setError('Für einen neuen Dienstleister ist ein Passwort erforderlich.')
+if (!form.order_email.trim()) {
+  setError('Die E-Mail für Aufträge ist erforderlich.')
   setIsSaving(false)
   return
 }
 
-if (form.password && form.password.length < 8) {
-  setError('Das Passwort muss mindestens 8 Zeichen lang sein.')
+if (!form.domain_suffix.trim()) {
+  setError('Die Domain-Endung ist erforderlich.')
+  setIsSaving(false)
+  return
+}
+
+if ((form.trade_groups ?? []).length === 0) {
+  setError('Bitte wählen Sie mindestens ein Gewerk aus.')
   setIsSaving(false)
   return
 }
@@ -130,11 +146,19 @@ if (!emailPattern.test(form.contact_email.trim())) {
   return
 }
 
+if (!emailPattern.test(form.order_email.trim())) {
+  setError('Bitte geben Sie eine gültige E-Mail für Aufträge ein.')
+  setIsSaving(false)
+  return
+}
+
     try {
       const payload = {
         ...form,
         contact_name: form.contact_name || null,
-        password: form.password || null,
+        order_email: form.order_email.trim().toLowerCase(),
+        domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
+        trade_groups: form.trade_groups,
         phone: form.phone || null,
       }
 
@@ -173,6 +197,9 @@ if (!emailPattern.test(form.contact_email.trim())) {
       provider.company_name,
       provider.contact_name,
       provider.contact_email,
+      provider.order_email,
+      provider.domain_suffix,
+      ...(provider.trade_groups || []),
       provider.phone,
     ].filter(Boolean).join(' ').toLowerCase()
 
@@ -259,6 +286,7 @@ if (!emailPattern.test(form.contact_email.trim())) {
                 <td>
                   <div>{provider.contact_name || '-'}</div>
                   <div className="text-muted">{provider.contact_email}</div>
+                  <div className="text-muted small">{provider.order_email || '-'}</div>
                 </td>
                 <td>{provider.phone || '-'}</td>
                 <td>{provider.rating ?? '-'}</td>
@@ -309,11 +337,31 @@ if (!emailPattern.test(form.contact_email.trim())) {
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">Kontakt-E-Mail</label>
-              <input className="form-control" name="contact_email" value={form.contact_email} onChange={handleChange} />
+              <input type="email" className="form-control" name="contact_email" value={form.contact_email} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label">{editingId ? 'Passwort (optional)' : 'Passwort'}</label>
-              <input type="password" className="form-control" name="password" value={form.password} onChange={handleChange} />
+              <label className="form-label">E-Mail für Aufträge</label>
+              <input type="email" className="form-control" name="order_email" value={form.order_email} onChange={handleChange} />
+            </div>
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Domain-Endung</label>
+              <input className="form-control" name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+            </div>
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Gewerk</label>
+              <select className="form-select" name="trade_groups" value={form.trade_groups} onChange={handleChange} multiple size="5">
+                {JOB_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <small className="text-muted">Mehrfachauswahl möglich.</small>
+              {form.trade_groups.length > 0 ? (
+                <div className="small text-muted mt-1">
+                  {form.trade_groups.map((value) => getOptionLabel(JOB_TYPE_OPTIONS, value)).join(', ')}
+                </div>
+              ) : null}
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">Telefon</label>
@@ -326,6 +374,11 @@ if (!emailPattern.test(form.contact_email.trim())) {
                 <option value="pending">Ausstehend</option>
                 <option value="inactive">Inaktiv</option>
               </select>
+            </div>
+            <div className="col-12">
+              <div className="alert alert-light border small mb-0">
+                Dienstleister melden sich mit Kundennummer, E-Mail-Adresse und OTP-Code an. Ein Passwort wird nicht gesetzt.
+              </div>
             </div>
           </div>
           {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}

@@ -3,17 +3,20 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { EMAIL_OTP_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
 
 const initialForm = {
   email: '',
   li_number: '',
+  customer_number: '',
   code: '',
 }
 
 function EmailOtpLoginPage() {
   const navigate = useNavigate()
   const { isAuthenticated, requestUserOtp, verifyUserOtp } = useAuth()
+  const { t } = useLanguage()
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
   const [form, setForm] = useState(initialForm)
   const [step, setStep] = useState('email')
@@ -35,9 +38,9 @@ function EmailOtpLoginPage() {
 
     setForm((current) => ({
       ...current,
-      [name]: name === 'code'
+        [name]: name === 'code'
         ? value.replace(/\D/g, '').slice(0, 6)
-        : name === 'li_number'
+        : name === 'li_number' || name === 'customer_number'
           ? value.slice(0, 20)
           : value,
     }))
@@ -53,15 +56,18 @@ function EmailOtpLoginPage() {
       const response = await requestUserOtp({
         email: normalizedEmail,
         li_number: normalizedLiNumber || undefined,
+        customer_number: form.customer_number.trim() || undefined,
       })
 
       setForm((current) => ({
         ...current,
         email: response.data?.email ?? normalizedEmail,
         li_number: response.data?.li_number ?? normalizedLiNumber,
+        customer_number: response.data?.customer_number ?? current.customer_number,
         code: '',
       }))
-      setOtpSentMessage(`Wir haben einen Anmeldecode an ${response.data?.email ?? normalizedEmail} gesendet.`)
+      const sentSuffix = t('gesendet.')
+      setOtpSentMessage(`${t('Wir haben einen Anmeldecode an')} ${response.data?.email ?? normalizedEmail}${sentSuffix === '.' ? '.' : ` ${sentSuffix}`}`)
       setStep('otp')
     } catch (submitError) {
       setError(submitError.message)
@@ -84,6 +90,7 @@ function EmailOtpLoginPage() {
       const loggedInUser = await verifyUserOtp({
         email: form.email.trim().toLowerCase(),
         li_number: form.li_number.trim() || undefined,
+        customer_number: form.customer_number.trim() || undefined,
         code: form.code,
       })
       sessionStorage.removeItem(EMAIL_OTP_LOGIN_ACCESS_KEY)
@@ -100,6 +107,7 @@ function EmailOtpLoginPage() {
     setForm((current) => ({
       ...current,
       li_number: '',
+      customer_number: '',
       code: '',
     }))
     setOtpSentMessage('')
@@ -108,8 +116,8 @@ function EmailOtpLoginPage() {
 
   const contentByStep = {
     email: {
-      title: 'Eigentümeranmeldung',
-      subtitle: 'Geben Sie Ihre E-Mail-Adresse ein. Optional können Sie zusätzlich eine LI-Nummer angeben.',
+      title: 'Eigentümer- und Dienstleisteranmeldung',
+      subtitle: 'Geben Sie Ihre E-Mail-Adresse ein. Optional können Sie zusätzlich eine LI-Nummer oder Kundennummer angeben.',
     },
     otp: {
       title: 'Code eingeben',
@@ -119,17 +127,17 @@ function EmailOtpLoginPage() {
 
   return (
     <AuthShell
-      title={contentByStep[step].title}
-      subtitle={contentByStep[step].subtitle}
+      title={t(contentByStep[step].title)}
+      subtitle={t(contentByStep[step].subtitle)}
       logoHref="/email-otp-login"
       backgroundStyle={backgroundStyle}
       {...immersiveAuthShellProps}
-      footer={<Link className="text-primary fw-medium" to="/type">Zurück</Link>}
+      footer={<Link className="text-primary fw-medium" to="/type">{t('Zurück')}</Link>}
     >
       {step === 'email' ? (
         <form onSubmit={handleRequestOtp}>
           <div className="mb-3">
-            <label className="form-label">LI-Nummer (optional)</label>
+            <label className="form-label">{t('LI-Nummer (optional)')}</label>
             <input
               className="form-control"
               name="li_number"
@@ -140,7 +148,18 @@ function EmailOtpLoginPage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">E-Mail</label>
+            <label className="form-label">{t('Kundennummer (optional)')}</label>
+            <input
+              className="form-control"
+              name="customer_number"
+              value={form.customer_number}
+              onChange={handleChange}
+              placeholder="KND-00001 oder DLS-00001"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">{t('E-Mail')}</label>
             <input
               type="email"
               className="form-control"
@@ -159,7 +178,7 @@ function EmailOtpLoginPage() {
               type="submit"
               disabled={isSubmitting || !form.email.trim()}
             >
-              <span className="vergo-type-continue-label">{isSubmitting ? 'OTP wird gesendet...' : 'OTP senden'}</span>
+              <span className="vergo-type-continue-label">{isSubmitting ? t('OTP wird gesendet...') : t('OTP senden')}</span>
               <span className="vergo-type-continue-icon" aria-hidden="true">
                 <i className="ti ti-arrow-right"></i>
               </span>
@@ -172,7 +191,7 @@ function EmailOtpLoginPage() {
         <form onSubmit={handleVerifyOtp}>
           {form.li_number ? (
             <div className="mb-3">
-              <label className="form-label">LI-Nummer</label>
+              <label className="form-label">{t('LI-Nummer')}</label>
               <input
                 className="form-control"
                 name="li_number"
@@ -182,8 +201,20 @@ function EmailOtpLoginPage() {
             </div>
           ) : null}
 
+          {form.customer_number ? (
+            <div className="mb-3">
+              <label className="form-label">{t('Kundennummer')}</label>
+              <input
+                className="form-control"
+                name="customer_number"
+                value={form.customer_number}
+                readOnly
+              />
+            </div>
+          ) : null}
+
           <div className="mb-3">
-            <label className="form-label">E-Mail</label>
+            <label className="form-label">{t('E-Mail')}</label>
             <div className="input-group">
               <input
                 type="email"
@@ -193,13 +224,13 @@ function EmailOtpLoginPage() {
                 readOnly
               />
               <button type="button" className="btn btn-light" onClick={resetEmailStep}>
-                Ändern
+                {t('Ändern')}
               </button>
             </div>
           </div>
 
           <div className="mb-3">
-            <label className="form-label">OTP-Code</label>
+            <label className="form-label">{t('OTP-Code')}</label>
             <input
               className="form-control"
               name="code"
@@ -219,7 +250,7 @@ function EmailOtpLoginPage() {
               type="submit"
               disabled={isSubmitting || form.code.length !== 6}
             >
-              <span className="vergo-type-continue-label">{isSubmitting ? 'Wird geprüft...' : 'Code bestätigen'}</span>
+              <span className="vergo-type-continue-label">{isSubmitting ? t('Wird geprüft...') : t('Code bestätigen')}</span>
               <span className="vergo-type-continue-icon" aria-hidden="true">
                 <i className="ti ti-arrow-right"></i>
               </span>
@@ -233,7 +264,7 @@ function EmailOtpLoginPage() {
               onClick={sendOtp}
               disabled={isSubmitting || !form.email.trim()}
             >
-              Code erneut senden
+              {t('Code erneut senden')}
             </button>
           </div>
         </form>

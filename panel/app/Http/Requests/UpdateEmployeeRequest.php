@@ -4,8 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
-
 class UpdateEmployeeRequest extends FormRequest
 {
     public function authorize(): bool
@@ -20,7 +18,6 @@ class UpdateEmployeeRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($employeeId)],
-            'password' => ['sometimes', 'nullable', 'string', Password::min(8)],
             'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             'status' => ['sometimes', 'nullable', 'in:active,inactive'],
             'access_level' => ['sometimes', 'nullable', 'in:admin,power_user'],

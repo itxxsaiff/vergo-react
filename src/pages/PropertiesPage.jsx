@@ -527,7 +527,7 @@ function PropertiesPage() {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Grundstücksfläche</label>
+                          <label className="form-label">Grundstücksfläche (m²)</label>
                           <input className={`form-control${fieldErrors.lot_area ? ' is-invalid' : ''}`} name="lot_area" type="number" min="0" step="0.01" value={form.lot_area} onChange={handleChange} />
                         </div>
                       </div>

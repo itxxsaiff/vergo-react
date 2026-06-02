@@ -16,6 +16,9 @@ class ServiceProvider extends Model
         'company_name',
         'contact_name',
         'contact_email',
+        'order_email',
+        'domain_suffix',
+        'trade_groups',
         'phone',
         'rating',
         'completed_jobs_count',
@@ -27,6 +30,7 @@ class ServiceProvider extends Model
         return [
             'rating' => 'decimal:2',
             'completed_jobs_count' => 'integer',
+            'trade_groups' => 'array',
         ];
     }
 

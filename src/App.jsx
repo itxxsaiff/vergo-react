@@ -24,6 +24,7 @@ import PropertyDetailsPage from './pages/PropertyDetailsPage'
 import PropertyManagersPage from './pages/PropertyManagersPage'
 import PropertyObjectsPage from './pages/PropertyObjectsPage'
 import PropertiesPage from './pages/PropertiesPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import EmployeePropertiesPage from './pages/EmployeePropertiesPage'
 import EmployeePropertyDetailsPage from './pages/EmployeePropertyDetailsPage'
 import EmployeePropertyDocumentsPage from './pages/EmployeePropertyDocumentsPage'
@@ -106,6 +107,7 @@ function App() {
       <Route path="/type" element={<TypePage />} />
       <Route path="/email-otp-login" element={<EmailOtpLoginPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/user-login" element={<UserLoginPage />} />
 
       <Route path="/" element={<AuthenticatedLayout />}>

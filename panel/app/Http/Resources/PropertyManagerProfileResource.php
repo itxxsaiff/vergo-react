@@ -14,6 +14,10 @@ class PropertyManagerProfileResource extends JsonResource
             'property_id' => $this->property_id,
             'name' => $this->name,
             'email' => $this->email,
+            'address' => $this->address,
+            'postal_code' => $this->postal_code,
+            'city' => $this->city,
+            'domain_suffix' => $this->domain_suffix,
             'last_login_at' => $this->last_login_at?->toDateTimeString(),
             'property' => $this->whenLoaded('property', fn () => [
                 'id' => $this->property->id,

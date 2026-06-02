@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AiAnalysisResultResource;
+use App\Jobs\AnalyzeDocumentWithGemini;
 use App\Models\AiAnalysisResult;
 use App\Models\Document;
 use App\Models\PropertyManagerProfile;
@@ -48,14 +49,17 @@ class AiAnalysisController extends Controller
             'order_id' => $document->order_id,
             'property_id' => $document->property_id,
             'status' => 'queued',
-            'summary' => 'Document queued for Gemini analysis.',
+            'summary' => 'Dokument wird für die Gemini-Analyse verarbeitet.',
             'comparison_data' => [
                 'analysis_type' => 'document_analysis',
-                'queued_via' => 'background_job',
+                'queued_via' => 'direct_request',
             ],
         ]);
 
-        return new AiAnalysisResultResource($result->load([
+        $job = new AnalyzeDocumentWithGemini($document->id, $result->id);
+        app()->call([$job, 'handle']);
+
+        return new AiAnalysisResultResource($result->fresh()->load([
             'document.property:id,li_number,title',
             'document.order:id,title',
         ]));

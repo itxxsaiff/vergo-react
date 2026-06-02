@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { useAuth } from '../context/AuthContext'
 import { EMAIL_OTP_LOGIN_ACCESS_KEY, USER_LOGIN_ACCESS_KEY } from '../constants/auth'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
 
@@ -36,7 +37,8 @@ function formatLiNumber(prefix, number) {
 function LoginPage() {
   const navigate = useNavigate()
   const secondInputRef = useRef(null)
-  const { isAuthenticated, requestUserOtp, verifyUserOtp } = useAuth()
+  const { isAuthenticated, requestManagerOtp, verifyManagerOtp } = useAuth()
+  const { t } = useLanguage()
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
   const [step, setStep] = useState('li')
   const [liPrefix, setLiPrefix] = useState('')
@@ -116,12 +118,13 @@ function LoginPage() {
     setError('')
 
     try {
-      const response = await requestUserOtp({
+      const response = await requestManagerOtp({
         li_number: liNumber,
         email: email.trim().toLowerCase(),
       })
 
-      setOtpSentMessage(`Wir haben einen Anmeldecode an ${response.data?.email ?? email.trim().toLowerCase()} gesendet.`)
+      const sentSuffix = t('gesendet.')
+      setOtpSentMessage(`${t('Wir haben einen Anmeldecode an')} ${response.data?.email ?? email.trim().toLowerCase()}${sentSuffix === '.' ? '.' : ` ${sentSuffix}`}`)
       setStep('otp')
     } catch (submitError) {
       setError(submitError.message)
@@ -136,7 +139,7 @@ function LoginPage() {
     setError('')
 
     try {
-      const loggedInUser = await verifyUserOtp({
+      const loggedInUser = await verifyManagerOtp({
         li_number: liNumber,
         email: email.trim().toLowerCase(),
         code,
@@ -181,19 +184,19 @@ function LoginPage() {
   return (
     <AuthShell
 
-      title={contentByStep[step].title}
+      title={t(contentByStep[step].title)}
       // subtitle={contentByStep[step].subtitle}
       logoHref="/login"
       backgroundStyle={backgroundStyle}
       {...immersiveAuthShellProps}
-      footer={<Link className="text-primary fw-medium" to="/type">Zurück</Link>}
+      footer={<Link className="text-primary fw-medium" to="/type">{t('Zurück')}</Link>}
     >
       {step === 'li' ? (
         <form onSubmit={handleLiSubmit}>
           <div className="row">
             <div className="col-4">
               <div className="mb-3">
-                <label className="form-label">Zeichen</label>
+                <label className="form-label">{t('Zeichen')}</label>
                 <input
                   className="form-control text-uppercase"
                   value={liPrefix}
@@ -206,7 +209,7 @@ function LoginPage() {
 
             <div className="col-8">
               <div className="mb-3">
-                <label className="form-label">ID</label>
+                <label className="form-label">{t('ID')}</label>
                 <input
                   ref={secondInputRef}
                   className="form-control"
@@ -227,7 +230,7 @@ function LoginPage() {
               type="submit"
               disabled={isSubmitting || liPrefix.length < 2 || liDigits.length < 1}
             >
-              <span className="vergo-type-continue-label">{isSubmitting ? 'Wird geprüft...' : 'Anmelden'}</span>
+              <span className="vergo-type-continue-label">{isSubmitting ? t('Wird geprüft...') : t('Anmelden')}</span>
               <span className="vergo-type-continue-icon" aria-hidden="true">
                 <i className="ti ti-arrow-right"></i>
               </span>
@@ -239,18 +242,18 @@ function LoginPage() {
       {step === 'email' ? (
         <form onSubmit={handleRequestOtp}>
           <div className="mb-3">
-            <label className="form-label">Li-Nummer</label>
+            <label className="form-label">{t('Li-Nummer')}</label>
             <div className="input-group">
               <input className="form-control" value={liNumber} readOnly />
               <button type="button" className="btn btn-light" onClick={resetLiFlow}>
-                Ändern
+                {t('Ändern')}
               </button>
             </div>
             {propertyTitle ? <small className="text-muted">{propertyTitle}</small> : null}
           </div>
 
           <div className="mb-3">
-            <label className="form-label">E-Mail</label>
+            <label className="form-label">{t('E-Mail')}</label>
             <input
               type="email"
               className="form-control"
@@ -264,7 +267,7 @@ function LoginPage() {
 
           <div className="mt-3 d-grid">
             <button className="btn vergo-type-continue mb-3 rounded-2" type="submit" disabled={isSubmitting}>
-              <span className="vergo-type-continue-label">{isSubmitting ? 'OTP wird gesendet...' : 'OTP senden'}</span>
+              <span className="vergo-type-continue-label">{isSubmitting ? t('OTP wird gesendet...') : t('OTP senden')}</span>
               <span className="vergo-type-continue-icon" aria-hidden="true">
                 <i className="ti ti-arrow-right"></i>
               </span>
@@ -276,17 +279,17 @@ function LoginPage() {
       {step === 'otp' ? (
         <form onSubmit={handleVerifyOtp}>
           <div className="mb-3">
-            <label className="form-label">Li-Nummer</label>
+            <label className="form-label">{t('Li-Nummer')}</label>
             <input className="form-control" value={liNumber} readOnly />
           </div>
 
           <div className="mb-3">
-            <label className="form-label">E-Mail</label>
+            <label className="form-label">{t('E-Mail')}</label>
             <input className="form-control" value={email} readOnly />
           </div>
 
           <div className="mb-3">
-            <label className="form-label">OTP-Code</label>
+            <label className="form-label">{t('OTP-Code')}</label>
             <input
               className="form-control"
               value={code}
@@ -302,7 +305,7 @@ function LoginPage() {
 
           <div className="mt-3 d-grid">
             <button className="btn vergo-type-continue mb-3 rounded-2" type="submit" disabled={isSubmitting}>
-              <span className="vergo-type-continue-label">{isSubmitting ? 'Wird geprüft...' : 'Code bestätigen'}</span>
+              <span className="vergo-type-continue-label">{isSubmitting ? t('Wird geprüft...') : t('Code bestätigen')}</span>
               <span className="vergo-type-continue-icon" aria-hidden="true">
                 <i className="ti ti-arrow-right"></i>
               </span>
@@ -311,7 +314,7 @@ function LoginPage() {
 
           <div className="mt-3 text-center">
             <button type="button" className="btn btn-link p-0 text-primary" onClick={() => setStep('email')}>
-              Code erneut senden
+              {t('Code erneut senden')}
             </button>
           </div>
         </form>

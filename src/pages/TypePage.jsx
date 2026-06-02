@@ -3,14 +3,15 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { EMAIL_OTP_LOGIN_ACCESS_KEY, USER_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
 
 const TYPE_OPTIONS = [
   {
     value: 'email',
     icon: 'ti ti-user',
-    title: 'Eigentümeranmeldung',
-    description: 'Mit E-Mail und OTP als Eigentümer anmelden, optional mit LI-Nummer.',
+    title: 'Eigentümer- / Dienstleisteranmeldung',
+    description: 'Mit E-Mail und OTP anmelden, optional mit LI-Nummer oder Kundennummer.',
   },
   {
     value: 'property',
@@ -23,6 +24,7 @@ const TYPE_OPTIONS = [
 function TypePage() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
+  const { t } = useLanguage()
   const [selectedOption, setSelectedOption] = useState('email')
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
 
@@ -49,8 +51,8 @@ function TypePage() {
 
   return (
     <AuthShell
-      title="Anmeldung wählen"
-      subtitle="Wählen Sie den passenden Zugang und starten Sie sicher in Ihren Vergo-Bereich."
+      title={t('Anmeldung wählen')}
+      subtitle={t('Wählen Sie den passenden Zugang und starten Sie sicher in Ihren Vergo-Bereich.')}
       logoHref="/type"
       backgroundStyle={backgroundStyle}
       {...immersiveAuthShellProps}
@@ -82,10 +84,10 @@ function TypePage() {
                     <i className={`${option.icon} fs-9 text-white`}></i>
                   </div>
                   <h4 className="fw-semibold mb-2 vergo-type-choice-title" style={{ fontSize: '1.15rem' }}>
-                    {option.title}
+                    {t(option.title)}
                   </h4>
                   <p className="mb-0 vergo-type-choice-description" style={{ fontSize: '0.92rem' }}>
-                    {option.description}
+                    {t(option.description)}
                   </p>
                 </div>
               </button>
@@ -101,7 +103,7 @@ function TypePage() {
           onClick={handleContinue}
           disabled={!selectedOption}
         >
-          <span className="vergo-type-continue-label">Anmelden</span>
+          <span className="vergo-type-continue-label">{t('Anmelden')}</span>
           <span className="vergo-type-continue-icon" aria-hidden="true">
             <i className="ti ti-arrow-right"></i>
           </span>
@@ -109,7 +111,7 @@ function TypePage() {
       </div>
 
       <p className="vergo-type-note mb-0">
-        Der Hintergrund wechselt automatisch je nach Tageszeit.
+        {t('Der Hintergrund wechselt automatisch je nach Tageszeit.')}
       </p>
     </AuthShell>
   )

@@ -113,6 +113,12 @@ export const api = {
       body: JSON.stringify(data),
     })
   },
+  resetPassword(data) {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
   getMe() {
     return request('/auth/me')
   },
@@ -174,6 +180,11 @@ export const api = {
     return request(`/employees/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    })
+  },
+  sendEmployeePasswordReset(id) {
+    return request(`/employees/${id}/send-password-reset`, {
+      method: 'POST',
     })
   },
   deleteEmployee(id) {

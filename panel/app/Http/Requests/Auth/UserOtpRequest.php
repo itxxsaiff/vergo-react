@@ -16,6 +16,7 @@ class UserOtpRequest extends FormRequest
         return [
             'email' => ['required', 'email'],
             'li_number' => ['nullable', 'string', 'max:20'],
+            'customer_number' => ['nullable', 'string', 'max:20'],
         ];
     }
 }

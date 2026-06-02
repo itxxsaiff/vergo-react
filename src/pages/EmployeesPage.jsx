@@ -7,7 +7,6 @@ import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 const initialForm = {
   name: '',
   email: '',
-  password: '',
   phone: '',
   status: 'active',
   access_level: 'admin',
@@ -116,23 +115,10 @@ function EmployeesPage() {
       return
     }
 
-    if (!editingEmployeeId && !form.password.trim()) {
-      setError('Für einen neuen Mitarbeiter ist ein Passwort erforderlich.')
-      setIsSaving(false)
-      return
-    }
-
-    if (form.password && form.password.length < 8) {
-      setError('Das Passwort muss mindestens 8 Zeichen lang sein.')
-      setIsSaving(false)
-      return
-    }
-
     try {
       const payload = {
         ...form,
         phone: form.phone || null,
-        password: form.password || undefined,
       }
 
       if (editingEmployeeId) {
@@ -158,7 +144,6 @@ function EmployeesPage() {
     setForm({
       name: employee.name || '',
       email: employee.email || '',
-      password: '',
       phone: employee.phone || '',
       status: employee.status || 'active',
       access_level: employee.access_level || 'admin',
@@ -184,6 +169,15 @@ function EmployeesPage() {
       }
     } catch (deleteError) {
       setError(deleteError.message)
+    }
+  }
+
+  async function handleSendReset(employeeId) {
+    try {
+      await api.sendEmployeePasswordReset(employeeId)
+      setError('')
+    } catch (sendError) {
+      setError(sendError.message)
     }
   }
 
@@ -270,7 +264,7 @@ function EmployeesPage() {
                     <th><h6 className="fs-4 fw-semibold mb-0">Telefon</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Zugriff</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
-                    <th width="90"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
+                    <th width="130"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -287,6 +281,14 @@ function EmployeesPage() {
                       </td>
                       <td>
                         <div className="table-action-group">
+                          <button
+                            type="button"
+                            className="table-action-btn"
+                            onClick={() => handleSendReset(employee.id)}
+                            title="Passwort-E-Mail senden"
+                          >
+                            <i className="ti ti-mail-forward"></i>
+                          </button>
                           <button
                             type="button"
                             className="table-action-btn table-action-edit"
@@ -367,10 +369,12 @@ function EmployeesPage() {
                         </select>
                       </div>
 
-                      <div className="col-md-6 mb-0">
-                        <label className="form-label">{editingEmployeeId ? 'Passwort (optional)' : 'Passwort'}</label>
-                        <input type="password" className="form-control" name="password" value={form.password} onChange={handleChange} />
-                      </div>
+                    </div>
+
+                    <div className="alert alert-light border small mt-3 mb-0">
+                      {editingEmployeeId
+                        ? 'Passwörter werden nicht manuell gesetzt. Verwenden Sie die Reset-E-Mail-Aktion in der Liste, um einen neuen Link zu senden.'
+                        : 'Das Passwort wird automatisch generiert. Nach dem Erstellen erhält der Mitarbeiter eine E-Mail, um sein eigenes Passwort festzulegen.'}
                     </div>
 
                     {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}

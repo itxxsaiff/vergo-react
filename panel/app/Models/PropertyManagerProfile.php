@@ -17,6 +17,10 @@ class PropertyManagerProfile extends Authenticatable
         'property_id',
         'name',
         'email',
+        'address',
+        'postal_code',
+        'city',
+        'domain_suffix',
         'last_login_at',
     ];
 

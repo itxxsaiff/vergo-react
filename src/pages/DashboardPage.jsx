@@ -178,10 +178,18 @@ function getOrderCity(order) {
   return order?.property_object?.city || order?.property?.city || '-'
 }
 
+function getDocumentContext(document) {
+  if (document?.property?.li_number || document?.property?.title) {
+    return [document.property?.li_number, document.property?.title].filter(Boolean).join(' - ')
+  }
+
+  return document?.order?.title || '-'
+}
+
 function DashboardPage({ role }) {
   const { user } = useAuth()
-  const isEmployee = role === 'employee'
   const isManager = role === 'manager'
+  const isInternalDashboard = !isManager
   const [overview, setOverview] = useState({
     properties: 0,
     owners: 0,
@@ -190,12 +198,13 @@ function DashboardPage({ role }) {
     service_providers: 0,
   })
   const [orders, setOrders] = useState([])
+  const [documents, setDocuments] = useState([])
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(true)
   const [analyticsError, setAnalyticsError] = useState('')
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()))
 
   useEffect(() => {
-    if (isEmployee) {
+    if (!isInternalDashboard) {
       return undefined
     }
 
@@ -204,7 +213,8 @@ function DashboardPage({ role }) {
     Promise.allSettled([
       api.getDashboardOverview(),
       api.getOrders(),
-    ]).then(([overviewResult, ordersResult]) => {
+      api.getDocuments(),
+    ]).then(([overviewResult, ordersResult, documentsResult]) => {
       if (!isMounted) {
         return
       }
@@ -219,13 +229,17 @@ function DashboardPage({ role }) {
         setAnalyticsError(ordersResult.reason?.message ?? 'Die Auftragsanalyse konnte nicht geladen werden.')
       }
 
+      if (documentsResult.status === 'fulfilled') {
+        setDocuments(documentsResult.value.data ?? [])
+      }
+
       setIsAnalyticsLoading(false)
     })
 
     return () => {
       isMounted = false
     }
-  }, [isEmployee])
+  }, [isInternalDashboard])
 
   const availableYears = useMemo(() => {
     const years = orders.reduce((result, order) => {
@@ -289,6 +303,11 @@ function DashboardPage({ role }) {
   const activeOrders = useMemo(() => orders.filter((order) => isActiveOrder(order.status)), [orders])
   const activeOrderPreview = useMemo(() => activeOrders.slice(0, 3), [activeOrders])
   const remainingActiveOrders = Math.max(activeOrders.length - activeOrderPreview.length, 0)
+  const contracts = useMemo(
+    () => documents.filter((document) => String(document.type || '').toLowerCase() === 'contract'),
+    [documents]
+  )
+  const contractPreview = useMemo(() => contracts.slice(0, 6), [contracts])
 
   return (
     <PageContent
@@ -478,7 +497,7 @@ function DashboardPage({ role }) {
         </>
       ) : null}
 
-      {!isEmployee && !isManager ? (
+      {isInternalDashboard ? (
         <>
           <div className="row">
             {summaryCards.map((card) => (
@@ -617,6 +636,58 @@ function DashboardPage({ role }) {
                       </div>
                     </div>
                   ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-12">
+              <div className="card overflow-hidden">
+                <div className="card-body p-4">
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                    <div>
+                      <h4 className="fw-semibold mb-1">Vertragsübersicht</h4>
+                      <p className="text-muted mb-0">Alle hochgeladenen Verträge im Überblick für interne Vergo-Benutzer.</p>
+                    </div>
+                    <Link to="/documents?type=contract" className="btn btn-light-primary text-nowrap">
+                      Alle Verträge anzeigen
+                    </Link>
+                  </div>
+
+                  {isAnalyticsLoading ? (
+                    <p className="text-muted mb-0">Verträge werden geladen...</p>
+                  ) : contractPreview.length > 0 ? (
+                    <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
+                      <table className="table border-none text-nowrap customize-table mb-0 align-middle">
+                        <thead className="text-dark fs-4">
+                          <tr>
+                            <th><h6 className="fs-4 fw-semibold mb-0">Titel</h6></th>
+                            <th><h6 className="fs-4 fw-semibold mb-0">Liegenschaft</h6></th>
+                            <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
+                            <th><h6 className="fs-4 fw-semibold mb-0">Datei</h6></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {contractPreview.map((document) => (
+                            <tr key={document.id}>
+                              <td className="fw-semibold">{document.title || '-'}</td>
+                              <td>{getDocumentContext(document)}</td>
+                              <td>{document.status || '-'}</td>
+                              <td>{document.file_name || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="vergo-dashboard-chart-empty">
+                      <div>
+                        <div className="fw-semibold mb-1">Keine Verträge vorhanden</div>
+                        <div>Derzeit sind noch keine Verträge für die Übersicht verfügbar.</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

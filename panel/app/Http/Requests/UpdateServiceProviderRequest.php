@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class UpdateServiceProviderRequest extends FormRequest
 {
@@ -21,8 +20,11 @@ class UpdateServiceProviderRequest extends FormRequest
         return [
             'company_name' => ['sometimes', 'required', 'string', 'max:255'],
             'contact_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'contact_email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('service_providers', 'contact_email')->ignore($providerId), Rule::unique('users', 'email')->ignore($linkedUserId)],
-            'password' => ['sometimes', 'nullable', 'string', Password::min(8)],
+            'contact_email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('service_providers', 'contact_email')->ignore($providerId)],
+            'order_email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('service_providers', 'order_email')->ignore($providerId), Rule::unique('users', 'email')->ignore($linkedUserId)],
+            'domain_suffix' => ['sometimes', 'required', 'string', 'max:255'],
+            'trade_groups' => ['sometimes', 'required', 'array', 'min:1'],
+            'trade_groups.*' => ['required', 'string', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             'status' => ['sometimes', 'nullable', Rule::in(['active', 'inactive', 'pending'])],
         ];
@@ -35,6 +37,11 @@ class UpdateServiceProviderRequest extends FormRequest
             'contact_email.required' => 'Contact email is required.',
             'contact_email.email' => 'Please enter a valid contact email address.',
             'contact_email.unique' => 'This contact email is already in use.',
+            'order_email.required' => 'Order email is required.',
+            'order_email.email' => 'Please enter a valid order email address.',
+            'order_email.unique' => 'This order email is already in use.',
+            'domain_suffix.required' => 'Domain suffix is required.',
+            'trade_groups.required' => 'Please select at least one trade group.',
             'status.in' => 'Please select a valid provider status.',
         ];
     }

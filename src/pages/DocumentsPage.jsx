@@ -8,7 +8,6 @@ import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { DOCUMENT_TYPE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
 const initialForm = {
-  property_id: '',
   order_id: '',
   type: 'contract',
   title: '',
@@ -19,7 +18,6 @@ function DocumentsPage() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const [documents, setDocuments] = useState([])
-  const [properties, setProperties] = useState([])
   const [orders, setOrders] = useState([])
   const [form, setForm] = useState(initialForm)
   const [filters, setFilters] = useState({ search: '', status: '', type: searchParams.get('type') || '' })
@@ -30,6 +28,7 @@ function DocumentsPage() {
 
   const canUpload = ['admin', 'owner', 'manager', 'employee'].includes(user?.role)
   const isOwner = user?.role === 'owner'
+  const queryType = searchParams.get('type') || ''
 
   useEffect(() => {
     loadData()
@@ -55,14 +54,12 @@ function DocumentsPage() {
     setError('')
 
     try {
-      const [documentsResponse, propertiesResponse, ordersResponse] = await Promise.all([
+      const [documentsResponse, ordersResponse] = await Promise.all([
         api.getDocuments(),
-        api.getProperties(),
         api.getOrders(),
       ])
 
       setDocuments(documentsResponse.data ?? [])
-      setProperties(propertiesResponse.data ?? [])
       setOrders(ordersResponse.data ?? [])
     } catch (loadError) {
       setError(loadError.message)
@@ -79,9 +76,9 @@ function DocumentsPage() {
   useEffect(() => {
     setFilters((current) => ({
       ...current,
-      type: searchParams.get('type') || '',
+      type: queryType,
     }))
-  }, [searchParams])
+  }, [queryType])
 
   function handleChange(event) {
     const { name, value, files } = event.target
@@ -92,7 +89,10 @@ function DocumentsPage() {
   }
 
   function openModal() {
-    setForm(initialForm)
+    setForm({
+      ...initialForm,
+      type: ['contract', 'invoice'].includes(queryType) ? queryType : initialForm.type,
+    })
     setError('')
     setIsModalOpen(true)
   }
@@ -122,7 +122,6 @@ function DocumentsPage() {
 
     try {
       const payload = new FormData()
-      if (form.property_id) payload.append('property_id', form.property_id)
       if (form.order_id) payload.append('order_id', form.order_id)
       payload.append('type', form.type)
       payload.append('title', form.title)
@@ -282,15 +281,6 @@ function DocumentsPage() {
                 <form onSubmit={handleSubmit}>
                   <div className="modal-body">
                     <div className="row">
-                      <div className="col-md-6 mb-3">
-                        <label className="form-label">Eigentum</label>
-                        <select className="form-select" name="property_id" value={form.property_id} onChange={handleChange}>
-                          <option value="">Eigenschaft auswählen</option>
-                          {properties.map((property) => (
-                            <option key={property.id} value={property.id}>{property.li_number} - {property.title}</option>
-                          ))}
-                        </select>
-                      </div>
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Befehl</label>
                         <select className="form-select" name="order_id" value={form.order_id} onChange={handleChange}>

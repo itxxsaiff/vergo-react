@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Mail\EmployeePasswordResetMail;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
@@ -12,6 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 
 class EmployeeController extends Controller
 {
@@ -42,7 +45,7 @@ class EmployeeController extends Controller
                 'role_id' => $employeeRole->id,
                 'name' => $request->string('name')->toString(),
                 'email' => $request->string('email')->toString(),
-                'password' => $request->string('password')->toString(),
+                'password' => bin2hex(random_bytes(16)),
                 'phone' => $request->input('phone'),
                 'status' => $request->input('status', 'active'),
                 'access_level' => $request->input('access_level', 'admin'),
@@ -50,6 +53,7 @@ class EmployeeController extends Controller
         });
 
         $employee->load('role');
+        $this->sendPasswordResetEmail($employee);
 
         return new EmployeeResource($employee);
     }
@@ -60,10 +64,6 @@ class EmployeeController extends Controller
         abort_unless($employee->role?->name === 'employee', 404);
 
         $payload = $request->safe()->toArray();
-
-        if (empty($payload['password'])) {
-            unset($payload['password']);
-        }
 
         $employee->update($payload);
         $employee->load('role');
@@ -83,6 +83,18 @@ class EmployeeController extends Controller
         ]);
     }
 
+    public function sendPasswordReset(Request $request, User $employee): JsonResponse
+    {
+        $this->authorizeEmployeeAdminManagement($request);
+        abort_unless($employee->role?->name === 'employee', 404);
+
+        $this->sendPasswordResetEmail($employee);
+
+        return response()->json([
+            'message' => 'Password reset email sent successfully.',
+        ]);
+    }
+
     private function authorizeEmployeeAdminManagement(Request $request): void
     {
         abort_unless($request->user() instanceof User, 403);
@@ -92,5 +104,22 @@ class EmployeeController extends Controller
             && $request->user()->access_level === 'power_user',
             403
         );
+    }
+
+    private function sendPasswordResetEmail(User $employee): void
+    {
+        $token = Password::broker()->createToken($employee);
+        $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+        $resetUrl = sprintf(
+            '%s/reset-password?token=%s&email=%s',
+            $frontendBase,
+            urlencode($token),
+            urlencode($employee->email)
+        );
+
+        Mail::to($employee->email)->send(new EmployeePasswordResetMail(
+            employeeName: $employee->name,
+            resetUrl: $resetUrl,
+        ));
     }
 }

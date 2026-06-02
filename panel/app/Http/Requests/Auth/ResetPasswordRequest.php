@@ -3,8 +3,9 @@
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
-class UserOtpVerifyRequest extends FormRequest
+class ResetPasswordRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,10 +15,9 @@ class UserOtpVerifyRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'li_number' => ['nullable', 'string', 'max:20'],
-            'customer_number' => ['nullable', 'string', 'max:20'],
-            'code' => ['required', 'string', 'size:6'],
+            'password' => ['required', 'string', Password::min(8), 'confirmed'],
         ];
     }
 }

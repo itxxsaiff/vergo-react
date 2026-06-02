@@ -8,6 +8,10 @@ const initialForm = {
   property_id: '',
   name: '',
   email: '',
+  address: '',
+  postal_code: '',
+  city: '',
+  domain_suffix: '',
 }
 
 function PropertyManagersPage() {
@@ -81,6 +85,10 @@ function PropertyManagersPage() {
       property_id: String(manager.property?.id ?? manager.property_id ?? ''),
       name: manager.name || '',
       email: manager.email || '',
+      address: manager.address || '',
+      postal_code: manager.postal_code || '',
+      city: manager.city || '',
+      domain_suffix: manager.domain_suffix || '',
     })
     setError('')
     setIsModalOpen(true)
@@ -100,13 +108,24 @@ function PropertyManagersPage() {
 
     try {
       if (editingManager) {
-        const response = await api.updatePropertyManager(editingManager.id, { name: form.name || null })
+        const response = await api.updatePropertyManager(editingManager.id, {
+          name: form.name.trim(),
+          email: form.email.trim().toLowerCase(),
+          address: form.address.trim(),
+          postal_code: form.postal_code.trim(),
+          city: form.city.trim(),
+          domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
+        })
         setManagers((current) => current.map((manager) => (manager.id === editingManager.id ? response.data : manager)))
       } else {
         const response = await api.createPropertyManager({
           property_id: Number(form.property_id),
-          name: form.name || null,
+          name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
+          address: form.address.trim(),
+          postal_code: form.postal_code.trim(),
+          city: form.city.trim(),
+          domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         })
         setManagers((current) => [response.data, ...current])
       }
@@ -134,12 +153,16 @@ function PropertyManagersPage() {
   }
 
   const filteredManagers = managers.filter((manager) => {
-    const searchValue = [
-      manager.name,
-      manager.email,
-      manager.property?.li_number,
-      manager.property?.title,
-    ].filter(Boolean).join(' ').toLowerCase()
+      const searchValue = [
+        manager.name,
+        manager.email,
+        manager.address,
+        manager.postal_code,
+        manager.city,
+        manager.domain_suffix,
+        manager.property?.li_number,
+        manager.property?.title,
+      ].filter(Boolean).join(' ').toLowerCase()
     const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
     const statusMatch = !filters.status || 'active' === filters.status.toLowerCase()
     return searchMatch && statusMatch
@@ -262,25 +285,48 @@ function PropertyManagersPage() {
                 <form onSubmit={handleSubmit}>
                   <div className="modal-body">
                     {!editingManager ? (
-                      <>
-                        <div className="mb-3">
-                          <label className="form-label">Immobilie</label>
-                          <select className="form-select" name="property_id" value={form.property_id} onChange={handleChange}>
-                            <option value="">Immobilie auswählen</option>
-                            {properties.map((property) => (
-                              <option key={property.id} value={property.id}>{property.li_number} - {property.title}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="mb-3">
-                          <label className="form-label">E-Mail</label>
-                          <input className="form-control" name="email" value={form.email} onChange={handleChange} />
-                        </div>
-                      </>
+                      <div className="mb-3">
+                        <label className="form-label">Immobilie</label>
+                        <select className="form-select" name="property_id" value={form.property_id} onChange={handleChange}>
+                          <option value="">Immobilie auswählen</option>
+                          {properties.map((property) => (
+                            <option key={property.id} value={property.id}>{property.li_number} - {property.title}</option>
+                          ))}
+                        </select>
+                      </div>
                     ) : null}
                     <div className="mb-3">
-                      <label className="form-label">Name</label>
+                      <label className="form-label">E-Mail</label>
+                      <input type="email" className="form-control" name="email" value={form.email} onChange={handleChange} />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Firmenname</label>
                       <input className="form-control" name="name" value={form.name} onChange={handleChange} placeholder="Immobilienverwalter" />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Adresse</label>
+                      <input className="form-control" name="address" value={form.address} onChange={handleChange} />
+                    </div>
+                    <div className="row">
+                      <div className="col-md-4">
+                        <div className="mb-3">
+                          <label className="form-label">PLZ</label>
+                          <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                        </div>
+                      </div>
+                      <div className="col-md-8">
+                        <div className="mb-3">
+                          <label className="form-label">Ort</label>
+                          <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Domain-Endung</label>
+                      <input className="form-control" name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+                    </div>
+                    <div className="alert alert-light border small">
+                      Immobilienverwalter melden sich über die Domain-Endung und einen Code an. Die E-Mail-Adresse dient hier nur als Kontaktoption. Ein Passwort wird nicht gesetzt.
                     </div>
                     {error ? <div className="alert alert-danger py-2 mb-0">{error}</div> : null}
                   </div>

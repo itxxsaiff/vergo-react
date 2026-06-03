@@ -14,6 +14,7 @@ class PropertyManagerProfileResource extends JsonResource
             'property_id' => $this->property_id,
             'name' => $this->name,
             'email' => $this->email,
+            'phone' => $this->phone,
             'address' => $this->address,
             'postal_code' => $this->postal_code,
             'city' => $this->city,

@@ -107,13 +107,28 @@ function hasManualProviderSelection(wizard) {
   )
 }
 
+function isWeekendDate(value) {
+  if (!value) {
+    return false
+  }
+
+  const date = new Date(`${value}T00:00:00`)
+  const day = date.getDay()
+
+  return day === 0 || day === 6
+}
+
+function isOutsideBusinessHours(value) {
+  return Boolean(value && (value < '05:00' || value > '19:00'))
+}
+
 function buildManagerWorkflowMeta(wizard, selectedObjects) {
   return {
     flow_type: wizard.flow_type,
     detail_catalog: {
       trade_group: wizard.service_type || null,
-      trade_object: wizard.trade_object || null,
-      trade_activity: wizard.trade_activity || null,
+      trade_object: null,
+      trade_activity: null,
     },
     property_object_ids: selectedObjects.map((object) => object.id),
     property_objects: selectedObjects.map((object) => ({
@@ -317,49 +332,20 @@ function OrdersPage() {
           manual_provider_contact: '',
           manual_provider_email: '',
           manual_provider_phone: '',
-          quote_items: seedQuoteItemsForTrade(current.service_type, current.trade_object, current.trade_activity),
+          quote_items: seedQuoteItemsForTrade(current.service_type),
         }
         : {}),
     }))
   }
 
-  function seedQuoteItemsForTrade(serviceType, tradeObject = '', tradeActivity = '') {
-    const tradeActivities = TRADE_ACTIVITY_OPTIONS_BY_GROUP[serviceType] ?? []
-    const selectedActivities = tradeActivity
-      ? [tradeActivity]
-      : tradeActivities.slice(0, Math.min(3, tradeActivities.length))
-
-    const buildLabel = (activity) => {
-      if (tradeObject && activity) {
-        return `${tradeObject} ${activity}`
-      }
-
-      if (tradeObject) {
-        return tradeObject
-      }
-
-      if (activity) {
-        return `${getOptionLabel(JOB_TYPE_OPTIONS, serviceType)} ${activity}`
-      }
-
-      return getOptionLabel(JOB_TYPE_OPTIONS, serviceType)
-    }
-
-    const baseItems = selectedActivities.length > 0
-      ? selectedActivities.map((activity) => ({
-        label: buildLabel(activity),
-        unit: 'Stück',
-        quantity: 1,
-        code: activity,
-        source: 'catalog',
-      }))
-      : [{
-        label: buildLabel(''),
-        unit: 'Stück',
-        quantity: 1,
-        code: '',
-        source: 'catalog',
-      }]
+  function seedQuoteItemsForTrade(serviceType) {
+    const baseItems = [{
+      label: getOptionLabel(JOB_TYPE_OPTIONS, serviceType),
+      unit: 'Stück',
+      quantity: 1,
+      code: serviceType || '',
+      source: 'catalog',
+    }]
 
     return baseItems.map((item, index) => ({
       id: `${serviceType || 'custom'}-${index}-${Date.now()}`,
@@ -380,27 +366,6 @@ function OrdersPage() {
       trade_activity: '',
       quote_items: current.award_mode === 'request_quotes'
         ? seedQuoteItemsForTrade(value)
-        : current.quote_items,
-    }))
-  }
-
-  function handleManagerTradeObjectChange(value) {
-    setManagerWizard((current) => ({
-      ...current,
-      trade_object: value,
-      trade_activity: '',
-      quote_items: current.award_mode === 'request_quotes'
-        ? seedQuoteItemsForTrade(current.service_type, value, '')
-        : current.quote_items,
-    }))
-  }
-
-  function handleManagerTradeActivityChange(value) {
-    setManagerWizard((current) => ({
-      ...current,
-      trade_activity: value,
-      quote_items: current.award_mode === 'request_quotes'
-        ? seedQuoteItemsForTrade(current.service_type, current.trade_object, value)
         : current.quote_items,
     }))
   }
@@ -508,16 +473,6 @@ function OrdersPage() {
   const availableTradeActivities = useMemo(
     () => TRADE_ACTIVITY_OPTIONS_BY_GROUP[form.service_type] ?? [],
     [form.service_type],
-  )
-
-  const managerAvailableTradeObjects = useMemo(
-    () => TRADE_OBJECT_OPTIONS_BY_GROUP[managerWizard.service_type] ?? [],
-    [managerWizard.service_type],
-  )
-
-  const managerAvailableTradeActivities = useMemo(
-    () => TRADE_ACTIVITY_OPTIONS_BY_GROUP[managerWizard.service_type] ?? [],
-    [managerWizard.service_type],
   )
 
   useEffect(() => {
@@ -1172,36 +1127,6 @@ function OrdersPage() {
                               </select>
                             </div>
                             <div className="col-md-6">
-                              <label className="form-label">Objekt / Bauteil</label>
-                              <select
-                                className="form-select"
-                                name="trade_object"
-                                value={managerWizard.trade_object}
-                                onChange={(event) => handleManagerTradeObjectChange(event.target.value)}
-                                disabled={!managerWizard.service_type}
-                              >
-                                <option value="">Objekt / Bauteil auswählen</option>
-                                {managerAvailableTradeObjects.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label">Tätigkeit</label>
-                              <select
-                                className="form-select"
-                                name="trade_activity"
-                                value={managerWizard.trade_activity}
-                                onChange={(event) => handleManagerTradeActivityChange(event.target.value)}
-                                disabled={!managerWizard.service_type}
-                              >
-                                <option value="">Tätigkeit auswählen</option>
-                                {managerAvailableTradeActivities.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="col-md-6">
                               <label className="form-label">Kurzbeschreibung</label>
                               <input className="form-control" name="title" value={managerWizard.title} onChange={handleManagerWizardChange} placeholder="z. B. Parkett ersetzen" />
                             </div>
@@ -1228,6 +1153,20 @@ function OrdersPage() {
                                   <label className="form-label">Zeit 2</label>
                                   <input type="time" className="form-control" name="inspection_time_2" value={managerWizard.inspection_time_2} onChange={handleManagerWizardChange} />
                                 </div>
+                                {isWeekendDate(managerWizard.inspection_date_1) || isWeekendDate(managerWizard.inspection_date_2) ? (
+                                  <div className="col-12">
+                                    <div className="alert alert-warning py-2 mb-0">
+                                      Der gewählte Besichtigungstermin liegt an einem Wochenende.
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {isOutsideBusinessHours(managerWizard.inspection_time_1) || isOutsideBusinessHours(managerWizard.inspection_time_2) ? (
+                                  <div className="col-12">
+                                    <div className="alert alert-warning py-2 mb-0">
+                                      Die gewählte Zeit liegt außerhalb der normalen Geschäftszeiten von 05:00 bis 19:00 Uhr.
+                                    </div>
+                                  </div>
+                                ) : null}
 
                                 <div className="col-md-4">
                                   <label className="form-label">Firma vor Ort</label>
@@ -1422,7 +1361,6 @@ function OrdersPage() {
                               </div>
                             ) : null}
 
-                            {managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'request_quotes' ? null : (
                             <div className="col-lg-7">
                               <div className="mb-3">
                                 <h6 className="fw-semibold mb-1">Firmenauswahl</h6>
@@ -1448,9 +1386,7 @@ function OrdersPage() {
                                 ))}
                               </div>
                             </div>
-                            )}
 
-                            {managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'request_quotes' ? null : (
                             <div className="col-lg-5">
                               <div className="mb-3">
                                 <h6 className="fw-semibold mb-1">Manuelle Firma erfassen</h6>
@@ -1476,7 +1412,6 @@ function OrdersPage() {
                                 </div>
                               </div>
                             </div>
-                            )}
                           </div>
                         ) : null}
                       </>

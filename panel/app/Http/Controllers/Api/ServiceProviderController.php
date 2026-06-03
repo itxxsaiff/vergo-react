@@ -118,14 +118,22 @@ class ServiceProviderController extends Controller
 
     private function buildProviderPayload(Request $request): array
     {
+        $contactEmail = strtolower($request->string('contact_email')->trim()->toString());
+        $orderEmail = $request->filled('order_email')
+            ? strtolower($request->string('order_email')->trim()->toString())
+            : $contactEmail;
+
         return [
             'company_name' => $request->string('company_name')->trim()->toString(),
             'contact_name' => $request->filled('contact_name') ? $request->string('contact_name')->trim()->toString() : null,
-            'contact_email' => strtolower($request->string('contact_email')->trim()->toString()),
-            'order_email' => strtolower($request->string('order_email')->trim()->toString()),
+            'contact_email' => $contactEmail,
+            'order_email' => $orderEmail,
+            'address' => $request->string('address')->trim()->toString(),
+            'postal_code' => $request->string('postal_code')->trim()->toString(),
+            'city' => $request->string('city')->trim()->toString(),
             'domain_suffix' => ltrim(strtolower($request->string('domain_suffix')->trim()->toString()), '@'),
             'trade_groups' => array_values($request->input('trade_groups', [])),
-            'phone' => $request->filled('phone') ? $request->string('phone')->trim()->toString() : null,
+            'phone' => $request->string('phone')->trim()->toString(),
         ];
     }
 }

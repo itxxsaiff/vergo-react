@@ -8,6 +8,7 @@ const initialForm = {
   property_id: '',
   name: '',
   email: '',
+  phone: '',
   address: '',
   postal_code: '',
   city: '',
@@ -85,6 +86,7 @@ function PropertyManagersPage() {
       property_id: String(manager.property?.id ?? manager.property_id ?? ''),
       name: manager.name || '',
       email: manager.email || '',
+      phone: manager.phone || '',
       address: manager.address || '',
       postal_code: manager.postal_code || '',
       city: manager.city || '',
@@ -111,6 +113,7 @@ function PropertyManagersPage() {
         const response = await api.updatePropertyManager(editingManager.id, {
           name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
+          phone: form.phone.trim(),
           address: form.address.trim(),
           postal_code: form.postal_code.trim(),
           city: form.city.trim(),
@@ -122,6 +125,7 @@ function PropertyManagersPage() {
           property_id: Number(form.property_id),
           name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
+          phone: form.phone.trim(),
           address: form.address.trim(),
           postal_code: form.postal_code.trim(),
           city: form.city.trim(),
@@ -156,6 +160,7 @@ function PropertyManagersPage() {
       const searchValue = [
         manager.name,
         manager.email,
+        manager.phone,
         manager.address,
         manager.postal_code,
         manager.city,
@@ -243,6 +248,7 @@ function PropertyManagersPage() {
                       <td>
                         <div>{manager.name || 'Immobilienverwalter'}</div>
                         <div className="text-muted">{manager.email}</div>
+                        <div className="text-muted small">{manager.phone || '-'}</div>
                       </td>
                       <td>
                         <div className="fw-semibold">{manager.property?.li_number ?? '-'}</div>
@@ -298,6 +304,10 @@ function PropertyManagersPage() {
                     <div className="mb-3">
                       <label className="form-label">E-Mail</label>
                       <input type="email" className="form-control" name="email" value={form.email} onChange={handleChange} />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Telefon</label>
+                      <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Firmenname</label>

@@ -16,6 +16,7 @@ class UpdatePropertyManagerProfileRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
+            'phone' => ['required', 'string', 'max:50'],
             'address' => ['required', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:50'],
             'city' => ['required', 'string', 'max:255'],

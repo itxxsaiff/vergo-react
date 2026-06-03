@@ -9,9 +9,11 @@ use App\Models\Property;
 use App\Models\PropertyManagerProfile;
 use App\Models\ServiceProvider;
 use App\Models\User;
+use App\Mail\ProviderOrderNoticeMail;
 use App\Notifications\SystemNotification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 
 class NotificationService
@@ -70,6 +72,31 @@ class NotificationService
             type: 'success',
             actionUrl: '/bids',
         ));
+    }
+
+    public function sendProviderOrderEmails(Order $order, iterable $providers, string $noticeType): void
+    {
+        $order->loadMissing('property');
+        $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+
+        foreach ($providers as $provider) {
+            if (! $provider instanceof ServiceProvider || ! $provider->order_email) {
+                continue;
+            }
+
+            $loginUrl = sprintf(
+                '%s/email-otp-login?customer_number=%s',
+                $frontendBase,
+                urlencode($this->formatProviderCustomerNumber($provider->id))
+            );
+
+            Mail::to($provider->order_email)->send(new ProviderOrderNoticeMail(
+                order: $order,
+                provider: $provider,
+                noticeType: $noticeType,
+                loginUrl: $loginUrl,
+            ));
+        }
     }
 
     public function sendQuoteRequestPublished(Order $order): void
@@ -167,6 +194,11 @@ class NotificationService
                 return null;
             })
             ->filter();
+    }
+
+    private function formatProviderCustomerNumber(int $id): string
+    {
+        return 'DLS-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
     }
 
     private function isSameRecipient(mixed $recipient, mixed $actor): bool

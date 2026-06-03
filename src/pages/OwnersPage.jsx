@@ -5,10 +5,7 @@ import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
 const initialForm = {
-  owner_type: 'company',
   company_name: '',
-  first_name: '',
-  last_name: '',
   address: '',
   postal_code: '',
   city: '',
@@ -18,11 +15,7 @@ const initialForm = {
 }
 
 function getDisplayName(owner) {
-  if (owner.owner_type === 'company') {
-    return owner.company_name || owner.name || '-'
-  }
-
-  return [owner.first_name, owner.last_name].filter(Boolean).join(' ') || owner.name || '-'
+  return owner.company_name || owner.name || '-'
 }
 
 function OwnersPage() {
@@ -55,15 +48,11 @@ function OwnersPage() {
     loadOwners()
   }, [])
 
-  const isCompany = form.owner_type === 'company'
-
   const filteredOwners = useMemo(() => {
     return owners.filter((owner) => {
       const searchValue = [
         owner.name,
         owner.company_name,
-        owner.first_name,
-        owner.last_name,
         owner.address,
         owner.city,
         owner.email,
@@ -83,25 +72,10 @@ function OwnersPage() {
   function handleChange(event) {
     const { name, value } = event.target
 
-    setForm((current) => {
-      const next = {
-        ...current,
-        [name]: value,
-      }
-
-      if (name === 'owner_type') {
-        if (value === 'company') {
-          next.first_name = ''
-          next.last_name = ''
-          next.phone = ''
-        } else {
-          next.company_name = ''
-          next.domain_suffix = ''
-        }
-      }
-
-      return next
-    })
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
   }
 
   function handleFilterChange(event) {
@@ -120,16 +94,14 @@ function OwnersPage() {
 
     try {
       const payload = {
-        owner_type: form.owner_type,
-        company_name: isCompany ? form.company_name.trim() : null,
-        first_name: isCompany ? null : form.first_name.trim(),
-        last_name: isCompany ? null : form.last_name.trim(),
+        owner_type: 'company',
+        company_name: form.company_name.trim(),
         address: form.address.trim(),
         postal_code: form.postal_code.trim(),
         city: form.city.trim(),
-        domain_suffix: isCompany ? form.domain_suffix.trim().replace(/^@+/, '').toLowerCase() : null,
+        domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         email: form.email.trim().toLowerCase(),
-        phone: isCompany ? null : form.phone.trim(),
+        phone: form.phone.trim(),
         status: 'active',
       }
 
@@ -155,10 +127,7 @@ function OwnersPage() {
   function handleEdit(owner) {
     setEditingOwnerId(owner.id)
     setForm({
-      owner_type: owner.owner_type || 'company',
       company_name: owner.company_name || '',
-      first_name: owner.first_name || '',
-      last_name: owner.last_name || '',
       address: owner.address || '',
       postal_code: owner.postal_code || '',
       city: owner.city || '',
@@ -198,7 +167,7 @@ function OwnersPage() {
   return (
     <PageContent
       title="Eigentümer"
-      subtitle="Erstellen Sie Eigentümer als Firma oder Privatperson und hinterlegen Sie nur die für den Login benötigten Stammdaten."
+      subtitle="Erstellen Sie Eigentümerprofile mit Firmenangaben, Kontaktinformationen und Domain-Endung."
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Eigentümer' },
@@ -213,40 +182,9 @@ function OwnersPage() {
 
               <form onSubmit={handleSubmit}>
                 <div className="mb-3">
-                  <label className="form-label d-block">Typ</label>
-                  <div className="d-flex flex-wrap gap-3">
-                    <label className="form-check mb-0">
-                      <input className="form-check-input" type="radio" name="owner_type" value="company" checked={form.owner_type === 'company'} onChange={handleChange} />
-                      <span className="form-check-label ms-2">Firma</span>
-                    </label>
-                    <label className="form-check mb-0">
-                      <input className="form-check-input" type="radio" name="owner_type" value="private_individual" checked={form.owner_type === 'private_individual'} onChange={handleChange} />
-                      <span className="form-check-label ms-2">Privatperson</span>
-                    </label>
-                  </div>
+                  <label className="form-label">Firmenname</label>
+                  <input className="form-control" name="company_name" value={form.company_name} onChange={handleChange} />
                 </div>
-
-                {isCompany ? (
-                  <div className="mb-3">
-                    <label className="form-label">Firmenname</label>
-                    <input className="form-control" name="company_name" value={form.company_name} onChange={handleChange} />
-                  </div>
-                ) : (
-                  <div className="row">
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Vorname</label>
-                        <input className="form-control" name="first_name" value={form.first_name} onChange={handleChange} />
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Nachname</label>
-                        <input className="form-control" name="last_name" value={form.last_name} onChange={handleChange} />
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <div className="mb-3">
                   <label className="form-label">Adresse</label>
@@ -273,24 +211,18 @@ function OwnersPage() {
                   <input type="email" className="form-control" name="email" value={form.email} onChange={handleChange} />
                 </div>
 
-                {isCompany ? (
-                  <div className="mb-3">
-                    <label className="form-label">Domain-Endung</label>
-                    <input className="form-control" name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
-                  </div>
-                ) : (
-                  <> 
-                    <div className="mb-3">
-                      <label className="form-label">Telefon</label>
-                      <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
-                    </div>
-                  </>
-                )}
+                <div className="mb-3">
+                  <label className="form-label">Telefon</label>
+                  <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Domain-Endung</label>
+                  <input className="form-control" name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+                </div>
 
                 <div className="alert alert-light border small">
-                  {isCompany
-                    ? 'Firmen-Eigentümer melden sich über die Domain-Endung und einen Code an. Die E-Mail-Adresse dient hier nur als Kontaktoption. Ein Passwort wird nicht gesetzt.'
-                    : 'Privatpersonen melden sich mit genau dieser E-Mail-Adresse und einem Code per E-Mail an. Ein Passwort wird nicht gesetzt.'}
+                  Die E-Mail-Adresse und Telefonnummer dienen nur als Kontaktangaben. Für Eigentümer wird automatisch eine Kundennummer erzeugt; ein Passwort wird nicht gesetzt.
                 </div>
 
                 {error ? <div className="alert alert-danger py-2">{error}</div> : null}
@@ -361,7 +293,7 @@ function OwnersPage() {
                   <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                     <thead className="text-dark fs-4">
                       <tr>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Typ</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Kundennummer</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Name</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Login</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
@@ -373,9 +305,9 @@ function OwnersPage() {
                     <tbody>
                       {filteredOwners.map((owner) => (
                         <tr key={owner.id}>
-                          <td>{owner.owner_type === 'company' ? 'Firma' : 'Privatperson'}</td>
+                          <td>{owner.customer_number || '-'}</td>
                           <td className="fw-semibold">{getDisplayName(owner)}</td>
-                          <td>{owner.owner_type === 'company' ? `@${owner.domain_suffix || '-'}` : owner.email || '-'}</td>
+                          <td>{owner.domain_suffix ? `@${owner.domain_suffix}` : '-'}</td>
                           <td>{[owner.postal_code, owner.city].filter(Boolean).join(' ') || '-'}</td>
                           <td>{owner.properties_count ?? 0}</td>
                           <td>

@@ -325,9 +325,6 @@ function DashboardPage({ role }) {
                 </div>
 
                 <div className="d-flex flex-wrap gap-2">
-                  <Link to="/properties" className="btn vergo-manager-quick-link">
-                    Liegenschaften
-                  </Link>
                   <Link to="/orders" className="btn vergo-manager-quick-link">
                     Auftrag erfassen
                   </Link>
@@ -420,10 +417,10 @@ function DashboardPage({ role }) {
 
                             {remainingActiveOrders > 0 ? (
                               <div className="col-lg-4 col-sm-6">
-                                <div className="vergo-manager-order-card vergo-manager-order-card-more">
+                                <Link to="/orders" className="vergo-manager-order-card vergo-manager-order-card-more">
                                   <span>Weitere Aufträge</span>
                                   <strong>+{formatCount(remainingActiveOrders)}</strong>
-                                </div>
+                                </Link>
                               </div>
                             ) : null}
                           </div>

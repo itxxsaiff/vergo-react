@@ -167,8 +167,20 @@ class OrderController extends Controller
             ]);
 
             if ($selectedProviderIds->isNotEmpty()) {
-                $this->createDirectProviderInvitations($order, $selectedProviderIds, $workflowStatus, $notificationService);
-            } elseif ($workflowStatus === 'published_for_quotes') {
+                $selectedProviders = ServiceProvider::query()
+                    ->with('user')
+                    ->whereIn('id', $selectedProviderIds)
+                    ->get();
+
+                if (in_array($workflowStatus, ['inspection_requested', 'direct_award_pending_acceptance'], true)) {
+                    $this->createDirectProviderInvitations($order, $selectedProviders, $workflowStatus, $notificationService);
+                    $notificationService->sendProviderOrderEmails($order, $selectedProviders, 'assigned');
+                } else {
+                    $notificationService->sendProviderOrderEmails($order, $selectedProviders, 'published');
+                }
+            }
+
+            if ($workflowStatus === 'published_for_quotes') {
                 $notificationService->sendQuoteRequestPublished($order);
             } elseif ($workflowStatus === 'public_inspection_open') {
                 $notificationService->sendPublicInspectionPublished($order);
@@ -384,15 +396,10 @@ class OrderController extends Controller
 
     private function createDirectProviderInvitations(
         Order $order,
-        $selectedProviderIds,
+        $providers,
         string $workflowStatus,
         NotificationService $notificationService
     ): void {
-        $providers = ServiceProvider::query()
-            ->with('user')
-            ->whereIn('id', $selectedProviderIds)
-            ->get();
-
         foreach ($providers as $provider) {
             Bid::query()->firstOrCreate(
                 [

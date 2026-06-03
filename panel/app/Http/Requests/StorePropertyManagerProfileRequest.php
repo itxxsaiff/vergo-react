@@ -23,6 +23,7 @@ class StorePropertyManagerProfileRequest extends FormRequest
                 'max:255',
                 Rule::unique('property_manager_profiles', 'email')->where(fn ($query) => $query->where('property_id', $this->input('property_id'))),
             ],
+            'phone' => ['required', 'string', 'max:50'],
             'address' => ['required', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:50'],
             'city' => ['required', 'string', 'max:255'],

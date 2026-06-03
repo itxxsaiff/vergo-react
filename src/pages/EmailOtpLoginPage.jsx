@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { EMAIL_OTP_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useAuth } from '../context/AuthContext'
@@ -15,10 +15,18 @@ const initialForm = {
 
 function EmailOtpLoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const customerNumberFromLink = searchParams.get('customer_number') ?? ''
+  const isProviderEmailLink = customerNumberFromLink.trim().toUpperCase().startsWith('DLS-')
   const { isAuthenticated, requestUserOtp, verifyUserOtp } = useAuth()
   const { t } = useLanguage()
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
-  const [form, setForm] = useState(initialForm)
+  const [form, setForm] = useState(() => ({
+    ...initialForm,
+    li_number: searchParams.get('li_number') ?? '',
+    customer_number: customerNumberFromLink,
+    email: searchParams.get('email') ?? '',
+  }))
   const [step, setStep] = useState('email')
   const [otpSentMessage, setOtpSentMessage] = useState('')
   const [error, setError] = useState('')
@@ -29,7 +37,7 @@ function EmailOtpLoginPage() {
     return <Navigate to="/dashboard" replace />
   }
 
-  if (!hasAccess) {
+  if (!hasAccess && !isProviderEmailLink) {
     return <Navigate to="/type" replace />
   }
 

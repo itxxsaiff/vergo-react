@@ -10,6 +10,9 @@ const initialForm = {
   contact_name: '',
   contact_email: '',
   order_email: '',
+  address: '',
+  postal_code: '',
+  city: '',
   domain_suffix: '',
   trade_groups: [],
   phone: '',
@@ -88,6 +91,9 @@ function ServiceProvidersPage() {
       contact_name: provider.contact_name || '',
       contact_email: provider.contact_email || '',
       order_email: provider.order_email || '',
+      address: provider.address || '',
+      postal_code: provider.postal_code || '',
+      city: provider.city || '',
       domain_suffix: provider.domain_suffix || '',
       trade_groups: provider.trade_groups || [],
       phone: provider.phone || '',
@@ -127,6 +133,30 @@ if (!form.order_email.trim()) {
   return
 }
 
+if (!form.address.trim()) {
+  setError('Die Adresse ist erforderlich.')
+  setIsSaving(false)
+  return
+}
+
+if (!form.postal_code.trim()) {
+  setError('Die PLZ ist erforderlich.')
+  setIsSaving(false)
+  return
+}
+
+if (!form.city.trim()) {
+  setError('Der Ort ist erforderlich.')
+  setIsSaving(false)
+  return
+}
+
+if (!form.phone.trim()) {
+  setError('Die Telefonnummer ist erforderlich.')
+  setIsSaving(false)
+  return
+}
+
 if (!form.domain_suffix.trim()) {
   setError('Die Domain-Endung ist erforderlich.')
   setIsSaving(false)
@@ -147,7 +177,7 @@ if (!emailPattern.test(form.contact_email.trim())) {
 }
 
 if (!emailPattern.test(form.order_email.trim())) {
-  setError('Bitte geben Sie eine gültige E-Mail für Aufträge ein.')
+  setError('Bitte geben Sie eine gültige E-Mail-Adresse für Aufträge ein.')
   setIsSaving(false)
   return
 }
@@ -156,10 +186,14 @@ if (!emailPattern.test(form.order_email.trim())) {
       const payload = {
         ...form,
         contact_name: form.contact_name || null,
+        contact_email: form.contact_email.trim().toLowerCase(),
         order_email: form.order_email.trim().toLowerCase(),
+        address: form.address.trim(),
+        postal_code: form.postal_code.trim(),
+        city: form.city.trim(),
         domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         trade_groups: form.trade_groups,
-        phone: form.phone || null,
+        phone: form.phone.trim(),
       }
 
       if (editingId) {
@@ -198,6 +232,9 @@ if (!emailPattern.test(form.order_email.trim())) {
       provider.contact_name,
       provider.contact_email,
       provider.order_email,
+      provider.address,
+      provider.postal_code,
+      provider.city,
       provider.domain_suffix,
       ...(provider.trade_groups || []),
       provider.phone,
@@ -284,9 +321,8 @@ if (!emailPattern.test(form.order_email.trim())) {
               <tr key={provider.id}>
                 <td className="fw-semibold">{provider.company_name}</td>
                 <td>
-                  <div>{provider.contact_name || '-'}</div>
                   <div className="text-muted">{provider.contact_email}</div>
-                  <div className="text-muted small">{provider.order_email || '-'}</div>
+                  <div className="text-muted small">{[provider.postal_code, provider.city].filter(Boolean).join(' ') || '-'}</div>
                 </td>
                 <td>{provider.phone || '-'}</td>
                 <td>{provider.rating ?? '-'}</td>
@@ -332,16 +368,24 @@ if (!emailPattern.test(form.order_email.trim())) {
               <input className="form-control" name="company_name" value={form.company_name} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label">Kontaktname</label>
-              <input className="form-control" name="contact_name" value={form.contact_name} onChange={handleChange} />
-            </div>
-            <div className="col-md-6 mb-3">
               <label className="form-label">Kontakt-E-Mail</label>
               <input type="email" className="form-control" name="contact_email" value={form.contact_email} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">E-Mail für Aufträge</label>
               <input type="email" className="form-control" name="order_email" value={form.order_email} onChange={handleChange} />
+            </div>
+            <div className="col-12 mb-3">
+              <label className="form-label">Adresse</label>
+              <input className="form-control" name="address" value={form.address} onChange={handleChange} />
+            </div>
+            <div className="col-md-4 mb-3">
+              <label className="form-label">PLZ</label>
+              <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+            </div>
+            <div className="col-md-8 mb-3">
+              <label className="form-label">Ort</label>
+              <input className="form-control" name="city" value={form.city} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">Domain-Endung</label>
@@ -377,7 +421,7 @@ if (!emailPattern.test(form.order_email.trim())) {
             </div>
             <div className="col-12">
               <div className="alert alert-light border small mb-0">
-                Dienstleister melden sich mit Kundennummer, E-Mail-Adresse und OTP-Code an. Ein Passwort wird nicht gesetzt.
+                Kontakt-E-Mail und Telefonnummer dienen nur als Kontaktangaben. Aufträge werden an die E-Mail für Aufträge gesendet. Ein Passwort wird nicht gesetzt.
               </div>
             </div>
           </div>

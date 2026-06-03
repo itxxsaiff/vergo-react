@@ -71,31 +71,24 @@ class OwnerController extends Controller
 
     private function buildOwnerPayload(Request $request, int $roleId, ?User $existingOwner = null): array
     {
-        $ownerType = $request->string('owner_type')->toString();
-        $isCompany = $ownerType === 'company';
-        $companyName = $isCompany ? $request->string('company_name')->trim()->toString() : null;
-        $firstName = $isCompany ? null : $request->string('first_name')->trim()->toString();
-        $lastName = $isCompany ? null : $request->string('last_name')->trim()->toString();
-        $displayName = $isCompany
-            ? $companyName
-            : trim(implode(' ', array_filter([$firstName, $lastName])));
+        $companyName = $request->string('company_name')->trim()->toString();
         $ownerEmail = strtolower($request->string('email')->trim()->toString());
-        $domainSuffix = $isCompany ? ltrim(strtolower($request->string('domain_suffix')->trim()->toString()), '@') : null;
+        $domainSuffix = ltrim(strtolower($request->string('domain_suffix')->trim()->toString()), '@');
 
         return [
             'role_id' => $roleId,
-            'owner_type' => $ownerType,
-            'name' => $displayName,
+            'owner_type' => 'company',
+            'name' => $companyName,
             'company_name' => $companyName,
-            'first_name' => $firstName,
-            'last_name' => $lastName,
+            'first_name' => null,
+            'last_name' => null,
             'address' => $request->string('address')->trim()->toString(),
             'postal_code' => $request->string('postal_code')->trim()->toString(),
             'city' => $request->string('city')->trim()->toString(),
             'domain_suffix' => $domainSuffix,
             'login_email' => $ownerEmail,
             'email' => $ownerEmail,
-            'phone' => $isCompany ? null : $request->string('phone')->trim()->toString(),
+            'phone' => $request->string('phone')->trim()->toString(),
             'status' => $request->input('status', $existingOwner?->status ?? 'active'),
             'password' => $existingOwner?->password ?? bin2hex(random_bytes(16)),
         ];

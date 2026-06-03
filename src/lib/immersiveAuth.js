@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 
 function getAuthBackgroundImage(hour) {
   if (hour >= 0 && hour < 8) {
-    return '/assets/images/login/first.jpeg'
+    return '/assets/images/login/bg.jpeg'
   }
 
   if (hour >= 8 && hour < 17) {
-    return '/assets/images/login/second.jpeg'
+    return '/assets/images/login/bg.jpeg'
   }
 
-  return '/assets/images/login/third.jpeg'
+  return '/assets/images/login/bg.jpeg'
 }
 
 export const immersiveAuthShellProps = {
@@ -37,7 +37,7 @@ export function useImmersiveAuthBackgroundStyle() {
 
   return useMemo(() => ({
     backgroundColor: '#0f172a',
-    backgroundImage: `linear-gradient(135deg, rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.28)), url("${backgroundImage}")`,
+    backgroundImage: `linear-gradient(135deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.48)), url("${backgroundImage}")`,
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     backgroundSize: 'cover',

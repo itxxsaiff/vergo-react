@@ -34,12 +34,16 @@ class AuthController extends Controller
         $email = $request->string('email')->trim()->lower()->toString();
         $liNumber = $request->string('li_number')->trim()->toString();
         $customerNumber = $request->string('customer_number')->trim()->toString();
-        [$owner, $property, $message, $status] = $this->resolveOwnerForOtp($email, $liNumber, $customerNumber);
-        [$provider, $providerMessage, $providerStatus] = $owner
+        $customerScope = $this->resolveCustomerNumberScope($customerNumber);
+
+        [$owner, $property, $message, $status] = $customerScope === 'provider'
+            ? [null, null, null, 200]
+            : $this->resolveOwnerForOtp($email, $liNumber, $customerNumber);
+        [$provider, $providerMessage, $providerStatus] = $owner || $customerScope === 'owner'
             ? [null, null, 200]
             : $this->resolveProviderForOtp($email, $customerNumber);
 
-        if (! $owner && ! $provider) {
+        if (! $owner && ! $provider && ! $customerNumber) {
             [$property, $message, $status] = $this->resolvePropertyForEmailLogin($email, $liNumber ?: null);
         }
 
@@ -197,10 +201,7 @@ class AuthController extends Controller
         $email = $request->string('email')->toString();
         $domain = strtolower((string) str($email)->after('@'));
 
-        $isAllowed = $property->managerDomains()
-            ->where('domain', $domain)
-            ->where('is_active', true)
-            ->exists();
+        $isAllowed = $this->propertyAllowsManagerEmail($property, $email, $domain);
 
         if (! $isAllowed) {
             return response()->json([
@@ -263,6 +264,7 @@ class AuthController extends Controller
             ->firstOrFail();
 
         $email = $request->string('email')->toString();
+        $domain = strtolower((string) str($email)->after('@'));
         $plainCode = $request->string('code')->toString();
 
         $loginCode = ManagerLoginCode::query()
@@ -279,15 +281,23 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $manager = PropertyManagerProfile::query()->updateOrCreate(
-            [
-                'property_id' => $property->id,
-                'email' => $email,
-            ],
-            [
+        $manager = $this->resolveManagerProfileForEmail($property, $email, $domain);
+
+        if (! $manager) {
+            $manager = PropertyManagerProfile::query()->updateOrCreate(
+                [
+                    'property_id' => $property->id,
+                    'email' => $email,
+                ],
+                [
+                    'last_login_at' => now(),
+                ],
+            );
+        } else {
+            $manager->update([
                 'last_login_at' => now(),
-            ],
-        );
+            ]);
+        }
 
         $loginCode->update([
             'consumed_at' => now(),
@@ -454,7 +464,9 @@ class AuthController extends Controller
             }
 
             $profileMatch = $property->managerProfiles()
-                ->whereRaw('LOWER(email) = ?', [$email])
+                ->where(function ($query) use ($email) {
+                    $query->whereRaw('LOWER(email) = ?', [$email]);
+                })
                 ->exists();
 
             if ($profileMatch) {
@@ -462,10 +474,7 @@ class AuthController extends Controller
             }
 
             $domain = strtolower((string) str($email)->after('@'));
-            $domainMatch = $property->managerDomains()
-                ->where('domain', $domain)
-                ->where('is_active', true)
-                ->exists();
+            $domainMatch = $this->propertyAllowsManagerEmail($property, $email, $domain);
 
             if (! $domainMatch) {
                 return [null, 'This email is not linked to the selected LI number.', 422];
@@ -477,7 +486,7 @@ class AuthController extends Controller
         $profileMatches = Property::query()
             ->select('properties.*')
             ->join('property_manager_profiles', 'property_manager_profiles.property_id', '=', 'properties.id')
-            ->where('property_manager_profiles.email', $email)
+            ->whereRaw('LOWER(property_manager_profiles.email) = ?', [$email])
             ->distinct()
             ->get();
 
@@ -490,6 +499,21 @@ class AuthController extends Controller
         }
 
         $domain = strtolower((string) str($email)->after('@'));
+
+        $profileDomainMatches = Property::query()
+            ->select('properties.*')
+            ->join('property_manager_profiles', 'property_manager_profiles.property_id', '=', 'properties.id')
+            ->where('property_manager_profiles.domain_suffix', $domain)
+            ->distinct()
+            ->get();
+
+        if ($profileDomainMatches->count() > 1) {
+            return [null, 'This email domain is linked to multiple properties. Please use the Li number login.', 409];
+        }
+
+        if ($profileDomainMatches->count() === 1) {
+            return [$profileDomainMatches->first(), null, 200];
+        }
 
         $domainMatches = Property::query()
             ->select('properties.*')
@@ -619,6 +643,48 @@ class AuthController extends Controller
         $digits = substr($normalized, strlen($prefix) + 1);
 
         return ctype_digit($digits) ? (int) $digits : null;
+    }
+
+    private function resolveCustomerNumberScope(?string $value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim($value));
+
+        if (str_starts_with($normalized, 'KND-')) {
+            return 'owner';
+        }
+
+        if (str_starts_with($normalized, 'DLS-')) {
+            return 'provider';
+        }
+
+        return null;
+    }
+
+    private function propertyAllowsManagerEmail(Property $property, string $email, string $domain): bool
+    {
+        if ($this->resolveManagerProfileForEmail($property, $email, $domain)) {
+            return true;
+        }
+
+        return $property->managerDomains()
+            ->where('domain', $domain)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    private function resolveManagerProfileForEmail(Property $property, string $email, string $domain): ?PropertyManagerProfile
+    {
+        return $property->managerProfiles()
+            ->where(function ($query) use ($email, $domain) {
+                $query
+                    ->whereRaw('LOWER(email) = ?', [strtolower($email)])
+                    ->orWhere('domain_suffix', $domain);
+            })
+            ->first();
     }
 
     private function formatOwnerCustomerNumber(int $id): string

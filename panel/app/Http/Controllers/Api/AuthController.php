@@ -36,16 +36,18 @@ class AuthController extends Controller
         $customerNumber = $request->string('customer_number')->trim()->toString();
         $customerScope = $this->resolveCustomerNumberScope($customerNumber);
 
+        if (! $customerNumber || ! $customerScope) {
+            return response()->json([
+                'message' => 'Please enter a valid customer number. Owners use ETM numbers and service providers use DLS numbers.',
+            ], 422);
+        }
+
         [$owner, $property, $message, $status] = $customerScope === 'provider'
             ? [null, null, null, 200]
             : $this->resolveOwnerForOtp($email, $liNumber, $customerNumber);
         [$provider, $providerMessage, $providerStatus] = $owner || $customerScope === 'owner'
             ? [null, null, 200]
             : $this->resolveProviderForOtp($email, $customerNumber);
-
-        if (! $owner && ! $provider && ! $customerNumber) {
-            [$property, $message, $status] = $this->resolvePropertyForEmailLogin($email, $liNumber ?: null);
-        }
 
         if (! $owner && ! $provider && ! $property) {
             return response()->json([
@@ -124,8 +126,15 @@ class AuthController extends Controller
     public function checkManagerLi(ManagerLiLookupRequest $request): JsonResponse
     {
         $property = Property::query()
+            ->with('assignedManagerProfile')
             ->where('li_number', $request->string('li_number')->toString())
-            ->firstOrFail();
+            ->first();
+
+        if (! $property) {
+            return response()->json([
+                'message' => 'Die LI-Nummer ist falsch.',
+            ], 422);
+        }
 
         return response()->json([
             'message' => 'Li number verified.',
@@ -195,6 +204,7 @@ class AuthController extends Controller
     public function requestManagerOtp(ManagerOtpRequest $request): JsonResponse
     {
         $property = Property::query()
+            ->with('assignedManagerProfile')
             ->where('li_number', $request->string('li_number')->toString())
             ->firstOrFail();
 
@@ -548,7 +558,7 @@ class AuthController extends Controller
             }
         }
 
-        $ownerIdFromCustomer = $this->parseCustomerNumber($customerNumber, 'KND');
+        $ownerIdFromCustomer = $this->parseCustomerNumber($customerNumber, 'ETM');
 
         $privateOwner = User::query()
             ->with('role')
@@ -653,7 +663,7 @@ class AuthController extends Controller
 
         $normalized = strtoupper(trim($value));
 
-        if (str_starts_with($normalized, 'KND-')) {
+        if (str_starts_with($normalized, 'ETM-')) {
             return 'owner';
         }
 
@@ -666,30 +676,44 @@ class AuthController extends Controller
 
     private function propertyAllowsManagerEmail(Property $property, string $email, string $domain): bool
     {
-        if ($this->resolveManagerProfileForEmail($property, $email, $domain)) {
-            return true;
-        }
-
-        return $property->managerDomains()
-            ->where('domain', $domain)
-            ->where('is_active', true)
-            ->exists();
+        return (bool) $this->resolveManagerProfileForEmail($property, $email, $domain);
     }
 
     private function resolveManagerProfileForEmail(Property $property, string $email, string $domain): ?PropertyManagerProfile
     {
-        return $property->managerProfiles()
-            ->where(function ($query) use ($email, $domain) {
-                $query
-                    ->whereRaw('LOWER(email) = ?', [strtolower($email)])
-                    ->orWhere('domain_suffix', $domain);
-            })
-            ->first();
+        $email = strtolower($email);
+        $assignedManager = $property->assignedManagerProfile;
+
+        if (! $assignedManager) {
+            return null;
+        }
+
+        $assignedDomain = strtolower((string) $assignedManager->domain_suffix);
+        $assignedEmail = strtolower((string) $assignedManager->email);
+
+        if ($assignedEmail !== $email && $assignedDomain !== $domain) {
+            return null;
+        }
+
+        return PropertyManagerProfile::query()->firstOrCreate(
+            [
+                'property_id' => $property->id,
+                'email' => $email,
+            ],
+            [
+                'name' => $assignedManager->name,
+                'phone' => $assignedManager->phone,
+                'address' => $assignedManager->address,
+                'postal_code' => $assignedManager->postal_code,
+                'city' => $assignedManager->city,
+                'domain_suffix' => $assignedManager->domain_suffix,
+            ],
+        );
     }
 
     private function formatOwnerCustomerNumber(int $id): string
     {
-        return 'KND-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+        return 'ETM-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
     }
 
     private function formatProviderCustomerNumber(int $id): string

@@ -40,7 +40,14 @@ class OrderController extends Controller
 
             $query->where(function ($providerQuery) use ($serviceProvider) {
                 $providerQuery
-                    ->whereIn('workflow_status', ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'])
+                    ->where(function ($publicQuery) use ($serviceProvider) {
+                        $publicQuery
+                            ->whereIn('workflow_status', ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes']);
+
+                        if (! empty($serviceProvider->trade_groups)) {
+                            $publicQuery->whereIn('service_type', $serviceProvider->trade_groups);
+                        }
+                    })
                     ->orWhereHas('bids', function ($bidQuery) use ($serviceProvider) {
                         $bidQuery
                             ->where('service_provider_id', $serviceProvider->id)
@@ -175,8 +182,6 @@ class OrderController extends Controller
                 if (in_array($workflowStatus, ['inspection_requested', 'direct_award_pending_acceptance'], true)) {
                     $this->createDirectProviderInvitations($order, $selectedProviders, $workflowStatus, $notificationService);
                     $notificationService->sendProviderOrderEmails($order, $selectedProviders, 'assigned');
-                } else {
-                    $notificationService->sendProviderOrderEmails($order, $selectedProviders, 'published');
                 }
             }
 

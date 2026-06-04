@@ -14,6 +14,7 @@ class PropertyResource extends JsonResource
             'li_number' => $this->li_number,
             'title' => $this->title,
             'management' => $this->management,
+            'property_manager_profile_id' => $this->property_manager_profile_id,
             'size' => $this->size !== null ? (float) $this->size : null,
             'address_line_1' => $this->address_line_1,
             'address_line_2' => $this->address_line_2,
@@ -41,6 +42,12 @@ class PropertyResource extends JsonResource
                     'is_active' => $domain->is_active,
                 ])->values();
             }),
+            'assigned_manager_profile' => $this->whenLoaded('assignedManagerProfile', fn () => $this->assignedManagerProfile ? [
+                'id' => $this->assignedManagerProfile->id,
+                'name' => $this->assignedManagerProfile->name,
+                'email' => $this->assignedManagerProfile->email,
+                'domain_suffix' => $this->assignedManagerProfile->domain_suffix,
+            ] : null),
             'objects' => $this->whenLoaded('objects', function () {
                 return $this->objects->map(fn ($object) => [
                     'id' => $object->id,

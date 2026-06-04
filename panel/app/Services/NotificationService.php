@@ -101,9 +101,8 @@ class NotificationService
 
     public function sendQuoteRequestPublished(Order $order): void
     {
-        $recipients = User::query()
-            ->whereHas('role', fn ($query) => $query->where('name', 'provider'))
-            ->get();
+        $providers = $this->providersForTrade($order->service_type);
+        $recipients = $this->providerRecipients($providers);
 
         Notification::send($recipients, new SystemNotification(
             title: 'New Public Quote Request',
@@ -111,13 +110,14 @@ class NotificationService
             type: 'primary',
             actionUrl: '/available-jobs',
         ));
+
+        $this->sendProviderOrderEmails($order, $providers, 'published');
     }
 
     public function sendPublicInspectionPublished(Order $order): void
     {
-        $recipients = User::query()
-            ->whereHas('role', fn ($query) => $query->where('name', 'provider'))
-            ->get();
+        $providers = $this->providersForTrade($order->service_type);
+        $recipients = $this->providerRecipients($providers);
 
         Notification::send($recipients, new SystemNotification(
             title: 'New Public Inspection Request',
@@ -125,6 +125,8 @@ class NotificationService
             type: 'primary',
             actionUrl: '/available-jobs',
         ));
+
+        $this->sendProviderOrderEmails($order, $providers, 'published');
     }
 
     public function sendBidDecision(Bid $bid, string $title, string $message): void
@@ -194,6 +196,20 @@ class NotificationService
                 return null;
             })
             ->filter();
+    }
+
+    private function providersForTrade(?string $trade): Collection
+    {
+        $providers = ServiceProvider::query()
+            ->with('user.role')
+            ->where('status', 'active')
+            ->get();
+
+        if (! $trade) {
+            return $providers;
+        }
+
+        return $providers->filter(fn ($provider) => in_array($trade, $provider->trade_groups ?? [], true))->values();
     }
 
     private function formatProviderCustomerNumber(int $id): string

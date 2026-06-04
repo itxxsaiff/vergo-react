@@ -138,10 +138,13 @@ function EmployeePropertiesPage() {
       title: property.title || '',
       address_line_1: property.address_line_1 || '',
       property_manager_profile_id: String(
-        propertyManagers.find((manager) => {
-          const managerLabel = (manager.name || manager.email || '').trim().toLowerCase()
-          return managerLabel && managerLabel === String(property.management || '').trim().toLowerCase()
-        })?.id ?? ''
+        property.property_manager_profile_id
+          ?? property.assigned_manager_profile?.id
+          ?? propertyManagers.find((manager) => {
+            const managerLabel = (manager.name || manager.email || '').trim().toLowerCase()
+            return managerLabel && managerLabel === String(property.management || '').trim().toLowerCase()
+          })?.id
+          ?? ''
       ),
       management: property.management || '',
       owner_id: property.owners?.[0]?.id ? String(property.owners[0].id) : '',
@@ -239,6 +242,7 @@ function EmployeePropertiesPage() {
         commercial_area: form.usage === 'residential' ? null : Number(form.commercial_area),
         size: form.lot_area ? Number(form.lot_area) : null,
         status: 'active',
+        property_manager_profile_id: Number(form.property_manager_profile_id),
       }
 
       if (editingProperty) {

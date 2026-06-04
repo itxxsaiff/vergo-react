@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -51,6 +52,13 @@ class StoreBidRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $lineItems = collect($this->input('line_items', []))->filter(fn ($item) => is_array($item) && filled($item['label'] ?? null));
+            $order = $this->filled('order_id')
+                ? Order::query()->select('id', 'workflow_status')->find($this->integer('order_id'))
+                : null;
+
+            if ($order?->workflow_status === 'public_inspection_open') {
+                return;
+            }
 
             if (! $lineItems->isNotEmpty() && ! $this->filled('amount')) {
                 $validator->errors()->add('amount', 'Bid amount is required when no line items are provided.');

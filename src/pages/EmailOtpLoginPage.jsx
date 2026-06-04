@@ -17,7 +17,7 @@ function EmailOtpLoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const customerNumberFromLink = searchParams.get('customer_number') ?? ''
-  const isProviderEmailLink = customerNumberFromLink.trim().toUpperCase().startsWith('DLS-')
+  const isCustomerEmailLink = ['DLS-', 'ETM-'].some((prefix) => customerNumberFromLink.trim().toUpperCase().startsWith(prefix))
   const { isAuthenticated, requestUserOtp, verifyUserOtp } = useAuth()
   const { t } = useLanguage()
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
@@ -37,7 +37,7 @@ function EmailOtpLoginPage() {
     return <Navigate to="/dashboard" replace />
   }
 
-  if (!hasAccess && !isProviderEmailLink) {
+  if (!hasAccess && !isCustomerEmailLink) {
     return <Navigate to="/type" replace />
   }
 
@@ -125,7 +125,7 @@ function EmailOtpLoginPage() {
   const contentByStep = {
     email: {
       title: 'Eigentümer- und Dienstleisteranmeldung',
-      subtitle: 'Geben Sie Ihre E-Mail-Adresse ein. Optional können Sie zusätzlich eine LI-Nummer oder Kundennummer angeben.',
+      subtitle: 'Geben Sie Ihre Kundennummer und E-Mail-Adresse ein. Eigentümer können optional zusätzlich eine LI-Nummer angeben.',
     },
     otp: {
       title: 'Code eingeben',
@@ -156,14 +156,17 @@ function EmailOtpLoginPage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">{t('Kundennummer (optional)')}</label>
+            <label className="form-label">{t('Kundennummer')}</label>
             <input
               className="form-control"
               name="customer_number"
               value={form.customer_number}
               onChange={handleChange}
-              placeholder="KND-00001 oder DLS-00001"
+              placeholder="ETM-00001 oder DLS-00001"
             />
+          </div>
+          <div className="form-text mb-3">
+            {t('Eigentümer verwenden ETM-Nummern, Dienstleister verwenden DLS-Nummern. Immobilienverwalter nutzen die LI-Anmeldung.')}
           </div>
 
           <div className="mb-3">
@@ -178,13 +181,13 @@ function EmailOtpLoginPage() {
             />
           </div>
 
-          {error ? <div className="alert alert-danger py-2">{error}</div> : null}
+          {error ? <div className="alert alert-danger py-2">{t(error)}</div> : null}
 
           <div className="mt-3 d-grid">
             <button
               className="btn vergo-type-continue mb-4 rounded-2"
               type="submit"
-              disabled={isSubmitting || !form.email.trim()}
+              disabled={isSubmitting || !form.email.trim() || !form.customer_number.trim()}
             >
               <span className="vergo-type-continue-label">{isSubmitting ? t('OTP wird gesendet...') : t('OTP senden')}</span>
               <span className="vergo-type-continue-icon" aria-hidden="true">
@@ -250,7 +253,7 @@ function EmailOtpLoginPage() {
           </div>
 
           {otpSentMessage ? <div className="alert alert-success py-2">{otpSentMessage}</div> : null}
-          {error ? <div className="alert alert-danger py-2">{error}</div> : null}
+          {error ? <div className="alert alert-danger py-2">{t(error)}</div> : null}
 
           <div className="mt-3 d-grid">
             <button

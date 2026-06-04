@@ -11,7 +11,7 @@ class OwnerResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'customer_number' => 'KND-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT),
+            'customer_number' => 'ETM-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT),
             'owner_type' => $this->owner_type,
             'name' => $this->display_name,
             'company_name' => $this->company_name,

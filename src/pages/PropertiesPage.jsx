@@ -146,10 +146,13 @@ function PropertiesPage() {
       title: property.title || '',
       address_line_1: property.address_line_1 || '',
       property_manager_profile_id: String(
-        propertyManagers.find((manager) => {
-          const managerLabel = (manager.name || manager.email || '').trim().toLowerCase()
-          return managerLabel && managerLabel === String(property.management || '').trim().toLowerCase()
-        })?.id ?? ''
+        property.property_manager_profile_id
+          ?? property.assigned_manager_profile?.id
+          ?? propertyManagers.find((manager) => {
+            const managerLabel = (manager.name || manager.email || '').trim().toLowerCase()
+            return managerLabel && managerLabel === String(property.management || '').trim().toLowerCase()
+          })?.id
+          ?? ''
       ),
       management: property.management || '',
       owner_id: isInternalUser && property.owners?.[0]?.id ? String(property.owners[0].id) : '',
@@ -235,6 +238,7 @@ function PropertiesPage() {
 
       if (isInternalUser) {
         payload.owner_id = Number(form.owner_id)
+        payload.property_manager_profile_id = Number(form.property_manager_profile_id)
       }
 
       if (editingProperty) {

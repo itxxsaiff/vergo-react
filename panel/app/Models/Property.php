@@ -16,6 +16,7 @@ class Property extends Model
         'li_number',
         'title',
         'management',
+        'property_manager_profile_id',
         'size',
         'address_line_1',
         'address_line_2',
@@ -71,6 +72,11 @@ class Property extends Model
     public function managerProfiles(): HasMany
     {
         return $this->hasMany(PropertyManagerProfile::class);
+    }
+
+    public function assignedManagerProfile(): BelongsTo
+    {
+        return $this->belongsTo(PropertyManagerProfile::class, 'property_manager_profile_id');
     }
 
     public function orders(): HasMany

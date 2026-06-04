@@ -17,4 +17,12 @@ class ManagerLiLookupRequest extends FormRequest
             'li_number' => ['required', 'string', 'exists:properties,li_number'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'li_number.required' => 'Bitte geben Sie die LI-Nummer ein.',
+            'li_number.exists' => 'Die LI-Nummer ist falsch.',
+        ];
+    }
 }

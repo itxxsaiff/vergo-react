@@ -20,6 +20,7 @@ class UpdatePropertyRequest extends FormRequest
             'li_number' => ['sometimes', 'required', 'string', 'max:20', 'regex:/^Li-\d{5}$/', Rule::unique('properties', 'li_number')->ignore($propertyId)],
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'management' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'property_manager_profile_id' => ['sometimes', 'nullable', 'exists:property_manager_profiles,id'],
             'size' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'address_line_1' => ['sometimes', 'required', 'string', 'max:255'],
             'address_line_2' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -56,6 +57,7 @@ class UpdatePropertyRequest extends FormRequest
             'commercial_area.min' => 'Commercial area cannot be negative.',
             'status.in' => 'Please select a valid property status.',
             'owner_id.exists' => 'The selected owner is invalid.',
+            'property_manager_profile_id.exists' => 'The selected property manager is invalid.',
             'manager_domains.array' => 'Allowed manager domains must be a valid list.',
         ];
     }

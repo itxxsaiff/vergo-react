@@ -28,7 +28,16 @@ class OrderResource extends JsonResource
             'due_date' => $this->due_date?->toDateString(),
             'bid_deadline_at' => $this->bid_deadline_at?->toDateTimeString(),
             'workflow_meta' => $this->workflow_meta ?? [],
-            'quote_items' => $this->quote_items ?? [],
+            'quote_items' => collect($this->quote_items ?? [])
+                ->map(fn ($item) => [
+                    'label' => data_get($item, 'label'),
+                    'code' => data_get($item, 'code'),
+                    'unit' => data_get($item, 'unit'),
+                    'quantity' => data_get($item, 'quantity'),
+                    'is_custom' => (bool) data_get($item, 'is_custom', true),
+                ])
+                ->values()
+                ->all(),
             'requested_at' => $this->requested_at?->toDateTimeString(),
             'completed_at' => $this->completed_at?->toDateTimeString(),
             'is_approved' => $this->relationLoaded('approvedBid') ? $this->approvedBid !== null : null,

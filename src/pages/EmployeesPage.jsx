@@ -24,6 +24,7 @@ function EmployeesPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
 
   async function loadEmployees() {
     setIsLoading(true)
@@ -65,6 +66,12 @@ function EmployeesPage() {
       ...current,
       [name]: value,
     }))
+    setFieldErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
   }
 
   function handleFilterChange(event) {
@@ -80,6 +87,7 @@ function EmployeesPage() {
     setEditingEmployeeId(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -87,6 +95,7 @@ function EmployeesPage() {
     setEditingEmployeeId(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(false)
   }
 
@@ -94,15 +103,19 @@ function EmployeesPage() {
     event.preventDefault()
     setIsSaving(true)
     setError('')
+    setFieldErrors({})
 
-    if (!form.name.trim()) {
-      setError('Name des Mitarbeiters ist erforderlich.')
-      setIsSaving(false)
-      return
-    }
+    const requiredFields = ['name', 'email', 'status', 'access_level']
+    const nextFieldErrors = requiredFields.reduce((errors, field) => {
+      if (!String(form[field] ?? '').trim()) {
+        errors[field] = true
+      }
+      return errors
+    }, {})
 
-    if (!form.email.trim()) {
-      setError('E-Mail des Mitarbeiters ist erforderlich.')
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors)
+      setError('Bitte alle Pflichtfelder ausfüllen.')
       setIsSaving(false)
       return
     }
@@ -110,6 +123,7 @@ function EmployeesPage() {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
     if (!emailPattern.test(form.email.trim())) {
+      setFieldErrors({ email: true })
       setError('Bitte geben Sie eine gültige Mitarbeiter-E-Mail-Adresse ein.')
       setIsSaving(false)
       return
@@ -149,6 +163,7 @@ function EmployeesPage() {
       access_level: employee.access_level || 'admin',
     })
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -335,17 +350,17 @@ function EmployeesPage() {
                   </h5>
                   <button type="button" className="btn-close" onClick={closeModal}></button>
                 </div>
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                   <div className="modal-body">
                     <div className="row">
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Name</label>
-                        <input className="form-control" name="name" value={form.name} onChange={handleChange} />
+                        <input className={`form-control${fieldErrors.name ? ' is-invalid' : ''}`} name="name" value={form.name} onChange={handleChange} />
                       </div>
 
                       <div className="col-md-6 mb-3">
                         <label className="form-label">E-Mail</label>
-                        <input type="email" className="form-control" name="email" value={form.email} onChange={handleChange} />
+                        <input type="email" className={`form-control${fieldErrors.email ? ' is-invalid' : ''}`} name="email" value={form.email} onChange={handleChange} />
                       </div>
 
                       <div className="col-md-6 mb-3">
@@ -355,7 +370,7 @@ function EmployeesPage() {
 
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Status</label>
-                        <select className="form-select" name="status" value={form.status} onChange={handleChange}>
+                        <select className={`form-select${fieldErrors.status ? ' is-invalid' : ''}`} name="status" value={form.status} onChange={handleChange}>
                           <option value="active">Aktiv</option>
                           <option value="inactive">Inaktiv</option>
                         </select>
@@ -363,7 +378,7 @@ function EmployeesPage() {
 
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Zugriffsebene</label>
-                        <select className="form-select" name="access_level" value={form.access_level} onChange={handleChange}>
+                        <select className={`form-select${fieldErrors.access_level ? ' is-invalid' : ''}`} name="access_level" value={form.access_level} onChange={handleChange}>
                           <option value="admin">Admin</option>
                           <option value="power_user">Power User</option>
                         </select>

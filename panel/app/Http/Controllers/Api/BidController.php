@@ -45,7 +45,7 @@ class BidController extends Controller
         return BidResource::collection($query->get());
     }
 
-    public function store(StoreBidRequest $request, NotificationService $notificationService): BidResource
+    public function store(StoreBidRequest $request, NotificationService $notificationService): BidResource|JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User && $actor->role?->name === 'provider', 403);
@@ -59,21 +59,21 @@ class BidController extends Controller
             422,
             'This workflow is not open for provider submissions.'
         );
-        abort_if(
-            Bid::query()
-                ->where('order_id', $order->id)
-                ->where('service_provider_id', $serviceProvider->id)
-                ->exists(),
-            422,
-            'You have already submitted a bid for this order.'
-        );
+        $existingBid = Bid::query()
+            ->where('order_id', $order->id)
+            ->where('service_provider_id', $serviceProvider->id)
+            ->first();
 
         $attachment = $request->file('attachment');
         $attachmentPath = $attachment?->store('vergo-bid-attachments');
         $lineItems = collect($request->input('line_items', []))->values()->all();
         $currency = $request->string('currency')->toString() ?: 'EUR';
 
-        if ($order->workflow_status === 'published_for_quotes') {
+        $isQuoteSubmission = $order->workflow_status === 'published_for_quotes'
+            || ($order->workflow_status === 'inspection_signup_closed' && $existingBid);
+        $isInspectionSignup = $order->workflow_status === 'public_inspection_open';
+
+        if ($isQuoteSubmission) {
             abort_unless(
                 ! $order->bid_deadline_at || now()->lte($order->bid_deadline_at),
                 422,
@@ -81,15 +81,42 @@ class BidController extends Controller
             );
         }
 
-        if ($order->workflow_status === 'inspection_signup_closed') {
+        if ($order->workflow_status === 'inspection_signup_closed' && ! $existingBid) {
             abort(422, 'This inspection request has already reached the signup limit.');
         }
 
+        if ($existingBid && ! $isQuoteSubmission) {
+            abort(422, 'You have already registered for this order.');
+        }
+
+        if ($existingBid && $isQuoteSubmission) {
+            abort_unless(
+                in_array($existingBid->status, ['inspection_interest', 'inspection_confirmed'], true),
+                422,
+                'You have already submitted a bid for this order.'
+            );
+        }
+
         $amount = $this->resolveBidAmount($lineItems, $request->input('amount'));
-        $status = $order->workflow_status === 'published_for_quotes' ? 'submitted' : 'inspection_interest';
+        $status = $isQuoteSubmission ? 'submitted' : 'inspection_interest';
         $workflowMeta = $request->input('workflow_meta', []);
 
-        $bid = Bid::query()->create([
+        if ($isQuoteSubmission) {
+            abort_unless($amount !== null && $amount > 0, 422, 'Please enter a valid bid amount.');
+
+            $benchmarkWarning = $this->getBenchmarkWarning($order, $amount);
+            $warningAlreadyAccepted = (bool) data_get($workflowMeta, 'benchmark_warning_acknowledged');
+
+            if ($benchmarkWarning && ! $warningAlreadyAccepted) {
+                return response()->json([
+                    'message' => 'Your price is below the benchmark for this service.',
+                    'requires_confirmation' => true,
+                    'benchmark' => $benchmarkWarning,
+                ], 422);
+            }
+        }
+
+        $bidPayload = [
             'order_id' => $order->id,
             'service_provider_id' => $serviceProvider->id,
             'amount' => $amount,
@@ -105,15 +132,23 @@ class BidController extends Controller
             'attachment_size' => $attachment?->getSize(),
             'status' => $status,
             'submitted_at' => now(),
-        ]);
+        ];
 
-        if ($order->workflow_status === 'published_for_quotes') {
+        $bid = $existingBid && $isQuoteSubmission
+            ? tap($existingBid)->update($bidPayload)
+            : Bid::query()->create($bidPayload);
+
+        if ($isQuoteSubmission) {
+            $this->publishQuoteItemsFromBid($order, $lineItems);
+
             $notificationService->sendBidSubmitted(
                 $order->load('property.owners', 'property.managerProfiles'),
                 $serviceProvider->company_name ?: $serviceProvider->contact_name ?: 'A provider',
                 $actor
             );
-        } else {
+
+            $this->syncOrderStatus($order->fresh());
+        } elseif ($isInspectionSignup) {
             $count = Bid::query()
                 ->where('order_id', $order->id)
                 ->whereIn('status', ['inspection_interest', 'inspection_confirmed'])
@@ -359,5 +394,55 @@ class BidController extends Controller
         }
 
         return $fallbackAmount !== null ? (float) $fallbackAmount : null;
+    }
+
+    private function publishQuoteItemsFromBid(Order $order, array $lineItems): void
+    {
+        if (! empty($order->quote_items)) {
+            return;
+        }
+
+        $quoteItems = collect($lineItems)
+            ->filter(fn ($item) => filled(data_get($item, 'label')) && (float) data_get($item, 'quantity', 0) > 0)
+            ->map(fn ($item) => [
+                'label' => data_get($item, 'label'),
+                'code' => data_get($item, 'code'),
+                'unit' => data_get($item, 'unit'),
+                'quantity' => (float) data_get($item, 'quantity', 0),
+                'is_custom' => (bool) data_get($item, 'is_custom', true),
+            ])
+            ->values()
+            ->all();
+
+        if (! empty($quoteItems)) {
+            $order->update([
+                'quote_items' => $quoteItems,
+                'workflow_status' => 'published_for_quotes',
+            ]);
+        }
+    }
+
+    private function getBenchmarkWarning(Order $order, float $amount): ?array
+    {
+        $benchmark = Bid::query()
+            ->whereHas('order', fn ($query) => $query
+                ->where('service_type', $order->service_type)
+                ->where('id', '!=', $order->id)
+            )
+            ->whereIn('status', ['submitted', 'shortlisted', 'approved', 'accepted', 'completed'])
+            ->whereNotNull('amount')
+            ->where('amount', '>', 0)
+            ->avg('amount');
+
+        if (! $benchmark || $amount >= ((float) $benchmark * 0.8)) {
+            return null;
+        }
+
+        return [
+            'trade' => $order->service_type,
+            'submitted_amount' => round($amount, 2),
+            'benchmark_amount' => round((float) $benchmark, 2),
+            'threshold_amount' => round((float) $benchmark * 0.8, 2),
+        ];
     }
 }

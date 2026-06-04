@@ -28,6 +28,7 @@ function ServiceProvidersPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     loadProviders()
@@ -70,6 +71,12 @@ function ServiceProvidersPage() {
         ? Array.from(selectedOptions, (option) => option.value)
         : value,
     }))
+    setFieldErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
   }
 
   function handleFilterChange(event) {
@@ -81,6 +88,7 @@ function ServiceProvidersPage() {
     setEditingId(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -100,6 +108,7 @@ function ServiceProvidersPage() {
       status: provider.status || 'active',
     })
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -107,6 +116,7 @@ function ServiceProvidersPage() {
     setEditingId(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(false)
   }
 
@@ -114,73 +124,41 @@ function ServiceProvidersPage() {
     event.preventDefault()
     setIsSaving(true)
     setError('')
+    setFieldErrors({})
 
-    if (!form.company_name.trim()) {
-  setError('Der Firmenname ist erforderlich.')
-  setIsSaving(false)
-  return
-}
+    const requiredFields = ['company_name', 'contact_email', 'order_email', 'address', 'postal_code', 'city', 'phone', 'domain_suffix']
+    const nextFieldErrors = requiredFields.reduce((errors, field) => {
+      if (!String(form[field] ?? '').trim()) {
+        errors[field] = true
+      }
+      return errors
+    }, {})
 
-if (!form.contact_email.trim()) {
-  setError('Die Kontakt-E-Mail ist erforderlich.')
-  setIsSaving(false)
-  return
-}
+    if ((form.trade_groups ?? []).length === 0) {
+      nextFieldErrors.trade_groups = true
+    }
 
-if (!form.order_email.trim()) {
-  setError('Die E-Mail für Aufträge ist erforderlich.')
-  setIsSaving(false)
-  return
-}
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors)
+      setError('Bitte alle Pflichtfelder ausfüllen.')
+      setIsSaving(false)
+      return
+    }
 
-if (!form.address.trim()) {
-  setError('Die Adresse ist erforderlich.')
-  setIsSaving(false)
-  return
-}
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailPattern.test(form.contact_email.trim())) {
+      setFieldErrors({ contact_email: true })
+      setError('Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein.')
+      setIsSaving(false)
+      return
+    }
 
-if (!form.postal_code.trim()) {
-  setError('Die PLZ ist erforderlich.')
-  setIsSaving(false)
-  return
-}
-
-if (!form.city.trim()) {
-  setError('Der Ort ist erforderlich.')
-  setIsSaving(false)
-  return
-}
-
-if (!form.phone.trim()) {
-  setError('Die Telefonnummer ist erforderlich.')
-  setIsSaving(false)
-  return
-}
-
-if (!form.domain_suffix.trim()) {
-  setError('Die Domain-Endung ist erforderlich.')
-  setIsSaving(false)
-  return
-}
-
-if ((form.trade_groups ?? []).length === 0) {
-  setError('Bitte wählen Sie mindestens ein Gewerk aus.')
-  setIsSaving(false)
-  return
-}
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-if (!emailPattern.test(form.contact_email.trim())) {
-  setError('Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein.')
-  setIsSaving(false)
-  return
-}
-
-if (!emailPattern.test(form.order_email.trim())) {
-  setError('Bitte geben Sie eine gültige E-Mail-Adresse für Aufträge ein.')
-  setIsSaving(false)
-  return
-}
+    if (!emailPattern.test(form.order_email.trim())) {
+      setFieldErrors({ order_email: true })
+      setError('Bitte geben Sie eine gültige E-Mail-Adresse für Aufträge ein.')
+      setIsSaving(false)
+      return
+    }
 
     try {
       const payload = {
@@ -228,6 +206,7 @@ if (!emailPattern.test(form.order_email.trim())) {
 
   const filteredProviders = providers.filter((provider) => {
     const searchValue = [
+      provider.customer_number,
       provider.company_name,
       provider.contact_name,
       provider.contact_email,
@@ -306,6 +285,7 @@ if (!emailPattern.test(form.order_email.trim())) {
         <table className="table border-none text-nowrap customize-table mb-0 align-middle">
           <thead className="text-dark fs-4">
             <tr>
+              <th><h6 className="fs-4 fw-semibold mb-0">Code</h6></th>
               <th><h6 className="fs-4 fw-semibold mb-0">Unternehmen</h6></th>
               <th><h6 className="fs-4 fw-semibold mb-0">Kontakt</h6></th>
               <th><h6 className="fs-4 fw-semibold mb-0">Telefon</h6></th>
@@ -319,6 +299,7 @@ if (!emailPattern.test(form.order_email.trim())) {
           <tbody>
             {filteredProviders.map((provider) => (
               <tr key={provider.id}>
+                <td className="fw-semibold">{provider.customer_number || '-'}</td>
                 <td className="fw-semibold">{provider.company_name}</td>
                 <td>
                   <div className="text-muted">{provider.contact_email}</div>
@@ -342,7 +323,7 @@ if (!emailPattern.test(form.order_email.trim())) {
               </tr>
             ))}
             {filteredProviders.length === 0 ? (
-              <tr><td colSpan="8" className="text-center text-muted py-4">Keine Dienstleister gefunden.</td></tr>
+              <tr><td colSpan="9" className="text-center text-muted py-4">Keine Dienstleister gefunden.</td></tr>
             ) : null}
           </tbody>
         </table>
@@ -360,40 +341,40 @@ if (!emailPattern.test(form.order_email.trim())) {
         <h5 className="modal-title">{editingId ? 'Dienstleister bearbeiten' : 'Dienstleister erstellen'}</h5>
         <button type="button" className="btn-close" onClick={closeModal}></button>
       </div>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className="modal-body">
           <div className="row">
             <div className="col-md-6 mb-3">
               <label className="form-label">Firmenname</label>
-              <input className="form-control" name="company_name" value={form.company_name} onChange={handleChange} />
+              <input className={`form-control${fieldErrors.company_name ? ' is-invalid' : ''}`} name="company_name" value={form.company_name} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">Kontakt-E-Mail</label>
-              <input type="email" className="form-control" name="contact_email" value={form.contact_email} onChange={handleChange} />
+              <input type="email" className={`form-control${fieldErrors.contact_email ? ' is-invalid' : ''}`} name="contact_email" value={form.contact_email} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">E-Mail für Aufträge</label>
-              <input type="email" className="form-control" name="order_email" value={form.order_email} onChange={handleChange} />
+              <input type="email" className={`form-control${fieldErrors.order_email ? ' is-invalid' : ''}`} name="order_email" value={form.order_email} onChange={handleChange} />
             </div>
             <div className="col-12 mb-3">
               <label className="form-label">Adresse</label>
-              <input className="form-control" name="address" value={form.address} onChange={handleChange} />
+              <input className={`form-control${fieldErrors.address ? ' is-invalid' : ''}`} name="address" value={form.address} onChange={handleChange} />
             </div>
             <div className="col-md-4 mb-3">
               <label className="form-label">PLZ</label>
-              <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+              <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
             </div>
             <div className="col-md-8 mb-3">
               <label className="form-label">Ort</label>
-              <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+              <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">Domain-Endung</label>
-              <input className="form-control" name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+              <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">Gewerk</label>
-              <select className="form-select" name="trade_groups" value={form.trade_groups} onChange={handleChange} multiple size="5">
+              <select className={`form-select${fieldErrors.trade_groups ? ' is-invalid' : ''}`} name="trade_groups" value={form.trade_groups} onChange={handleChange} multiple size="5">
                 {JOB_TYPE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -409,7 +390,7 @@ if (!emailPattern.test(form.order_email.trim())) {
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label">Telefon</label>
-              <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
+              <input className={`form-control${fieldErrors.phone ? ' is-invalid' : ''}`} name="phone" value={form.phone} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-0">
               <label className="form-label">Status</label>

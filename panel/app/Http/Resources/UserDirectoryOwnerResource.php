@@ -11,7 +11,7 @@ class UserDirectoryOwnerResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'customer_number' => 'KND-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT),
+            'customer_number' => 'ETM-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT),
             'company_name' => $this->display_name,
             'address' => $this->address,
             'postal_code' => $this->postal_code,

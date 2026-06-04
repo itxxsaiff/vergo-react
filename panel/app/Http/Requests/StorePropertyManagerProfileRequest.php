@@ -15,7 +15,7 @@ class StorePropertyManagerProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'property_id' => ['required', 'exists:properties,id'],
+            'property_id' => ['nullable', 'exists:properties,id'],
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',

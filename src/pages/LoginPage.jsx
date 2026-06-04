@@ -222,7 +222,7 @@ function LoginPage() {
             </div>
           </div>
 
-          {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
+          {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{t(error)}</div> : null}
 
           <div className="mt-3 d-grid">
             <button
@@ -263,7 +263,7 @@ function LoginPage() {
             />
           </div>
 
-          {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
+          {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{t(error)}</div> : null}
 
           <div className="mt-3 d-grid">
             <button className="btn vergo-type-continue mb-3 rounded-2" type="submit" disabled={isSubmitting}>
@@ -301,7 +301,7 @@ function LoginPage() {
 
           {otpSentMessage ? <div className="alert alert-success py-2">{otpSentMessage}</div> : null}
 
-          {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
+          {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{t(error)}</div> : null}
 
           <div className="mt-3 d-grid">
             <button className="btn vergo-type-continue mb-3 rounded-2" type="submit" disabled={isSubmitting}>

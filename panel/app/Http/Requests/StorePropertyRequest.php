@@ -28,6 +28,7 @@ class StorePropertyRequest extends FormRequest
             'li_number' => ['required', 'string', 'max:20', 'regex:/^Li-\d{5}$/', 'unique:properties,li_number'],
             'title' => ['required', 'string', 'max:255'],
             'management' => ['nullable', 'string', 'max:255'],
+            'property_manager_profile_id' => ['nullable', 'exists:property_manager_profiles,id'],
             'size' => ['nullable', 'numeric', 'min:0'],
             'address_line_1' => ['required', 'string', 'max:255'],
             'address_line_2' => ['nullable', 'string', 'max:255'],
@@ -64,6 +65,7 @@ class StorePropertyRequest extends FormRequest
             'commercial_area.min' => 'Commercial area cannot be negative.',
             'status.in' => 'Please select a valid property status.',
             'owner_id.exists' => 'The selected owner is invalid.',
+            'property_manager_profile_id.exists' => 'The selected property manager is invalid.',
             'manager_domains.array' => 'Allowed manager domains must be a valid list.',
         ];
     }

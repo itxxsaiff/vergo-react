@@ -31,7 +31,7 @@ class PropertyManagerProfileController extends Controller
         $this->authorizeEmployeeManagement($request);
 
         $profile = PropertyManagerProfile::query()->create([
-            'property_id' => $request->integer('property_id'),
+            'property_id' => $request->filled('property_id') ? $request->integer('property_id') : null,
             'name' => $request->input('name'),
             'email' => strtolower($request->string('email')->trim()->toString()),
             'phone' => $request->string('phone')->trim()->toString(),
@@ -50,7 +50,16 @@ class PropertyManagerProfileController extends Controller
     {
         $this->authorizeEmployeeManagement($request);
 
-        $propertyManagerProfile->update($request->safe()->toArray());
+        $propertyManagerProfile->update([
+            'property_id' => $request->filled('property_id') ? $request->integer('property_id') : $propertyManagerProfile->property_id,
+            'name' => $request->input('name'),
+            'email' => strtolower($request->string('email')->trim()->toString()),
+            'phone' => $request->string('phone')->trim()->toString(),
+            'address' => $request->string('address')->trim()->toString(),
+            'postal_code' => $request->string('postal_code')->trim()->toString(),
+            'city' => $request->string('city')->trim()->toString(),
+            'domain_suffix' => strtolower(ltrim($request->string('domain_suffix')->trim()->toString(), '@')),
+        ]);
 
         return new PropertyManagerProfileResource(
             $propertyManagerProfile->load('property:id,li_number,title')->loadCount('orders')

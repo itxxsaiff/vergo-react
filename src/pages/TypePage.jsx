@@ -11,7 +11,7 @@ const TYPE_OPTIONS = [
     value: 'email',
     icon: 'ti ti-user',
     title: 'Eigentümer- / Dienstleisteranmeldung',
-    description: 'Mit E-Mail und OTP anmelden, optional mit LI-Nummer oder Kundennummer.',
+    description: 'Mit Kundennummer, E-Mail und OTP anmelden. Eigentümer nutzen ETM, Dienstleister nutzen DLS.',
   },
   {
     value: 'property',

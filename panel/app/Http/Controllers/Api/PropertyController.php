@@ -21,7 +21,7 @@ class PropertyController extends Controller
     {
         $actor = $request->user();
         $query = Property::query()
-            ->with(['owners:id,name,email', 'managerDomains'])
+            ->with(['owners:id,name,email', 'managerDomains', 'assignedManagerProfile:id,name,email,domain_suffix'])
             ->withCount(['objects', 'orders', 'documents'])
             ->latest();
 
@@ -43,6 +43,7 @@ class PropertyController extends Controller
         $property->load([
             'owners:id,name,email',
             'managerDomains',
+            'assignedManagerProfile:id,name,email,domain_suffix',
             'objects',
             'orders.propertyObject:id,name,type,reference',
             'documents.analysisResults',
@@ -83,12 +84,10 @@ class PropertyController extends Controller
                 );
             }
 
-            $this->syncManagerDomains($property, $request->input('manager_domains', []));
-
             return $property;
         });
 
-        $property->load(['owners:id,name,email', 'managerDomains'])->loadCount(['objects', 'orders', 'documents']);
+        $property->load(['owners:id,name,email', 'managerDomains', 'assignedManagerProfile:id,name,email,domain_suffix'])->loadCount(['objects', 'orders', 'documents']);
 
         return new PropertyResource($property);
     }
@@ -121,12 +120,9 @@ class PropertyController extends Controller
                 }
             }
 
-            if ($request->exists('manager_domains')) {
-                $this->syncManagerDomains($property, $request->input('manager_domains', []));
-            }
         });
 
-        $property->load(['owners:id,name,email', 'managerDomains'])->loadCount(['objects', 'orders', 'documents']);
+        $property->load(['owners:id,name,email', 'managerDomains', 'assignedManagerProfile:id,name,email,domain_suffix'])->loadCount(['objects', 'orders', 'documents']);
 
         return new PropertyResource($property);
     }

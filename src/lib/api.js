@@ -46,6 +46,7 @@ async function request(path, options = {}) {
     const error = new Error(message)
     error.status = response.status
     error.errors = payload.errors ?? {}
+    error.payload = payload
     throw error
   }
 

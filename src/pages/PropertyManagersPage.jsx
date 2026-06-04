@@ -17,7 +17,6 @@ const initialForm = {
 
 function PropertyManagersPage() {
   const [managers, setManagers] = useState([])
-  const [properties, setProperties] = useState([])
   const [filters, setFilters] = useState({ search: '', status: '' })
   const [editingManager, setEditingManager] = useState(null)
   const [form, setForm] = useState(initialForm)
@@ -25,6 +24,7 @@ function PropertyManagersPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     loadData()
@@ -50,12 +50,8 @@ function PropertyManagersPage() {
     setError('')
 
     try {
-      const [managersResponse, propertiesResponse] = await Promise.all([
-        api.getPropertyManagers(),
-        api.getProperties(),
-      ])
+      const managersResponse = await api.getPropertyManagers()
       setManagers(managersResponse.data ?? [])
-      setProperties(propertiesResponse.data ?? [])
     } catch (loadError) {
       setError(loadError.message)
     } finally {
@@ -71,12 +67,19 @@ function PropertyManagersPage() {
   function handleChange(event) {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
+    setFieldErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
   }
 
   function openCreateModal() {
     setEditingManager(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -93,6 +96,7 @@ function PropertyManagersPage() {
       domain_suffix: manager.domain_suffix || '',
     })
     setError('')
+    setFieldErrors({})
     setIsModalOpen(true)
   }
 
@@ -100,6 +104,7 @@ function PropertyManagersPage() {
     setEditingManager(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
     setIsModalOpen(false)
   }
 
@@ -107,6 +112,30 @@ function PropertyManagersPage() {
     event.preventDefault()
     setIsSaving(true)
     setError('')
+    setFieldErrors({})
+
+    const requiredFields = ['name', 'email', 'phone', 'address', 'postal_code', 'city', 'domain_suffix']
+    const nextFieldErrors = requiredFields.reduce((errors, field) => {
+      if (!String(form[field] ?? '').trim()) {
+        errors[field] = true
+      }
+      return errors
+    }, {})
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors)
+      setError('Bitte alle Pflichtfelder ausfüllen.')
+      setIsSaving(false)
+      return
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailPattern.test(form.email.trim())) {
+      setFieldErrors({ email: true })
+      setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.')
+      setIsSaving(false)
+      return
+    }
 
     try {
       if (editingManager) {
@@ -122,7 +151,6 @@ function PropertyManagersPage() {
         setManagers((current) => current.map((manager) => (manager.id === editingManager.id ? response.data : manager)))
       } else {
         const response = await api.createPropertyManager({
-          property_id: Number(form.property_id),
           name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
           phone: form.phone.trim(),
@@ -288,52 +316,41 @@ function PropertyManagersPage() {
                   <h5 className="modal-title">{editingManager ? 'Immobilienverwalter bearbeiten' : 'Immobilienverwalter erstellen'}</h5>
                   <button type="button" className="btn-close" onClick={closeModal}></button>
                 </div>
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                   <div className="modal-body">
-                    {!editingManager ? (
-                      <div className="mb-3">
-                        <label className="form-label">Immobilie</label>
-                        <select className="form-select" name="property_id" value={form.property_id} onChange={handleChange}>
-                          <option value="">Immobilie auswählen</option>
-                          {properties.map((property) => (
-                            <option key={property.id} value={property.id}>{property.li_number} - {property.title}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : null}
                     <div className="mb-3">
                       <label className="form-label">E-Mail</label>
-                      <input type="email" className="form-control" name="email" value={form.email} onChange={handleChange} />
+                      <input type="email" className={`form-control${fieldErrors.email ? ' is-invalid' : ''}`} name="email" value={form.email} onChange={handleChange} />
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Telefon</label>
-                      <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
+                      <input className={`form-control${fieldErrors.phone ? ' is-invalid' : ''}`} name="phone" value={form.phone} onChange={handleChange} />
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Firmenname</label>
-                      <input className="form-control" name="name" value={form.name} onChange={handleChange} placeholder="Immobilienverwalter" />
+                      <input className={`form-control${fieldErrors.name ? ' is-invalid' : ''}`} name="name" value={form.name} onChange={handleChange} placeholder="Immobilienverwalter" />
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Adresse</label>
-                      <input className="form-control" name="address" value={form.address} onChange={handleChange} />
+                      <input className={`form-control${fieldErrors.address ? ' is-invalid' : ''}`} name="address" value={form.address} onChange={handleChange} />
                     </div>
                     <div className="row">
                       <div className="col-md-4">
                         <div className="mb-3">
                           <label className="form-label">PLZ</label>
-                          <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-8">
                         <div className="mb-3">
                           <label className="form-label">Ort</label>
-                          <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                          <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
                         </div>
                       </div>
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Domain-Endung</label>
-                      <input className="form-control" name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+                      <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
                     </div>
                     <div className="alert alert-light border small">
                       Immobilienverwalter melden sich über die Domain-Endung und einen Code an. Die E-Mail-Adresse dient hier nur als Kontaktoption. Ein Passwort wird nicht gesetzt.

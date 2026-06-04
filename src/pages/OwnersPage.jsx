@@ -29,6 +29,7 @@ function OwnersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
 
   async function loadOwners() {
     setIsLoading(true)
@@ -76,6 +77,12 @@ function OwnersPage() {
       ...current,
       [name]: value,
     }))
+    setFieldErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
   }
 
   function handleFilterChange(event) {
@@ -91,6 +98,30 @@ function OwnersPage() {
     event.preventDefault()
     setIsSaving(true)
     setError('')
+    setFieldErrors({})
+
+    const requiredFields = ['company_name', 'address', 'postal_code', 'city', 'email', 'phone', 'domain_suffix']
+    const nextFieldErrors = requiredFields.reduce((errors, field) => {
+      if (!String(form[field] ?? '').trim()) {
+        errors[field] = true
+      }
+      return errors
+    }, {})
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors)
+      setError('Bitte alle Pflichtfelder ausfüllen.')
+      setIsSaving(false)
+      return
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailPattern.test(form.email.trim())) {
+      setFieldErrors({ email: true })
+      setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.')
+      setIsSaving(false)
+      return
+    }
 
     try {
       const payload = {
@@ -136,12 +167,14 @@ function OwnersPage() {
       phone: owner.phone || '',
     })
     setError('')
+    setFieldErrors({})
   }
 
   function handleCancelEdit() {
     setEditingOwnerId(null)
     setForm(initialForm)
     setError('')
+    setFieldErrors({})
   }
 
   async function handleDelete(ownerId) {
@@ -180,45 +213,45 @@ function OwnersPage() {
               <h4 className="card-title mb-4">Eigentümer erstellen</h4>
               {editingOwnerId ? <p className="text-muted">Ausgewählten Eigentümer bearbeiten.</p> : null}
 
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} noValidate>
                 <div className="mb-3">
                   <label className="form-label">Firmenname</label>
-                  <input className="form-control" name="company_name" value={form.company_name} onChange={handleChange} />
+                  <input className={`form-control${fieldErrors.company_name ? ' is-invalid' : ''}`} name="company_name" value={form.company_name} onChange={handleChange} />
                 </div>
 
                 <div className="mb-3">
                   <label className="form-label">Adresse</label>
-                  <input className="form-control" name="address" value={form.address} onChange={handleChange} />
+                  <input className={`form-control${fieldErrors.address ? ' is-invalid' : ''}`} name="address" value={form.address} onChange={handleChange} />
                 </div>
 
                 <div className="row">
                   <div className="col-md-4">
                     <div className="mb-3">
                       <label className="form-label">PLZ</label>
-                      <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
+                      <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
                     </div>
                   </div>
                   <div className="col-md-8">
                     <div className="mb-3">
                       <label className="form-label">Ort</label>
-                      <input className="form-control" name="city" value={form.city} onChange={handleChange} />
+                      <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
                     </div>
                   </div>
                 </div>
 
                 <div className="mb-3">
                   <label className="form-label">E-Mail</label>
-                  <input type="email" className="form-control" name="email" value={form.email} onChange={handleChange} />
+                  <input type="email" className={`form-control${fieldErrors.email ? ' is-invalid' : ''}`} name="email" value={form.email} onChange={handleChange} />
                 </div>
 
                 <div className="mb-3">
                   <label className="form-label">Telefon</label>
-                  <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
+                  <input className={`form-control${fieldErrors.phone ? ' is-invalid' : ''}`} name="phone" value={form.phone} onChange={handleChange} />
                 </div>
 
                 <div className="mb-3">
                   <label className="form-label">Domain-Endung</label>
-                  <input className="form-control" name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+                  <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
                 </div>
 
                 <div className="alert alert-light border small">

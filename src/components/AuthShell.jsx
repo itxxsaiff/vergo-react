@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
+import VergoLogo from '../../public/VERGO.png';
 
 function AuthShell({
   title,
@@ -90,7 +91,7 @@ function AuthShell({
                 <div className={resolvedBodyClassName}>
                   <Link to={logoHref} className="text-nowrap logo-img text-center d-block mb-5 w-100">
                     <span className="vergo-wordmark" aria-label="Vergo">
-                      <span className="vergo-wordmark-accent">V</span>ergo
+                      <img src={VergoLogo} alt="" />
                     </span>
                   </Link>
                

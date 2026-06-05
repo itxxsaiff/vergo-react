@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { closeSidebar } from '../../lib/sidebarLayout'
+import VergoLogo from '../../../public/VERGO.png'
 
 function Sidebar({ navigation, user }) {
   const location = useLocation()
@@ -36,7 +37,7 @@ function Sidebar({ navigation, user }) {
         <div className="brand-logo d-flex align-items-center justify-content-between">
           <NavLink to={user?.homePath ?? '/dashboard'} className="text-nowrap logo-img">
             <span className="vergo-wordmark vergo-wordmark-sidebar" aria-label="Vergo">
-              <span className="vergo-wordmark-accent">V</span>ergo
+             <img src={VergoLogo} alt="" />
             </span>
           </NavLink>
           <button

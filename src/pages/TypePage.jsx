@@ -52,7 +52,6 @@ function TypePage() {
   return (
     <AuthShell
       title={t('Anmeldung wählen')}
-      subtitle={t('Wählen Sie den passenden Zugang und starten Sie sicher in Ihren Vergo-Bereich.')}
       logoHref="/type"
       backgroundStyle={backgroundStyle}
       {...immersiveAuthShellProps}
@@ -68,25 +67,20 @@ function TypePage() {
                 className={`card w-100 h-100 mb-0 p-0 text-center text-reset overflow-hidden vergo-type-choice-card ${isActive ? 'is-active' : ''}`}
                 onClick={() => setSelectedOption(option.value)}
                 aria-pressed={isActive}
-                style={{
-                  appearance: 'none',
-                  transition: 'all 0.2s ease',
-                  boxShadow: isActive
-                    ? '0 18px 40px rgba(10, 16, 34, 0.24), 0 8px 22px rgba(93, 135, 255, 0.18)'
-                    : '0 12px 28px rgba(10, 16, 34, 0.16)',
-                }}
               >
-                <div className="card-body px-4 py-4">
+                <div className="card-body px-4 py-4 d-flex flex-column align-items-center text-center">
+                  <span className="vergo-type-choice-check" aria-hidden="true">
+                    <i className="ti ti-check"></i>
+                  </span>
                   <div
-                    className="rounded-circle bg-primary bg-gradient d-inline-flex align-items-center justify-content-center shadow-sm mb-3"
-                    style={{ width: '74px', height: '74px' }}
+                    className="rounded-circle bg-type-buttons d-inline-flex align-items-center justify-content-center shadow-sm mb-3 vergo-type-choice-icon"
                   >
-                    <i className={`${option.icon} fs-9 text-white`}></i>
+                    <i className={`${option.icon} fs-8 text-white`}></i>
                   </div>
-                  <h4 className="fw-semibold mb-2 vergo-type-choice-title" style={{ fontSize: '1.15rem' }}>
+                  <h4 className="fw-semibold mb-2 vergo-type-choice-title">
                     {t(option.title)}
                   </h4>
-                  <p className="mb-0 vergo-type-choice-description" style={{ fontSize: '0.92rem' }}>
+                  <p className="mb-0 vergo-type-choice-description">
                     {t(option.description)}
                   </p>
                 </div>
@@ -109,10 +103,6 @@ function TypePage() {
           </span>
         </button>
       </div>
-
-      <p className="vergo-type-note mb-0">
-        {t('Der Hintergrund wechselt automatisch je nach Tageszeit.')}
-      </p>
     </AuthShell>
   )
 }

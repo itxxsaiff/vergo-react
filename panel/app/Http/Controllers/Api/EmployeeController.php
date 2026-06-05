@@ -117,7 +117,7 @@ class EmployeeController extends Controller
             urlencode($employee->email)
         );
 
-        Mail::to($employee->email)->send(new EmployeePasswordResetMail(
+        Mail::mailer('otp')->to($employee->email)->send(new EmployeePasswordResetMail(
             employeeName: $employee->name,
             resetUrl: $resetUrl,
         ));

@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\ServiceProvider;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -26,6 +27,7 @@ class ProviderOrderNoticeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new Address(config('mail.orders_from.address'), config('mail.orders_from.name')),
             subject: $this->noticeType === 'assigned'
                 ? 'Vergo: New order assigned to your company'
                 : 'Vergo: New public order published',

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { EMAIL_OTP_LOGIN_ACCESS_KEY } from '../constants/auth'
@@ -17,8 +17,9 @@ function EmailOtpLoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const customerNumberFromLink = searchParams.get('customer_number') ?? ''
+  const shouldForceOtpLogin = searchParams.get('force_otp') === '1'
   const isCustomerEmailLink = ['DLS-', 'ETM-'].some((prefix) => customerNumberFromLink.trim().toUpperCase().startsWith(prefix))
-  const { isAuthenticated, requestUserOtp, verifyUserOtp } = useAuth()
+  const { isAuthenticated, logout, requestUserOtp, verifyUserOtp } = useAuth()
   const { t } = useLanguage()
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
   const [form, setForm] = useState(() => ({
@@ -33,7 +34,13 @@ function EmailOtpLoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasAccess] = useState(() => sessionStorage.getItem(EMAIL_OTP_LOGIN_ACCESS_KEY) === 'granted')
 
-  if (isAuthenticated) {
+  useEffect(() => {
+    if (shouldForceOtpLogin && isAuthenticated) {
+      logout()
+    }
+  }, [isAuthenticated, logout, shouldForceOtpLogin])
+
+  if (isAuthenticated && !shouldForceOtpLogin) {
     return <Navigate to="/dashboard" replace />
   }
 

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import VergoLogo from '../../public/VERGO.png';
@@ -16,6 +17,8 @@ function AuthShell({
   columnClassName = 'col-md-8 col-lg-6 col-xxl-4',
 }) {
   const { language, changeLanguage, languages, t } = useLanguage()
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
+  const languageMenuRef = useRef(null)
   const shellClasses = [
     'position-relative overflow-hidden radial-gradient min-vh-100 d-flex align-items-center justify-content-center',
     shellClassName,
@@ -25,8 +28,23 @@ function AuthShell({
   const resolvedBodyClassName = ['card-body vergo-auth-body', bodyClassName].filter(Boolean).join(' ')
   const resolvedHeaderClassName = ['mb-4 vergo-auth-header', headerClassName].filter(Boolean).join(' ')
 
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!languageMenuRef.current?.contains(event.target)) {
+        setIsLanguageMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [])
+
   function handleLanguageChange(nextLanguage) {
     if (nextLanguage === language) {
+      setIsLanguageMenuOpen(false)
       return
     }
 
@@ -48,22 +66,23 @@ function AuthShell({
         style={backgroundStyle}
       >
         <div className="position-absolute top-0 end-0 p-3 p-md-4">
-          <div className="dropdown">
+          <div className="dropdown" ref={languageMenuRef}>
             <button
               type="button"
               className="btn btn-light border-0 shadow-sm rounded-circle d-inline-flex align-items-center justify-content-center"
               id="vergo-public-language-dropdown"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
+              aria-expanded={isLanguageMenuOpen}
               aria-label={t('Sprache')}
               title={t('Sprache')}
+              onClick={() => setIsLanguageMenuOpen((current) => !current)}
               style={{ width: '48px', height: '48px' }}
             >
               <i className="ti ti-language fs-5"></i>
             </button>
             <div
-              className="dropdown-menu dropdown-menu-end dropdown-menu-animate-up"
+              className={`dropdown-menu dropdown-menu-end dropdown-menu-animate-up${isLanguageMenuOpen ? ' show' : ''}`}
               aria-labelledby="vergo-public-language-dropdown"
+              style={{ position: 'absolute', inset: '0 0 auto auto', transform: 'translateY(56px)', zIndex: 1100 }}
             >
               <div className="py-3 px-4 pb-2">
                 <h5 className="mb-0 fs-5 fw-semibold">{t('Sprache')}</h5>

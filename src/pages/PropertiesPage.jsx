@@ -8,7 +8,6 @@ import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
 const initialForm = {
   title: '',
-  address_line_1: '',
   property_manager_profile_id: '',
   management: '',
   owner_id: '',
@@ -20,7 +19,7 @@ const initialForm = {
   commercial_area: '',
 }
 
-const requiredFields = ['title', 'address_line_1', 'postal_code', 'city', 'usage', 'lot_area']
+const requiredFields = ['title', 'postal_code', 'city', 'usage', 'lot_area']
 
 function getOwnerCompanyLabel(property) {
   const ownerNames = (property?.owners ?? [])
@@ -144,7 +143,6 @@ function PropertiesPage() {
     setEditingProperty(property)
     setForm({
       title: property.title || '',
-      address_line_1: property.address_line_1 || '',
       property_manager_profile_id: String(
         property.property_manager_profile_id
           ?? property.assigned_manager_profile?.id
@@ -224,7 +222,6 @@ function PropertiesPage() {
     try {
       const payload = {
         title: form.title.trim(),
-        address_line_1: form.address_line_1.trim(),
         management: form.management.trim() || null,
         postal_code: form.postal_code.trim() || null,
         city: form.city.trim() || null,
@@ -353,7 +350,6 @@ function PropertiesPage() {
                   <tr>
                     <th><h6 className="fs-4 fw-semibold mb-0">Code</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Bezeichnung</h6></th>
-                    <th><h6 className="fs-4 fw-semibold mb-0">Adresse</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">PLZ</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Anzahl</h6></th>
@@ -370,7 +366,6 @@ function PropertiesPage() {
                         <div className="fw-semibold">{property.title || '-'}</div>
                         <div className="text-muted small">{getOptionLabel(PROPERTY_USAGE_OPTIONS, property.usage)}</div>
                       </td>
-                      <td>{property.address_line_1 || '-'}</td>
                       <td>{property.postal_code || '-'}</td>
                       <td>{property.city || '-'}</td>
                       <td>{property.objects_count ?? 0}</td>
@@ -445,12 +440,6 @@ function PropertiesPage() {
                         <div className="mb-3">
                           <label className="form-label">Bezeichnung</label>
                           <input className={`form-control${fieldErrors.title ? ' is-invalid' : ''}`} name="title" value={form.title} onChange={handleChange} />
-                        </div>
-                      </div>
-                      <div className="col-md-6">
-                        <div className="mb-3">
-                          <label className="form-label">Adresse</label>
-                          <input className={`form-control${fieldErrors.address_line_1 ? ' is-invalid' : ''}`} name="address_line_1" value={form.address_line_1} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-6">

@@ -22,7 +22,7 @@ class UpdatePropertyRequest extends FormRequest
             'management' => ['sometimes', 'nullable', 'string', 'max:255'],
             'property_manager_profile_id' => ['sometimes', 'nullable', 'exists:property_manager_profiles,id'],
             'size' => ['sometimes', 'nullable', 'numeric', 'min:0'],
-            'address_line_1' => ['sometimes', 'required', 'string', 'max:255'],
+            'address_line_1' => ['sometimes', 'nullable', 'string', 'max:255'],
             'address_line_2' => ['sometimes', 'nullable', 'string', 'max:255'],
             'city' => ['sometimes', 'nullable', 'string', 'max:120'],
             'state' => ['sometimes', 'nullable', 'string', 'max:120'],
@@ -45,7 +45,6 @@ class UpdatePropertyRequest extends FormRequest
     {
         return [
             'title.required' => 'Property title is required.',
-            'address_line_1.required' => 'Property address is required.',
             'size.numeric' => 'Property size must be a valid number.',
             'size.min' => 'Property size cannot be negative.',
             'usage.in' => 'Please select a valid usage type.',

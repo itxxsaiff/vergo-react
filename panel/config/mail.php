@@ -49,6 +49,30 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        'otp' => [
+            'transport' => 'smtp',
+            'scheme' => env('MAIL_SCHEME'),
+            'url' => env('MAIL_OTP_URL'),
+            'host' => env('MAIL_OTP_HOST', env('MAIL_HOST', '127.0.0.1')),
+            'port' => env('MAIL_OTP_PORT', env('MAIL_PORT', 2525)),
+            'username' => env('MAIL_OTP_USERNAME', env('MAIL_OTP_FROM_ADDRESS')),
+            'password' => env('MAIL_OTP_PASSWORD'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
+        'orders' => [
+            'transport' => 'smtp',
+            'scheme' => env('MAIL_SCHEME'),
+            'url' => env('MAIL_ORDERS_URL'),
+            'host' => env('MAIL_ORDERS_HOST', env('MAIL_HOST', '127.0.0.1')),
+            'port' => env('MAIL_ORDERS_PORT', env('MAIL_PORT', 2525)),
+            'username' => env('MAIL_ORDERS_USERNAME', env('MAIL_ORDERS_FROM_ADDRESS')),
+            'password' => env('MAIL_ORDERS_PASSWORD'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
@@ -113,6 +137,16 @@ return [
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+    ],
+
+    'otp_from' => [
+        'address' => env('MAIL_OTP_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+        'name' => env('MAIL_OTP_FROM_NAME', env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel'))),
+    ],
+
+    'orders_from' => [
+        'address' => env('MAIL_ORDERS_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+        'name' => env('MAIL_ORDERS_FROM_NAME', env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel'))),
     ],
 
 ];

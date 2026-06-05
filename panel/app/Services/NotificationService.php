@@ -85,12 +85,12 @@ class NotificationService
             }
 
             $loginUrl = sprintf(
-                '%s/email-otp-login?customer_number=%s',
+                '%s/email-otp-login?customer_number=%s&force_otp=1',
                 $frontendBase,
                 urlencode($this->formatProviderCustomerNumber($provider->id))
             );
 
-            Mail::to($provider->order_email)->send(new ProviderOrderNoticeMail(
+            Mail::mailer('orders')->to($provider->order_email)->send(new ProviderOrderNoticeMail(
                 order: $order,
                 provider: $provider,
                 noticeType: $noticeType,

@@ -75,18 +75,18 @@ class AuthController extends Controller
 
         try {
             if ($owner) {
-                Mail::to($email)->send(new OwnerOtpMail(
+                Mail::mailer('otp')->to($email)->send(new OwnerOtpMail(
                     code: $code,
                     ownerName: $owner->display_name,
                     liNumber: $property?->li_number,
                 ));
             } elseif ($provider) {
-                Mail::to($email)->send(new UserOtpMail(
+                Mail::mailer('otp')->to($email)->send(new UserOtpMail(
                     code: $code,
                     userName: $provider->company_name,
                 ));
             } else {
-                Mail::to($email)->send(new ManagerOtpMail(
+                Mail::mailer('otp')->to($email)->send(new ManagerOtpMail(
                     code: $code,
                     liNumber: $property->li_number,
                     propertyTitle: $property->title,
@@ -238,7 +238,7 @@ class AuthController extends Controller
         ]);
 
         try {
-            Mail::to($email)->send(new ManagerOtpMail(
+            Mail::mailer('otp')->to($email)->send(new ManagerOtpMail(
                 code: $code,
                 liNumber: $property->li_number,
                 propertyTitle: $property->title,

@@ -90,6 +90,7 @@ class AuthController extends Controller
                     code: $code,
                     liNumber: $property->li_number,
                     propertyTitle: $property->title,
+                    greetingName: $property->assignedManagerProfile?->name,
                 ));
             }
         } catch (Throwable $exception) {
@@ -242,6 +243,7 @@ class AuthController extends Controller
                 code: $code,
                 liNumber: $property->li_number,
                 propertyTitle: $property->title,
+                greetingName: $property->assignedManagerProfile?->name,
             ));
         } catch (Throwable $exception) {
             $loginCode->delete();
@@ -390,13 +392,13 @@ class AuthController extends Controller
                 'consumed_at' => now(),
             ]);
 
-            $token = $provider->user->createToken('vergo-provider')->plainTextToken;
+            $token = $provider->user->createToken('vergo-provider:'.$email)->plainTextToken;
 
             return response()->json([
                 'message' => 'Login successful.',
                 'data' => [
                     'token' => $token,
-                    'user' => $this->transformUserActor($provider->user->load('role')),
+                    'user' => $this->transformUserActor($provider->user->load('role'), $email),
                 ],
             ]);
         }
@@ -448,8 +450,15 @@ class AuthController extends Controller
             ]);
         }
 
+        $providerLoginEmail = null;
+        $tokenName = (string) $actor->currentAccessToken()?->name;
+
+        if ($actor instanceof User && $actor->role?->name === 'provider' && str_starts_with($tokenName, 'vergo-provider:')) {
+            $providerLoginEmail = substr($tokenName, strlen('vergo-provider:'));
+        }
+
         return response()->json([
-            'data' => $this->transformUserActor($actor->load('role')),
+            'data' => $this->transformUserActor($actor->load('role'), $providerLoginEmail),
         ]);
     }
 
@@ -721,7 +730,7 @@ class AuthController extends Controller
         return 'DLS-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
     }
 
-    private function transformUserActor(User $user): array
+    private function transformUserActor(User $user, ?string $providerLoginEmail = null): array
     {
         $role = $user->role?->name ?? 'user';
         $accessLevel = $user->access_level ?: 'admin';
@@ -735,6 +744,7 @@ class AuthController extends Controller
             'type' => 'user',
             'name' => $user->name,
             'email' => $user->email,
+            'provider_login_email' => $providerLoginEmail,
             'image' => $user->image,
             'role' => $role,
             'access_level' => $accessLevel,

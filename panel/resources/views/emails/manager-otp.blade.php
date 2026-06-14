@@ -1,33 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
+
 <head>
     <meta charset="UTF-8">
-    <title>Vergo Login Code</title>
+    <title>Dein Vergo Login Code</title>
 </head>
-<body style="margin:0;padding:24px;background:#f8f8fb;font-family:Arial,sans-serif;color:#495057;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+
+<body style="margin:0;padding:24px;background:#f8f8fb;font-family:Arial,sans-serif;color:#2f3441;">
+    <table width="100%" cellspacing="0" cellpadding="0">
         <tr>
             <td align="center">
-                <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;">
+                <table width="580" cellspacing="0" cellpadding="0"
+                    style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #eaded7;">
                     <tr>
-                        <td style="background:#556ee6;padding:24px 32px;color:#ffffff;">
-                            <h1 style="margin:0;font-size:22px;font-weight:700;">Vergo Login Code</h1>
-                            <p style="margin:8px 0 0;font-size:14px;opacity:0.92;">Use this one-time code to access the property manager portal.</p>
+                        <td style="background:#9f6d54;padding:22px 32px;">
+                            <img src="{{ asset('VERGO.png') }}" alt="Vergo Logo" style="height:42px;display:block;">
                         </td>
                     </tr>
                     <tr>
-                        <td style="padding:32px;">
-                            <p style="margin:0 0 12px;font-size:15px;">Property</p>
-                            <p style="margin:0 0 20px;font-size:18px;font-weight:700;">{{ $propertyTitle }} ({{ $liNumber }})</p>
+                        <td style="padding:34px 40px;">
+                            <p style="margin:0 0 18px;font-size:15px;line-height:1.7;">
+                                Hallo {{ $greetingName ?: $propertyTitle }},
+                            </p>
 
-                            <p style="margin:0 0 12px;font-size:15px;">Your login code</p>
-                            <div style="display:inline-block;padding:14px 22px;background:#f1f5ff;border:1px solid #d6dfff;border-radius:10px;font-size:28px;font-weight:700;letter-spacing:8px;color:#556ee6;">
+                            <p style="margin:0 0 14px;font-size:15px;line-height:1.7;">
+                                Dein OTP-Code lautet:
+                            </p>
+
+                            <div style="display:inline-block;margin:0 0 24px;padding:16px 24px;background:#f7f0ec;border:1px solid #eaded7;border-radius:12px;font-size:30px;font-weight:700;letter-spacing:8px;color:#9f6d54;">
                                 {{ $code }}
                             </div>
 
-                            <p style="margin:20px 0 0;font-size:14px;line-height:1.6;">
-                                This code expires in {{ $expiresInMinutes }} minutes.
-                                If you did not request this code, you can ignore this email.
+                            <p style="margin:0;font-size:14px;line-height:1.7;color:#5f6877;">
+                                Dieser Code ist {{ $expiresInMinutes }} Minuten gültig. Sollten Sie den Code nicht angefordert haben, können Sie dieses Mail ignorieren.
                             </p>
                         </td>
                     </tr>
@@ -36,4 +41,5 @@
         </tr>
     </table>
 </body>
+
 </html>

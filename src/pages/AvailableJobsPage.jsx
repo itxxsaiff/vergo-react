@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
+import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
@@ -25,6 +28,9 @@ const emptyLineItem = {
 }
 
 function AvailableJobsPage() {
+  const { user } = useAuth()
+  const { t } = useLanguage()
+  const [searchParams] = useSearchParams()
   const [orders, setOrders] = useState([])
   const [submittedBids, setSubmittedBids] = useState([])
   const [filters, setFilters] = useState({ search: '', status: '' })
@@ -32,11 +38,30 @@ function AvailableJobsPage() {
   const [bidForm, setBidForm] = useState(initialBidForm)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isAssigning, setIsAssigning] = useState(false)
+  const [lastDraftSavedAt, setLastDraftSavedAt] = useState('')
   const [error, setError] = useState('')
+  const [hasOpenedInitialOrder, setHasOpenedInitialOrder] = useState(false)
 
   useEffect(() => {
     loadOrders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (isLoading || hasOpenedInitialOrder) {
+      return
+    }
+
+    const orderId = searchParams.get('order_id')
+    const matchingOrder = orderId ? orders.find((order) => String(order.id) === String(orderId)) : null
+
+    if (matchingOrder) {
+      openBidModal(matchingOrder)
+      setHasOpenedInitialOrder(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasOpenedInitialOrder, isLoading, orders, searchParams])
 
   useEffect(() => {
     if (selectedOrder) {
@@ -66,7 +91,7 @@ function AvailableJobsPage() {
       setOrders(ordersResponse.data ?? [])
       setSubmittedBids(bidsResponse.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -93,6 +118,26 @@ function AvailableJobsPage() {
     }))
   }
 
+  function hydrateBidForm(order, providerBid = null) {
+    const draft = providerBid?.draft_payload
+    const quoteItems = draft?.line_items
+      ?? ((order.quote_items ?? []).length > 0 ? order.quote_items : [{ ...emptyLineItem }])
+
+    return {
+      ...initialBidForm,
+      amount: draft?.amount ?? providerBid?.amount ?? '',
+      currency: draft?.currency ?? providerBid?.currency ?? 'EUR',
+      estimated_start_date: draft?.estimated_start_date ?? providerBid?.estimated_start_date ?? '',
+      estimated_completion_date: draft?.estimated_completion_date ?? providerBid?.estimated_completion_date ?? '',
+      notes: draft?.notes ?? providerBid?.notes ?? '',
+      selected_inspection_slot: draft?.selected_inspection_slot ?? providerBid?.workflow_meta?.selected_slot_index ?? '',
+      line_items: quoteItems.map((item) => ({
+        ...item,
+        unit_price: draft ? item.unit_price : '',
+      })),
+    }
+  }
+
   function addLineItem() {
     setBidForm((current) => ({
       ...current,
@@ -114,30 +159,76 @@ function AvailableJobsPage() {
   }
 
   function openBidModal(order) {
-    const quoteItems = (order.quote_items ?? []).length > 0
-      ? order.quote_items
-      : [{ ...emptyLineItem }]
-
     setSelectedOrder(order)
-    setBidForm({
-      ...initialBidForm,
-      line_items: quoteItems.map((item) => ({
-        ...item,
-        unit_price: '',
-      })),
-    })
+    setBidForm(hydrateBidForm(order, providerBidByOrderId[order.id]))
+    setLastDraftSavedAt(providerBidByOrderId[order.id]?.draft_saved_at || '')
     setError('')
   }
 
   function closeModal() {
     setSelectedOrder(null)
     setBidForm(initialBidForm)
+    setLastDraftSavedAt('')
     setError('')
+  }
+
+  async function handleAssignToMe() {
+    if (!selectedOrder) return
+
+    setIsAssigning(true)
+    setError('')
+
+    try {
+      const response = await api.assignProviderOrder(selectedOrder.id)
+      const assignedBid = response.data
+      setSubmittedBids((current) => [
+        ...current.filter((bid) => bid.order_id !== selectedOrder.id),
+        assignedBid,
+      ])
+      setBidForm(hydrateBidForm(selectedOrder, assignedBid))
+    } catch (assignError) {
+      setError(t(assignError.message))
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  async function handleProviderDecision(status) {
+    const providerBid = providerBidByOrderId[selectedOrder?.id]
+
+    if (!providerBid) {
+      return
+    }
+
+    setIsSaving(true)
+    setError('')
+
+    try {
+      const response = await api.updateBid(providerBid.id, { status })
+      const updatedBid = response.data
+      setSubmittedBids((current) => current.map((bid) => (bid.id === updatedBid.id ? updatedBid : bid)))
+    } catch (actionError) {
+      setError(t(actionError.message))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   async function submitBid(acknowledgeBenchmarkWarning = false) {
     const isInspectionSignup = selectedOrder.workflow_status === 'public_inspection_open'
     const isQuoteRequest = isOrderQuoteRequest(selectedOrder)
+
+    if (!canSubmitCurrentOrder) {
+      setError(t('Für diesen Auftrag ist keine Angebotsabgabe erforderlich.'))
+      setIsSaving(false)
+      return
+    }
+
+    if (!isAssignedToMe) {
+      setError(t('Bitte weisen Sie den Auftrag zuerst sich selbst zu.'))
+      setIsSaving(false)
+      return
+    }
     const payload = new FormData()
     payload.append('order_id', selectedOrder.id)
     payload.append('currency', bidForm.currency || 'EUR')
@@ -211,7 +302,7 @@ function AvailableJobsPage() {
         return
       }
     } else if (!isInspectionSignup && !bidForm.amount) {
-      setError('Bid amount is required.')
+      setError(t('Gebotsbetrag erforderlich.'))
       setIsSaving(false)
       return
     }
@@ -250,7 +341,7 @@ function AvailableJobsPage() {
             )))
             closeModal()
           } catch (confirmedError) {
-            setError(confirmedError.message)
+            setError(t(confirmedError.message))
           } finally {
             setIsSaving(false)
           }
@@ -259,7 +350,7 @@ function AvailableJobsPage() {
         }
       }
 
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -271,6 +362,42 @@ function AvailableJobsPage() {
       return map
     }, {})
   }, [submittedBids])
+
+  const activeProviderBid = selectedOrder ? providerBidByOrderId[selectedOrder.id] : null
+  const providerLoginEmail = String(user?.provider_login_email || user?.email || '').toLowerCase()
+  const isAssignedToMe = Boolean(activeProviderBid?.assigned_provider_email)
+    && String(activeProviderBid.assigned_provider_email).toLowerCase() === providerLoginEmail
+  const canSubmitCurrentOrder = selectedOrder
+    ? selectedOrder.workflow_status === 'public_inspection_open' || isOrderQuoteRequest(selectedOrder)
+    : false
+
+  useEffect(() => {
+    if (!selectedOrder || !activeProviderBid?.id || !isAssignedToMe) {
+      return undefined
+    }
+
+    const intervalId = window.setInterval(async () => {
+      try {
+        const response = await api.saveBidDraft(activeProviderBid.id, {
+          draft_payload: {
+            amount: bidForm.amount,
+            currency: bidForm.currency,
+            estimated_start_date: bidForm.estimated_start_date,
+            estimated_completion_date: bidForm.estimated_completion_date,
+            notes: bidForm.notes,
+            selected_inspection_slot: bidForm.selected_inspection_slot,
+            line_items: bidForm.line_items,
+          },
+        })
+
+        setLastDraftSavedAt(response.data?.draft_saved_at || '')
+      } catch {
+        // Autosave must not interrupt manual editing.
+      }
+    }, 10000)
+
+    return () => window.clearInterval(intervalId)
+  }, [activeProviderBid?.id, bidForm, isAssignedToMe, selectedOrder])
 
   function isOrderQuoteRequest(order) {
     const providerBid = providerBidByOrderId[order.id]
@@ -289,13 +416,14 @@ function AvailableJobsPage() {
   const filteredOrders = orders.filter((order) => {
     const providerBid = providerBidByOrderId[order.id]
 
-    if (order.workflow_status === 'public_inspection_open' && providerBid) {
+    if (order.workflow_status === 'public_inspection_open' && providerBid && !providerBid.assigned_provider_email) {
       return false
     }
 
     if (
       !['public_inspection_open', 'published_for_quotes'].includes(order.workflow_status)
       && !isOrderQuoteRequest(order)
+      && !providerBid
     ) {
       return false
     }
@@ -516,7 +644,7 @@ function AvailableJobsPage() {
             <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
-                  <h5 className="modal-title">Angebot einreichen</h5>
+                  <h5 className="modal-title">{t('Auftrag bearbeiten')}</h5>
                   <button type="button" className="btn-close" onClick={closeModal}></button>
                 </div>
                 <form onSubmit={handleSubmitBid}>
@@ -524,6 +652,29 @@ function AvailableJobsPage() {
                     <div className="mb-3">
                       <div className="fw-semibold">{selectedOrder.title}</div>
                       <div className="text-muted">{selectedOrder.property?.li_number} {selectedOrder.property?.title}</div>
+                      <div className="text-muted small">
+                        {selectedOrder.property?.postal_code || '-'} {selectedOrder.property?.city || ''}
+                      </div>
+                    </div>
+                    <div className="alert alert-light border d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                      <div>
+                        <div className="fw-semibold">{t('Bearbeitung')}</div>
+                        <div className="text-muted small">
+                          {activeProviderBid?.assigned_provider_email
+                            ? `${t('Zugewiesen an')}: ${activeProviderBid.assigned_provider_email}`
+                            : t('Noch niemand aus Ihrer Firma bearbeitet diesen Auftrag.')}
+                        </div>
+                        {lastDraftSavedAt ? (
+                          <div className="text-muted small">{t('Automatisch gespeichert')}: {lastDraftSavedAt}</div>
+                        ) : null}
+                      </div>
+                      {!isAssignedToMe ? (
+                        <button type="button" className="btn btn-primary btn-sm" disabled={isAssigning} onClick={handleAssignToMe}>
+                          {isAssigning ? t('Wird zugewiesen...') : t('Assign to Me')}
+                        </button>
+                      ) : (
+                        <span className="badge bg-light-success text-success rounded-pill px-3 py-2">{t('Mir zugewiesen')}</span>
+                      )}
                     </div>
                     <div className="row">
                       {selectedOrder.workflow_status === 'public_inspection_open' ? (
@@ -664,9 +815,36 @@ function AvailableJobsPage() {
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>Abbrechen</button>
-                    <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                      {isSaving ? 'Wird gespeichert...' : isOrderQuoteRequest(selectedOrder) ? 'Angebot einreichen' : 'Besichtigung anfragen'}
-                    </button>
+                    {activeProviderBid?.status === 'inspection_requested' ? (
+                      <>
+                        <button type="button" className="btn btn-light-danger text-danger" disabled={isSaving} onClick={() => handleProviderDecision('rejected')}>
+                          {t('Ablehnen')}
+                        </button>
+                        <button type="button" className="btn btn-primary" disabled={isSaving || !isAssignedToMe} onClick={() => handleProviderDecision('inspection_confirmed')}>
+                          {t('Besichtigung bestätigen')}
+                        </button>
+                      </>
+                    ) : null}
+                    {activeProviderBid?.status === 'awarded_pending_acceptance' ? (
+                      <>
+                        <button type="button" className="btn btn-light-danger text-danger" disabled={isSaving} onClick={() => handleProviderDecision('rejected')}>
+                          {t('Ablehnen')}
+                        </button>
+                        <button type="button" className="btn btn-success" disabled={isSaving || !isAssignedToMe} onClick={() => handleProviderDecision('accepted')}>
+                          {t('Auftrag annehmen')}
+                        </button>
+                      </>
+                    ) : null}
+                    {['accepted', 'approved'].includes(activeProviderBid?.status) ? (
+                      <button type="button" className="btn btn-warning" disabled={isSaving || !isAssignedToMe} onClick={() => handleProviderDecision('completed')}>
+                        {t('Als erledigt markieren')}
+                      </button>
+                    ) : null}
+                    {canSubmitCurrentOrder ? (
+                      <button type="submit" className="btn btn-primary" disabled={isSaving || !isAssignedToMe}>
+                        {isSaving ? 'Wird gespeichert...' : isOrderQuoteRequest(selectedOrder) ? 'Angebot einreichen' : 'Besichtigung anfragen'}
+                      </button>
+                    ) : null}
                   </div>
                 </form>
               </div>

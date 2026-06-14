@@ -23,6 +23,7 @@ import PriceComparisonPage from './pages/PriceComparisonPage'
 import PropertyDetailsPage from './pages/PropertyDetailsPage'
 import PropertyManagersPage from './pages/PropertyManagersPage'
 import PropertyObjectsPage from './pages/PropertyObjectsPage'
+import ProviderDashboardPage from './pages/ProviderDashboardPage'
 import PropertiesPage from './pages/PropertiesPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import EmployeePropertiesPage from './pages/EmployeePropertiesPage'
@@ -61,6 +62,10 @@ function AuthenticatedLayout() {
 
 function DashboardRoute() {
   const { user } = useAuth()
+
+  if (user?.role === 'provider') {
+    return <ProviderDashboardPage />
+  }
 
   return <DashboardPage role={user?.role ?? 'admin'} />
 }

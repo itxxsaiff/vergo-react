@@ -18,6 +18,7 @@ class ManagerOtpMail extends Mailable
         public string $code,
         public string $liNumber,
         public string $propertyTitle,
+        public ?string $greetingName = null,
         public int $expiresInMinutes = 10,
     ) {
     }
@@ -26,7 +27,7 @@ class ManagerOtpMail extends Mailable
     {
         return new Envelope(
             from: new Address(config('mail.otp_from.address'), config('mail.otp_from.name')),
-            subject: 'Your Vergo Login Code',
+            subject: 'Dein Vergo Login Code',
         );
     }
 

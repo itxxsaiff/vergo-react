@@ -265,6 +265,11 @@ export const api = {
       method: 'POST',
     })
   },
+  assignProviderOrder(id) {
+    return request(`/orders/${id}/provider-assign`, {
+      method: 'POST',
+    })
+  },
   getServiceProviders() {
     return request('/service-providers')
   },
@@ -336,6 +341,12 @@ export const api = {
   },
   updateBid(id, data) {
     return request(`/bids/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+  saveBidDraft(id, data) {
+    return request(`/bids/${id}/draft`, {
       method: 'PUT',
       body: JSON.stringify(data),
     })

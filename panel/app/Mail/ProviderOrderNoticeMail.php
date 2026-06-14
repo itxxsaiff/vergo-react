@@ -28,9 +28,7 @@ class ProviderOrderNoticeMail extends Mailable
     {
         return new Envelope(
             from: new Address(config('mail.orders_from.address'), config('mail.orders_from.name')),
-            subject: $this->noticeType === 'assigned'
-                ? 'Vergo: New order assigned to your company'
-                : 'Vergo: New public order published',
+            subject: 'Ein Auftrag auf Vergo',
         );
     }
 

@@ -84,10 +84,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/orders/{order}/reviews', [ProviderReviewController::class, 'store']);
     Route::post('/orders/{order}/compare-bids', OrderComparisonController::class);
     Route::post('/orders/{order}/compare-price', [OrderComparisonController::class, 'comparePrice']);
+    Route::post('/orders/{order}/provider-assign', [BidController::class, 'assignToProvider']);
 
     Route::get('/bids', [BidController::class, 'index']);
     Route::post('/bids', [BidController::class, 'store']);
     Route::put('/bids/{bid}', [BidController::class, 'update']);
+    Route::put('/bids/{bid}/draft', [BidController::class, 'saveDraft']);
     Route::delete('/bids/{bid}', [BidController::class, 'destroy']);
     Route::get('/bids/{bid}/attachment', [BidController::class, 'downloadAttachment'])->name('bids.attachment.download');
 

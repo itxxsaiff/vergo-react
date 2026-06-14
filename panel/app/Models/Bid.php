@@ -13,6 +13,7 @@ class Bid extends Model
     protected $fillable = [
         'order_id',
         'service_provider_id',
+        'assigned_provider_email',
         'amount',
         'currency',
         'line_items',
@@ -20,6 +21,8 @@ class Bid extends Model
         'estimated_completion_date',
         'notes',
         'workflow_meta',
+        'draft_payload',
+        'draft_saved_at',
         'attachment_name',
         'attachment_path',
         'attachment_mime_type',
@@ -37,6 +40,8 @@ class Bid extends Model
             'estimated_start_date' => 'date',
             'estimated_completion_date' => 'date',
             'workflow_meta' => 'array',
+            'draft_payload' => 'array',
+            'draft_saved_at' => 'datetime',
             'submitted_at' => 'datetime',
         ];
     }

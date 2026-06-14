@@ -25,7 +25,8 @@ class BidController extends Controller
 
         $query = Bid::query()
             ->with([
-                'order.property:id,li_number,title',
+                'order.property:id,li_number,title,postal_code,city',
+                'order.propertyObject:id,name,address,postal_code,city,type,reference',
                 'serviceProvider:id,company_name,contact_name,contact_email',
             ])
             ->latest();
@@ -63,6 +64,13 @@ class BidController extends Controller
             ->where('order_id', $order->id)
             ->where('service_provider_id', $serviceProvider->id)
             ->first();
+        $providerLoginEmail = $this->providerLoginEmail($request);
+
+        abort_unless(
+            ! $existingBid?->assigned_provider_email || strtolower($existingBid->assigned_provider_email) === $providerLoginEmail,
+            403,
+            'This order is already assigned to another employee from your company.'
+        );
 
         $attachment = $request->file('attachment');
         $attachmentPath = $attachment?->store('vergo-bid-attachments');
@@ -85,13 +93,13 @@ class BidController extends Controller
             abort(422, 'This inspection request has already reached the signup limit.');
         }
 
-        if ($existingBid && ! $isQuoteSubmission) {
+        if ($existingBid && ! $isQuoteSubmission && $existingBid->status !== 'working') {
             abort(422, 'You have already registered for this order.');
         }
 
         if ($existingBid && $isQuoteSubmission) {
             abort_unless(
-                in_array($existingBid->status, ['inspection_interest', 'inspection_confirmed'], true),
+                in_array($existingBid->status, ['working', 'inspection_interest', 'inspection_confirmed'], true),
                 422,
                 'You have already submitted a bid for this order.'
             );
@@ -119,6 +127,7 @@ class BidController extends Controller
         $bidPayload = [
             'order_id' => $order->id,
             'service_provider_id' => $serviceProvider->id,
+            'assigned_provider_email' => $existingBid?->assigned_provider_email ?: $providerLoginEmail,
             'amount' => $amount,
             'currency' => $currency,
             'line_items' => $lineItems,
@@ -160,7 +169,80 @@ class BidController extends Controller
         }
 
         return new BidResource($bid->load([
-            'order.property:id,li_number,title',
+            'order.property:id,li_number,title,postal_code,city',
+            'order.propertyObject:id,name,address,postal_code,city,type,reference',
+            'serviceProvider:id,company_name,contact_name,contact_email',
+        ]));
+    }
+
+    public function assignToProvider(Request $request, Order $order): BidResource
+    {
+        $actor = $request->user();
+        abort_unless($actor instanceof User && $actor->role?->name === 'provider', 403);
+
+        $serviceProvider = $actor->serviceProvider;
+        abort_unless($serviceProvider, 403);
+
+        $isVisiblePublicOrder = in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'], true)
+            && (empty($serviceProvider->trade_groups) || in_array($order->service_type, $serviceProvider->trade_groups, true));
+
+        $bid = Bid::query()
+            ->where('order_id', $order->id)
+            ->where('service_provider_id', $serviceProvider->id)
+            ->first();
+
+        abort_unless($bid || $isVisiblePublicOrder, 403, 'This order is not available for your company.');
+
+        if (! $bid) {
+            $bid = Bid::query()->create([
+                'order_id' => $order->id,
+                'service_provider_id' => $serviceProvider->id,
+                'amount' => null,
+                'currency' => 'EUR',
+                'status' => 'working',
+                'workflow_meta' => [
+                    'source' => 'provider_self_assignment',
+                ],
+                'submitted_at' => now(),
+            ]);
+        }
+
+        $bid->update([
+            'assigned_provider_email' => $this->providerLoginEmail($request),
+            'workflow_meta' => [
+                ...($bid->workflow_meta ?? []),
+                'assigned_at' => now()->toDateTimeString(),
+            ],
+        ]);
+
+        return new BidResource($bid->fresh()->load([
+            'order.property:id,li_number,title,postal_code,city',
+            'order.propertyObject:id,name,address,postal_code,city,type,reference',
+            'serviceProvider:id,company_name,contact_name,contact_email',
+        ]));
+    }
+
+    public function saveDraft(Request $request, Bid $bid): BidResource
+    {
+        $actor = $request->user();
+        abort_unless($actor instanceof User && $actor->role?->name === 'provider', 403);
+
+        $serviceProvider = $actor->serviceProvider;
+        abort_unless($serviceProvider && $bid->service_provider_id === $serviceProvider->id, 403);
+
+        $validated = $request->validate([
+            'draft_payload' => ['required', 'array'],
+        ]);
+
+        $bid->update([
+            'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
+            'draft_payload' => $validated['draft_payload'],
+            'draft_saved_at' => now(),
+        ]);
+
+        return new BidResource($bid->fresh()->load([
+            'order.property:id,li_number,title,postal_code,city',
+            'order.propertyObject:id,name,address,postal_code,city,type,reference',
             'serviceProvider:id,company_name,contact_name,contact_email',
         ]));
     }
@@ -175,9 +257,9 @@ class BidController extends Controller
 
             $status = $request->input('status', $bid->status);
             abort_unless(
-                in_array($status, ['inspection_confirmed', 'accepted', 'completed'], true),
+                in_array($status, ['inspection_confirmed', 'accepted', 'completed', 'rejected'], true),
                 422,
-                'Providers can only confirm inspections, accept awards, or complete work.'
+                'Providers can only confirm inspections, accept or decline assignments, or complete work.'
             );
 
             if ($status === 'inspection_confirmed') {
@@ -192,8 +274,13 @@ class BidController extends Controller
                 abort_unless(in_array($bid->status, ['accepted', 'approved'], true), 422);
             }
 
+            if ($status === 'rejected') {
+                abort_unless(in_array($bid->status, ['inspection_requested', 'awarded_pending_acceptance'], true), 422);
+            }
+
             $bid->update([
                 'status' => $status,
+                'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
                 'workflow_meta' => [
                     ...($bid->workflow_meta ?? []),
                     'provider_last_action_at' => now()->toDateTimeString(),
@@ -290,7 +377,8 @@ class BidController extends Controller
         $this->syncOrderStatus($bid->order()->firstOrFail());
 
         return new BidResource($bid->fresh()->load([
-            'order.property:id,li_number,title',
+            'order.property:id,li_number,title,postal_code,city',
+            'order.propertyObject:id,name,address,postal_code,city,type,reference',
             'serviceProvider:id,company_name,contact_name,contact_email',
         ]));
     }
@@ -394,6 +482,17 @@ class BidController extends Controller
         }
 
         return $fallbackAmount !== null ? (float) $fallbackAmount : null;
+    }
+
+    private function providerLoginEmail(Request $request): string
+    {
+        $tokenName = (string) $request->user()?->currentAccessToken()?->name;
+
+        if (str_starts_with($tokenName, 'vergo-provider:')) {
+            return strtolower(substr($tokenName, strlen('vergo-provider:')));
+        }
+
+        return strtolower((string) $request->user()?->email);
     }
 
     private function publishQuoteItemsFromBid(Order $order, array $lineItems): void

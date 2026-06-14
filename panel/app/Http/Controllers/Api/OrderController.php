@@ -53,6 +53,7 @@ class OrderController extends Controller
                             ->where('service_provider_id', $serviceProvider->id)
                             ->whereIn('status', [
                                 'inspection_requested',
+                                'working',
                                 'inspection_interest',
                                 'inspection_confirmed',
                                 'awarded_pending_acceptance',
@@ -359,6 +360,20 @@ class OrderController extends Controller
 
         if ($actor instanceof PropertyManagerProfile) {
             abort_unless($order->property_id === $actor->property_id, 403);
+            return;
+        }
+
+        if ($actor instanceof User && $actor->role?->name === 'provider') {
+            $serviceProvider = $actor->serviceProvider;
+            abort_unless($serviceProvider, 403);
+
+            $hasLinkedBid = $order->bids()
+                ->where('service_provider_id', $serviceProvider->id)
+                ->exists();
+            $isVisiblePublicOrder = in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'], true)
+                && (empty($serviceProvider->trade_groups) || in_array($order->service_type, $serviceProvider->trade_groups, true));
+
+            abort_unless($hasLinkedBid || $isVisiblePublicOrder, 403);
             return;
         }
 

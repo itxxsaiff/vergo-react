@@ -26,7 +26,7 @@ class OwnerOtpMail extends Mailable
     {
         return new Envelope(
             from: new Address(config('mail.otp_from.address'), config('mail.otp_from.name')),
-            subject: 'Your Vergo Owner Login Code',
+            subject: 'Dein Vergo Login Code',
         );
     }
 

@@ -35,10 +35,10 @@ function EmailOtpLoginPage() {
   const [hasAccess] = useState(() => sessionStorage.getItem(EMAIL_OTP_LOGIN_ACCESS_KEY) === 'granted')
 
   useEffect(() => {
-    if (shouldForceOtpLogin && isAuthenticated) {
+    if (shouldForceOtpLogin && isAuthenticated && step === 'email') {
       logout()
     }
-  }, [isAuthenticated, logout, shouldForceOtpLogin])
+  }, [isAuthenticated, logout, shouldForceOtpLogin, step])
 
   if (isAuthenticated && !shouldForceOtpLogin) {
     return <Navigate to="/dashboard" replace />

@@ -27,6 +27,23 @@ const emptyLineItem = {
   is_custom: true,
 }
 
+function getInspectionSlots(order) {
+  return order?.workflow_meta?.inspection?.preferred_slots ?? []
+}
+
+function getOnsiteContact(order) {
+  return order?.workflow_meta?.inspection?.onsite_contact ?? {}
+}
+
+function getPropertyAddress(order) {
+  return order?.property_object?.address || order?.property_object?.name || order?.property?.address || '-'
+}
+
+function isInspectionWorkflow(order) {
+  return order?.workflow_type === 'inspection'
+    || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
+}
+
 function AvailableJobsPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -39,6 +56,8 @@ function AvailableJobsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
+  const [assignmentMode, setAssignmentMode] = useState('self')
+  const [targetProviderEmail, setTargetProviderEmail] = useState('')
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState('')
   const [error, setError] = useState('')
   const [hasOpenedInitialOrder, setHasOpenedInitialOrder] = useState(false)
@@ -162,35 +181,57 @@ function AvailableJobsPage() {
     setSelectedOrder(order)
     setBidForm(hydrateBidForm(order, providerBidByOrderId[order.id]))
     setLastDraftSavedAt(providerBidByOrderId[order.id]?.draft_saved_at || '')
+    setAssignmentMode('self')
+    setTargetProviderEmail('')
     setError('')
   }
 
   function closeModal() {
     setSelectedOrder(null)
     setBidForm(initialBidForm)
+    setAssignmentMode('self')
+    setTargetProviderEmail('')
     setLastDraftSavedAt('')
     setError('')
   }
 
-  async function handleAssignToMe() {
+  async function handleAssignProvider(targetEmail = '') {
     if (!selectedOrder) return
 
     setIsAssigning(true)
     setError('')
 
     try {
-      const response = await api.assignProviderOrder(selectedOrder.id)
+      const response = await api.assignProviderOrder(selectedOrder.id, targetEmail ? { assigned_provider_email: targetEmail } : {})
       const assignedBid = response.data
       setSubmittedBids((current) => [
         ...current.filter((bid) => bid.order_id !== selectedOrder.id),
         assignedBid,
       ])
       setBidForm(hydrateBidForm(selectedOrder, assignedBid))
+      if (targetEmail) {
+        setTargetProviderEmail('')
+      }
     } catch (assignError) {
       setError(t(assignError.message))
     } finally {
       setIsAssigning(false)
     }
+  }
+
+  async function handleAssignToMe() {
+    await handleAssignProvider()
+  }
+
+  async function handleAssignToOther() {
+    const email = targetProviderEmail.trim().toLowerCase()
+
+    if (!email) {
+      setError(t('Bitte geben Sie eine E-Mail-Adresse ein.'))
+      return
+    }
+
+    await handleAssignProvider(email)
   }
 
   async function handleProviderDecision(status) {
@@ -368,7 +409,7 @@ function AvailableJobsPage() {
   const isAssignedToMe = Boolean(activeProviderBid?.assigned_provider_email)
     && String(activeProviderBid.assigned_provider_email).toLowerCase() === providerLoginEmail
   const canSubmitCurrentOrder = selectedOrder
-    ? selectedOrder.workflow_status === 'public_inspection_open' || isOrderQuoteRequest(selectedOrder)
+    ? selectedOrder.workflow_status === 'public_inspection_open' || (!isInspectionWorkflow(selectedOrder) && isOrderQuoteRequest(selectedOrder))
     : false
 
   useEffect(() => {
@@ -444,6 +485,13 @@ function AvailableJobsPage() {
   const openOrdersCount = orders.filter((order) => order.status === 'open').length
   const inReviewOrdersCount = orders.filter((order) => order.status === 'in_review').length
   const submittedBidsCount = submittedBids.filter((bid) => hasSubmittedQuote({ id: bid.order_id })).length
+  const selectedOrderIsInspection = isInspectionWorkflow(selectedOrder)
+  const selectedInspectionSlots = getInspectionSlots(selectedOrder)
+  const selectedOnsiteContact = getOnsiteContact(selectedOrder)
+  const selectedOnsiteName = [
+    selectedOnsiteContact.first_name,
+    selectedOnsiteContact.last_name,
+  ].filter(Boolean).join(' ')
 
   return (
     <PageContent
@@ -649,13 +697,99 @@ function AvailableJobsPage() {
                 </div>
                 <form onSubmit={handleSubmitBid}>
                   <div className="modal-body">
-                    <div className="mb-3">
-                      <div className="fw-semibold">{selectedOrder.title}</div>
-                      <div className="text-muted">{selectedOrder.property?.li_number} {selectedOrder.property?.title}</div>
-                      <div className="text-muted small">
-                        {selectedOrder.property?.postal_code || '-'} {selectedOrder.property?.city || ''}
+                    <div className="border rounded-3 p-3 mb-3">
+                      <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Betreff')}</div>
+                      <div className="fw-semibold fs-5">{selectedOrder.title}</div>
+                      <div className="text-muted mt-2">
+                        {selectedOrder.description || t('Für diesen Auftrag wurde keine zusätzliche Beschreibung hinzugefügt.')}
                       </div>
                     </div>
+
+                    <div className="border rounded-3 p-3 mb-3">
+                      <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Liegenschaft')}</div>
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <div className="text-muted small">{t('Name')}</div>
+                          <div className="fw-semibold">{selectedOrder.property?.title || '-'}</div>
+                        </div>
+                        <div className="col-md-6">
+                          <div className="text-muted small">{t('Adresse')}</div>
+                          <div className="fw-semibold">{getPropertyAddress(selectedOrder)}</div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="text-muted small">{t('PLZ')}</div>
+                          <div className="fw-semibold">{selectedOrder.property_object?.postal_code || selectedOrder.property?.postal_code || '-'}</div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="text-muted small">{t('Ort')}</div>
+                          <div className="fw-semibold">{selectedOrder.property_object?.city || selectedOrder.property?.city || '-'}</div>
+                        </div>
+                        <div className="col-md-6">
+                          <div className="text-muted small">{t('LI-Nummer')}</div>
+                          <div className="fw-semibold">{selectedOrder.property?.li_number || '-'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedOrderIsInspection ? (
+                      <>
+                        <div className="border rounded-3 p-3 mb-3">
+                          <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Besichtigungstermine')}</div>
+                          <div className="row g-3">
+                            {[0, 1].map((slotIndex) => {
+                              const slot = selectedInspectionSlots[slotIndex]
+
+                              return (
+                                <div className="col-md-6" key={slotIndex}>
+                                  <div className="bg-light rounded-3 p-3 h-100">
+                                    <div className="text-muted small">{t(`Termin ${slotIndex + 1}`)}</div>
+                                    <div className="fw-semibold">{slot?.date || '-'}</div>
+                                    <div className="text-muted">{slot?.time || '-'}</div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {selectedOrder.workflow_status === 'public_inspection_open' ? (
+                          <div className="border rounded-3 p-3 mb-3">
+                            <label className="form-label">{t('Besichtigungstermin auswählen')}</label>
+                            <select className="form-select" name="selected_inspection_slot" value={bidForm.selected_inspection_slot} onChange={handleBidChange}>
+                              <option value="">{t('Termin auswählen')}</option>
+                              {selectedInspectionSlots.map((slot, index) => (
+                                <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
+                                  {slot.date || '-'} {slot.time || ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : null}
+
+                        <div className="border rounded-3 p-3 mb-3">
+                          <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Kontakt vor Ort')}</div>
+                          <div className="row g-3">
+                            <div className="col-md-6">
+                              <div className="text-muted small">{t('Firma')}</div>
+                              <div className="fw-semibold">{selectedOnsiteContact.company || '-'}</div>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="text-muted small">{t('Name')}</div>
+                              <div className="fw-semibold">{selectedOnsiteName || '-'}</div>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="text-muted small">{t('Telefon')}</div>
+                              <div className="fw-semibold">{selectedOnsiteContact.phone || '-'}</div>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="text-muted small">{t('E-Mail')}</div>
+                              <div className="fw-semibold">{selectedOnsiteContact.email || '-'}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+
                     <div className="alert alert-light border d-flex align-items-center justify-content-between gap-3 flex-wrap">
                       <div>
                         <div className="fw-semibold">{t('Bearbeitung')}</div>
@@ -668,153 +802,195 @@ function AvailableJobsPage() {
                           <div className="text-muted small">{t('Automatisch gespeichert')}: {lastDraftSavedAt}</div>
                         ) : null}
                       </div>
-                      {!isAssignedToMe ? (
+                      {isAssignedToMe ? (
+                        <span className="badge bg-light-success text-success rounded-pill px-3 py-2">{t('Mir zugewiesen')}</span>
+                      ) : activeProviderBid?.status !== 'inspection_requested' ? (
                         <button type="button" className="btn btn-primary btn-sm" disabled={isAssigning} onClick={handleAssignToMe}>
                           {isAssigning ? t('Wird zugewiesen...') : t('Assign to Me')}
                         </button>
-                      ) : (
-                        <span className="badge bg-light-success text-success rounded-pill px-3 py-2">{t('Mir zugewiesen')}</span>
-                      )}
-                    </div>
-                    <div className="row">
-                      {selectedOrder.workflow_status === 'public_inspection_open' ? (
-                        <div className="col-12 mb-3">
-                          <label className="form-label">Besichtigungstermin auswählen</label>
-                          <select className="form-select" name="selected_inspection_slot" value={bidForm.selected_inspection_slot} onChange={handleBidChange}>
-                            <option value="">Termin auswählen</option>
-                            {(selectedOrder.workflow_meta?.inspection?.preferred_slots ?? []).map((slot, index) => (
-                              <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
-                                {slot.date || '-'} {slot.time || ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
                       ) : null}
+                    </div>
+                    {selectedOrderIsInspection && activeProviderBid?.status === 'inspection_requested' ? (
+                      <div className="border rounded-3 p-3 mb-3">
+                        <div className="fw-semibold mb-2">{t('Wer übernimmt die Besichtigung?')}</div>
+                        <div className="d-flex flex-wrap gap-3 mb-3">
+                          <label className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="assignment_mode"
+                              value="self"
+                              checked={assignmentMode === 'self'}
+                              onChange={() => setAssignmentMode('self')}
+                            />
+                            <span className="form-check-label">{t('Ich übernehme selbst')}</span>
+                          </label>
+                          <label className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="assignment_mode"
+                              value="other"
+                              checked={assignmentMode === 'other'}
+                              onChange={() => setAssignmentMode('other')}
+                            />
+                            <span className="form-check-label">{t('Andere Person in der Firma')}</span>
+                          </label>
+                        </div>
 
-                      {isOrderQuoteRequest(selectedOrder) ? (
-                        <div className="col-12 mb-3">
-                          <label className="form-label">Positionen und Preise</label>
-                          <div className="border rounded-3">
-                            {(bidForm.line_items ?? []).map((item, index) => (
-                              <div key={`${item.label}-${index}`} className="p-3 border-bottom">
-                                <div className="row g-3 align-items-end">
-                                  <div className="col-md-5">
-                                    {(selectedOrder.quote_items ?? []).length > 0 ? (
-                                      <>
-                                        <div className="fw-semibold">{item.label}</div>
-                                        <div className="text-muted small">{item.quantity} {item.unit || 'Stück'}</div>
-                                      </>
-                                    ) : (
-                                      <div className="row g-2">
-                                        <div className="col-12">
-                                          <label className="form-label mb-1">Leistung</label>
-                                          <input
-                                            className="form-control"
-                                            value={item.label}
-                                            onChange={(event) => handleLineItemChange(index, 'label', event.target.value)}
-                                          />
-                                        </div>
-                                        <div className="col-6">
-                                          <label className="form-label mb-1">Menge</label>
-                                          <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            className="form-control"
-                                            value={item.quantity}
-                                            onChange={(event) => handleLineItemChange(index, 'quantity', event.target.value)}
-                                          />
-                                        </div>
-                                        <div className="col-6">
-                                          <label className="form-label mb-1">Einheit</label>
-                                          <input
-                                            className="form-control"
-                                            value={item.unit}
-                                            onChange={(event) => handleLineItemChange(index, 'unit', event.target.value)}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="col-md-3">
-                                    <label className="form-label mb-1">Einzelpreis</label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.01"
-                                      className="form-control"
-                                      value={item.unit_price}
-                                      onChange={(event) => handleLineItemChange(index, 'unit_price', event.target.value)}
-                                    />
-                                  </div>
-                                  <div className={(selectedOrder.quote_items ?? []).length > 0 ? 'col-md-4' : 'col-md-3'}>
-                                    <div className="text-muted small mb-1">Zwischensumme</div>
-                                    <div className="fw-semibold">
-                                      {(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)} {bidForm.currency}
-                                    </div>
-                                  </div>
-                                  {(selectedOrder.quote_items ?? []).length === 0 ? (
-                                    <div className="col-md-1">
-                                      <button type="button" className="btn btn-light-danger btn-sm" onClick={() => removeLineItem(index)}>
-                                        <i className="ti ti-trash"></i>
-                                      </button>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                            ))}
-                            {(selectedOrder.quote_items ?? []).length === 0 ? (
-                              <div className="p-3 border-bottom">
-                                <button type="button" className="btn btn-light-primary btn-sm" onClick={addLineItem}>
-                                  <i className="ti ti-plus me-1"></i>
-                                  Position hinzufügen
-                                </button>
-                              </div>
-                            ) : null}
-                            <div className="p-3 d-flex justify-content-between align-items-center">
-                              <span className="fw-semibold">Gesamtsumme</span>
-                              <span className="fw-semibold">{getQuoteBidTotal().toFixed(2)} {bidForm.currency}</span>
+                        {assignmentMode === 'other' ? (
+                          <div className="row g-2 align-items-end">
+                            <div className="col-md-8">
+                              <label className="form-label">{t('E-Mail der zuständigen Person')}</label>
+                              <input
+                                type="email"
+                                className="form-control"
+                                value={targetProviderEmail}
+                                onChange={(event) => setTargetProviderEmail(event.target.value)}
+                                placeholder="name@firma.ch"
+                              />
+                            </div>
+                            <div className="col-md-4">
+                              <button type="button" className="btn btn-primary w-100" disabled={isAssigning} onClick={handleAssignToOther}>
+                                {isAssigning ? t('Wird zugewiesen...') : t('Zuweisen und E-Mail senden')}
+                              </button>
                             </div>
                           </div>
-                        </div>
-                      ) : selectedOrder.workflow_status === 'public_inspection_open' ? null : (
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label">Betrag</label>
-                          <input className="form-control" name="amount" value={bidForm.amount} onChange={handleBidChange} />
-                        </div>
-                      )}
+                        ) : (
+                          <button type="button" className="btn btn-primary" disabled={isAssigning || isAssignedToMe} onClick={handleAssignToMe}>
+                            {isAssignedToMe ? t('Mir zugewiesen') : isAssigning ? t('Wird zugewiesen...') : t('Assign to Me')}
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
 
-                      <div className="col-md-6 mb-3">
-                        <label className="form-label">Währung</label>
-                        <select className="form-select" name="currency" value={bidForm.currency} onChange={handleBidChange}>
-                          <option value="EUR">EUR</option>
-                          <option value="USD">USD</option>
-                          <option value="GBP">GBP</option>
-                          <option value="AED">AED</option>
-                        </select>
+                    {!selectedOrderIsInspection ? (
+                      <div className="row">
+                        {isOrderQuoteRequest(selectedOrder) ? (
+                          <div className="col-12 mb-3">
+                            <label className="form-label">Positionen und Preise</label>
+                            <div className="border rounded-3">
+                              {(bidForm.line_items ?? []).map((item, index) => (
+                                <div key={`${item.label}-${index}`} className="p-3 border-bottom">
+                                  <div className="row g-3 align-items-end">
+                                    <div className="col-md-5">
+                                      {(selectedOrder.quote_items ?? []).length > 0 ? (
+                                        <>
+                                          <div className="fw-semibold">{item.label}</div>
+                                          <div className="text-muted small">{item.quantity} {item.unit || 'Stück'}</div>
+                                        </>
+                                      ) : (
+                                        <div className="row g-2">
+                                          <div className="col-12">
+                                            <label className="form-label mb-1">Leistung</label>
+                                            <input
+                                              className="form-control"
+                                              value={item.label}
+                                              onChange={(event) => handleLineItemChange(index, 'label', event.target.value)}
+                                            />
+                                          </div>
+                                          <div className="col-6">
+                                            <label className="form-label mb-1">Menge</label>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              step="0.01"
+                                              className="form-control"
+                                              value={item.quantity}
+                                              onChange={(event) => handleLineItemChange(index, 'quantity', event.target.value)}
+                                            />
+                                          </div>
+                                          <div className="col-6">
+                                            <label className="form-label mb-1">Einheit</label>
+                                            <input
+                                              className="form-control"
+                                              value={item.unit}
+                                              onChange={(event) => handleLineItemChange(index, 'unit', event.target.value)}
+                                            />
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="col-md-3">
+                                      <label className="form-label mb-1">Einzelpreis</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        className="form-control"
+                                        value={item.unit_price}
+                                        onChange={(event) => handleLineItemChange(index, 'unit_price', event.target.value)}
+                                      />
+                                    </div>
+                                    <div className={(selectedOrder.quote_items ?? []).length > 0 ? 'col-md-4' : 'col-md-3'}>
+                                      <div className="text-muted small mb-1">Zwischensumme</div>
+                                      <div className="fw-semibold">
+                                        {(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)} {bidForm.currency}
+                                      </div>
+                                    </div>
+                                    {(selectedOrder.quote_items ?? []).length === 0 ? (
+                                      <div className="col-md-1">
+                                        <button type="button" className="btn btn-light-danger btn-sm" onClick={() => removeLineItem(index)}>
+                                          <i className="ti ti-trash"></i>
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              ))}
+                              {(selectedOrder.quote_items ?? []).length === 0 ? (
+                                <div className="p-3 border-bottom">
+                                  <button type="button" className="btn btn-light-primary btn-sm" onClick={addLineItem}>
+                                    <i className="ti ti-plus me-1"></i>
+                                    Position hinzufügen
+                                  </button>
+                                </div>
+                              ) : null}
+                              <div className="p-3 d-flex justify-content-between align-items-center">
+                                <span className="fw-semibold">Gesamtsumme</span>
+                                <span className="fw-semibold">{getQuoteBidTotal().toFixed(2)} {bidForm.currency}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="col-md-6 mb-3">
+                            <label className="form-label">Betrag</label>
+                            <input className="form-control" name="amount" value={bidForm.amount} onChange={handleBidChange} />
+                          </div>
+                        )}
+
+                        <div className="col-md-6 mb-3">
+                          <label className="form-label">Währung</label>
+                          <select className="form-select" name="currency" value={bidForm.currency} onChange={handleBidChange}>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                            <option value="GBP">GBP</option>
+                            <option value="AED">AED</option>
+                          </select>
+                        </div>
+                        <div className="col-md-6 mb-3">
+                          <label className="form-label">Voraussichtliches Startdatum</label>
+                          <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} onChange={handleBidChange} />
+                        </div>
+                        <div className="col-md-6 mb-3">
+                          <label className="form-label">Voraussichtliches Fertigstellungsdatum</label>
+                          <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} onChange={handleBidChange} />
+                        </div>
+                        <div className="col-12 mb-0">
+                          <label className="form-label">Notizen</label>
+                          <textarea className="form-control" rows="4" name="notes" value={bidForm.notes} onChange={handleBidChange}></textarea>
+                        </div>
+                        <div className="col-12 mt-3">
+                          <label className="form-label">Angebotsanhang</label>
+                          <input type="file" className="form-control" name="attachment" onChange={handleBidChange} />
+                          <div className="form-text">Optional. Laden Sie ein Angebot, einen Kostenvoranschlag oder eine unterstützende Datei bis zu 10 MB hoch.</div>
+                        </div>
                       </div>
-                      <div className="col-md-6 mb-3">
-                        <label className="form-label">Voraussichtliches Startdatum</label>
-                        <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} onChange={handleBidChange} />
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <label className="form-label">Voraussichtliches Fertigstellungsdatum</label>
-                        <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} onChange={handleBidChange} />
-                      </div>
-                      <div className="col-12 mb-0">
-                        <label className="form-label">Notizen</label>
-                        <textarea className="form-control" rows="4" name="notes" value={bidForm.notes} onChange={handleBidChange}></textarea>
-                      </div>
-                      <div className="col-12 mt-3">
-                        <label className="form-label">Angebotsanhang</label>
-                        <input type="file" className="form-control" name="attachment" onChange={handleBidChange} />
-                        <div className="form-text">Optional. Laden Sie ein Angebot, einen Kostenvoranschlag oder eine unterstützende Datei bis zu 10 MB hoch.</div>
-                      </div>
-                    </div>
+                    ) : null}
                     {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
                   </div>
                   <div className="modal-footer">
-                    <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>Abbrechen</button>
+                    <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>{t('Abbrechen')}</button>
                     {activeProviderBid?.status === 'inspection_requested' ? (
                       <>
                         <button type="button" className="btn btn-light-danger text-danger" disabled={isSaving} onClick={() => handleProviderDecision('rejected')}>

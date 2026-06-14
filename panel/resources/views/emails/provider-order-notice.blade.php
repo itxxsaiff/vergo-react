@@ -26,11 +26,7 @@
                                 Guten Tag {{ $provider->company_name }},
                             </p>
 
-                            @php
-                                $color = $noticeType === 'assigned' ? '#d64545' : '#198754';
-                            @endphp
-                            <p
-                                style="margin:0 0 22px;font-size:15px;line-height:1.7;color: {{ $color }};font-weight:700;">
+                            <p style="margin:0 0 22px;font-size:15px;line-height:1.7;color:#2f3441;font-weight:700;">
                                 {{ $noticeType === 'assigned'
                                     ? 'Eine Anfrage aus Ihrer Branche wurde Ihnen direkt zugewiesen.'
                                     : 'Eine Anfrage aus Ihrer Branche wurde veröffentlicht.' }}
@@ -44,7 +40,8 @@
                                 style="margin:0 0 28px;border-collapse:collapse;">
                                 <tr>
                                     <td style="padding:7px 0;width:120px;color:#555;font-size:14px;">Branche:</td>
-                                    <td style="padding:7px 0;font-weight:700;font-size:14px;">{{ $order->service_type }}
+                                    <td style="padding:7px 0;font-weight:700;font-size:14px;">
+                                        {{ config('vergo.job_type_labels.' . $order->service_type, $order->service_type ?: '-') }}
                                     </td>
                                 </tr>
                                 <tr>

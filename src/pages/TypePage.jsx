@@ -80,9 +80,6 @@ function TypePage() {
                   <h4 className="fw-semibold mb-2 vergo-type-choice-title">
                     {t(option.title)}
                   </h4>
-                  <p className="mb-0 vergo-type-choice-description">
-                    {t(option.description)}
-                  </p>
                 </div>
               </button>
             </div>

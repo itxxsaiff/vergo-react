@@ -99,6 +99,25 @@ class NotificationService
         }
     }
 
+    public function sendProviderPersonalAssignmentEmail(Order $order, ServiceProvider $provider, string $email): void
+    {
+        $order->loadMissing('property');
+        $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+        $loginUrl = sprintf(
+            '%s/email-otp-login?customer_number=%s&email=%s&force_otp=1',
+            $frontendBase,
+            urlencode($this->formatProviderCustomerNumber($provider->id)),
+            urlencode($email)
+        );
+
+        Mail::mailer('orders')->to($email)->send(new ProviderOrderNoticeMail(
+            order: $order,
+            provider: $provider,
+            noticeType: 'assigned',
+            loginUrl: $loginUrl,
+        ));
+    }
+
     public function sendQuoteRequestPublished(Order $order): void
     {
         $providers = $this->providersForTrade($order->service_type);

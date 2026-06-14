@@ -999,7 +999,7 @@ body {
 
 .vergo-type-choice-card {
   position: relative;
-  min-height: 210px;
+  min-height: 180px;
   appearance: none;
   border: 1px solid rgba(255, 255, 255, 0.16) !important;
   border-radius: 16px !important;
@@ -1735,22 +1735,23 @@ body {
   flex-direction: column;
   gap: 0.7rem;
   padding: 0.95rem 1rem;
-  border: 1px solid #dbe8f5;
+  border: 1px solid rgba(159, 109, 84, 0.28);
   border-radius: 18px;
-  background: linear-gradient(180deg, #215f8f 0%, #174a73 100%);
-  color: #ffffff;
-  box-shadow: 0 14px 30px rgba(23, 74, 115, 0.22);
+  background: linear-gradient(180deg, #b37a5f 0%, #8f604b 100%);
+  color: #fffaf7;
+  box-shadow: 0 14px 30px rgba(159, 109, 84, 0.22);
 }
 
 .vergo-manager-order-card:hover {
-  color: #ffffff;
+  color: #fffaf7;
   transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(159, 109, 84, 0.28);
 }
 
 .vergo-manager-order-card-label,
 .vergo-manager-order-card-meta span,
 .vergo-manager-order-card-grid span {
-  color: rgba(232, 243, 255, 0.76);
+  color: rgba(255, 250, 247, 0.76);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1772,7 +1773,7 @@ body {
 
 .vergo-manager-order-card-meta strong,
 .vergo-manager-order-card-grid strong {
-  color: #ffffff;
+  color: #fffaf7;
   font-size: 0.92rem;
   font-weight: 700;
   line-height: 1.35;
@@ -1789,17 +1790,17 @@ body {
   justify-content: center;
   text-align: center;
   min-height: 100%;
-  background: linear-gradient(180deg, #1d567f 0%, #153f62 100%);
+  background: linear-gradient(180deg, #a66f56 0%, #7d523f 100%);
 }
 
 .vergo-manager-order-card-more span {
-  color: rgba(232, 243, 255, 0.76);
+  color: rgba(255, 250, 247, 0.76);
   font-size: 0.92rem;
   font-weight: 700;
 }
 
 .vergo-manager-order-card-more strong {
-  color: #ffffff;
+  color: #fffaf7;
   font-size: 2rem;
   font-weight: 800;
   line-height: 1;

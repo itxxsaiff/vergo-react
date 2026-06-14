@@ -265,9 +265,10 @@ export const api = {
       method: 'POST',
     })
   },
-  assignProviderOrder(id) {
+  assignProviderOrder(id, data = {}) {
     return request(`/orders/${id}/provider-assign`, {
       method: 'POST',
+      body: JSON.stringify(data),
     })
   },
   getServiceProviders() {

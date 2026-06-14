@@ -206,16 +206,12 @@ function DashboardPage({ role }) {
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()))
 
   useEffect(() => {
-    if (!isInternalDashboard) {
-      return undefined
-    }
-
     let isMounted = true
 
     Promise.allSettled([
-      api.getDashboardOverview(),
+      isInternalDashboard ? api.getDashboardOverview() : Promise.resolve({ data: {} }),
       api.getOrders(),
-      api.getDocuments(),
+      isInternalDashboard ? api.getDocuments() : Promise.resolve({ data: [] }),
     ]).then(([overviewResult, ordersResult, documentsResult]) => {
       if (!isMounted) {
         return
@@ -241,7 +237,7 @@ function DashboardPage({ role }) {
     return () => {
       isMounted = false
     }
-  }, [isInternalDashboard])
+  }, [isInternalDashboard, t])
 
   const availableYears = useMemo(() => {
     const years = orders.reduce((result, order) => {

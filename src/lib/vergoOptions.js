@@ -12,6 +12,21 @@ export const PROPERTY_OBJECT_TYPE_OPTIONS = [
 
 export const JOB_TYPE_OPTIONS = TRADE_CATALOG.map(({ value, label }) => ({ value, label }))
 
+export const LEGACY_JOB_TYPE_LABELS = {
+  cleaning: 'Reinigung',
+  hvac_maintenance: 'Heizung / Lüftung / Klima',
+  elevator_service: 'Lift',
+  electrical: 'Elektro',
+  plumbing: 'Sanitär',
+  security: 'Sicherheit / Schwachstrom',
+  landscaping: 'Garten / Umgebung / Winterdienst',
+  flooring: 'Bodenbeläge / Plattenleger',
+  painting: 'Maler',
+  one_time_repair: 'Einmalige Reparatur',
+  general_maintenance: 'Allgemeiner Unterhalt',
+  other: 'Sonstiges',
+}
+
 export const LEGACY_SERVICE_TYPE_BY_TRADE_GROUP = {
   elektro: 'electrical',
   gebaeudeautomation_schwachstrom_kommunikation: 'security',
@@ -52,7 +67,7 @@ export const TRADE_ACTIVITY_OPTIONS_BY_GROUP = Object.fromEntries(
 )
 
 export function getOptionLabel(options, value) {
-  return options.find((option) => option.value === value)?.label ?? value ?? '-'
+  return options.find((option) => option.value === value)?.label ?? LEGACY_JOB_TYPE_LABELS[value] ?? value ?? '-'
 }
 
 export function normalizeServiceTypeForApi(value) {

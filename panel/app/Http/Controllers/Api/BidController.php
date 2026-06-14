@@ -175,13 +175,25 @@ class BidController extends Controller
         ]));
     }
 
-    public function assignToProvider(Request $request, Order $order): BidResource
+    public function assignToProvider(Request $request, Order $order, NotificationService $notificationService): BidResource
     {
         $actor = $request->user();
         abort_unless($actor instanceof User && $actor->role?->name === 'provider', 403);
 
         $serviceProvider = $actor->serviceProvider;
         abort_unless($serviceProvider, 403);
+        $validated = $request->validate([
+            'assigned_provider_email' => ['nullable', 'email', 'max:255'],
+        ]);
+        $assignedEmail = strtolower($validated['assigned_provider_email'] ?? $this->providerLoginEmail($request));
+        $assignedDomain = strtolower((string) str($assignedEmail)->after('@'));
+        $allowedDomain = strtolower((string) $serviceProvider->domain_suffix);
+
+        abort_unless(
+            $allowedDomain && $assignedDomain === $allowedDomain,
+            422,
+            'This email domain does not match your company domain.'
+        );
 
         $isVisiblePublicOrder = in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'], true)
             && (empty($serviceProvider->trade_groups) || in_array($order->service_type, $serviceProvider->trade_groups, true));
@@ -208,12 +220,21 @@ class BidController extends Controller
         }
 
         $bid->update([
-            'assigned_provider_email' => $this->providerLoginEmail($request),
+            'assigned_provider_email' => $assignedEmail,
             'workflow_meta' => [
                 ...($bid->workflow_meta ?? []),
                 'assigned_at' => now()->toDateTimeString(),
+                'assigned_by_email' => $this->providerLoginEmail($request),
             ],
         ]);
+
+        if ($assignedEmail !== $this->providerLoginEmail($request)) {
+            $notificationService->sendProviderPersonalAssignmentEmail(
+                $order->load('property'),
+                $serviceProvider,
+                $assignedEmail
+            );
+        }
 
         return new BidResource($bid->fresh()->load([
             'order.property:id,li_number,title,postal_code,city',

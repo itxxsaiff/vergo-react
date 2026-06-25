@@ -30,7 +30,7 @@ class UpdateBidRequest extends FormRequest
             'notes' => ['nullable', 'string'],
             'workflow_meta' => ['nullable', 'array'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
-            'status' => ['sometimes', 'nullable', Rule::in(['submitted', 'shortlisted', 'rejected', 'approved', 'accepted', 'completed'])],
+            'status' => ['sometimes', 'nullable', Rule::in(['submitted', 'shortlisted', 'rejected', 'approved', 'accepted', 'completed', 'inspection_confirmed'])],
             'rejection_reason' => ['nullable', 'string'],
         ];
     }

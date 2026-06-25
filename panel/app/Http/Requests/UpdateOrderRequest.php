@@ -33,8 +33,8 @@ class UpdateOrderRequest extends FormRequest
             'workflow_type' => ['nullable', Rule::in(['inspection', 'direct_order'])],
             'workflow_status' => ['nullable', 'string', 'max:40'],
             'bid_priority' => ['nullable', Rule::in(['lowest_price', 'fastest_turnaround', 'high_quality_materials'])],
-            'due_date' => ['nullable', 'date'],
-            'bid_deadline_at' => ['nullable', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'bid_deadline_at' => ['nullable', 'date', 'after_or_equal:today'],
             'workflow_meta' => ['nullable', 'array'],
             'quote_items' => ['nullable', 'array'],
             'quote_items.*.label' => ['required_with:quote_items', 'string', 'max:255'],
@@ -61,6 +61,8 @@ class UpdateOrderRequest extends FormRequest
             'service_type.in' => 'Please select a valid job type.',
             'status.in' => 'Please select a valid order status.',
             'due_date.date' => 'Please enter a valid due date.',
+            'due_date.after_or_equal' => 'Please do not select a date in the past.',
+            'bid_deadline_at.after_or_equal' => 'Please do not select a date in the past.',
             'bid_priority.in' => 'Please select a valid bid priority.',
         ];
     }
@@ -94,6 +96,18 @@ class UpdateOrderRequest extends FormRequest
 
             if ($propertyHasObjects && !$hasPropertyObject && !$hasPropertyObjectIds) {
                 $validator->errors()->add('property_object_id', 'Please select a property object for this order.');
+            }
+
+            $today = now()->toDateString();
+            $inspectionSlots = data_get($this->input('workflow_meta', []), 'inspection.preferred_slots', []);
+
+            foreach ($inspectionSlots as $slot) {
+                $date = data_get($slot, 'date');
+
+                if ($date && $date < $today) {
+                    $validator->errors()->add('workflow_meta.inspection.preferred_slots', 'Please do not select a date in the past.');
+                    break;
+                }
             }
         });
     }

@@ -41,6 +41,17 @@ const BID_PRIORITY_OPTIONS = [
   { value: 'high_quality_materials', label: 'Hochwertige Materialien' },
 ]
 
+function getTodayDateValue() {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+const TODAY_DATE = getTodayDateValue()
+
 const MANAGER_ORDER_STEPS = [
   { id: 1, label: 'Liegenschaft', helper: 'Objekte wählen', icon: 'ti ti-building-estate' },
   { id: 2, label: 'Ablauf', helper: 'Besichtigung oder Auftrag', icon: 'ti ti-git-branch' },
@@ -123,6 +134,14 @@ function isOutsideBusinessHours(value) {
   return Boolean(value && (value < '05:00' || value > '19:00'))
 }
 
+function isPastDate(value) {
+  return Boolean(value && value < TODAY_DATE)
+}
+
+function getOrderFlowTypeLabel(order) {
+  return order?.workflow_type === 'inspection' ? 'Besichtigung' : 'Auftrag'
+}
+
 function buildManagerWorkflowMeta(wizard, selectedObjects) {
   return {
     flow_type: wizard.flow_type,
@@ -193,6 +212,7 @@ function OrdersPage() {
   const [form, setForm] = useState(initialForm)
   const [managerWizard, setManagerWizard] = useState(getInitialManagerWizard())
   const [managerStep, setManagerStep] = useState(1)
+  const [providerCityFilter, setProviderCityFilter] = useState('')
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -495,6 +515,7 @@ function OrdersPage() {
     })
     setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
     setManagerStep(1)
+    setProviderCityFilter('')
     setIsModalOpen(true)
   }
 
@@ -533,6 +554,11 @@ function OrdersPage() {
           return false
         }
 
+        if (isPastDate(managerWizard.inspection_date_1) || isPastDate(managerWizard.inspection_date_2)) {
+          setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
+          return false
+        }
+
         if (!managerWizard.onsite_first_name.trim() || !managerWizard.onsite_last_name.trim()) {
           setError(t('Bitte hinterlegen Sie eine Kontaktperson vor Ort.'))
           return false
@@ -546,6 +572,11 @@ function OrdersPage() {
 
       if (managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date' && !managerWizard.due_date) {
         setError(t('Bitte geben Sie ein gewünschtes Ausführungsdatum an.'))
+        return false
+      }
+
+      if (managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date' && isPastDate(managerWizard.due_date)) {
+        setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
         return false
       }
     }
@@ -575,6 +606,11 @@ function OrdersPage() {
 
           if (!managerWizard.bid_deadline_at) {
             setError(t('Bitte geben Sie eine Angebotsfrist an.'))
+            return false
+          }
+
+          if (isPastDate(managerWizard.bid_deadline_at)) {
+            setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
             return false
           }
         }
@@ -654,7 +690,11 @@ function OrdersPage() {
           quote_items: managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'request_quotes'
             ? (managerWizard.quote_items ?? [])
               .filter((item) => item.label.trim())
-              .map(({ id, ...item }) => item)
+              .map((item) => {
+                const payloadItem = { ...item }
+                delete payloadItem.id
+                return payloadItem
+              })
             : [],
           due_date: managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date'
             ? managerWizard.due_date
@@ -708,6 +748,12 @@ function OrdersPage() {
       }
     }
 
+    if (isPastDate(form.due_date)) {
+      setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
+      setIsSaving(false)
+      return
+    }
+
     try {
       const payload = {
         ...form,
@@ -747,25 +793,6 @@ function OrdersPage() {
     }
   }
 
-  function handleEdit(order) {
-    setEditingOrderId(order.id)
-    setForm({
-      property_id: String(order.property_id ?? order.property?.id ?? ''),
-      property_object_id: order.property_object_id ? String(order.property_object_id) : '',
-      requester_name: order.requester_name || '',
-      requester_email: order.requester_email || '',
-      title: order.title || '',
-      service_type: order.service_type || '',
-      trade_object: order.workflow_meta?.detail_catalog?.trade_object || '',
-      trade_activity: order.workflow_meta?.detail_catalog?.trade_activity || '',
-      description: order.description || '',
-      status: order.status || 'open',
-      due_date: order.due_date || '',
-    })
-    setError('')
-    setIsModalOpen(true)
-  }
-
   function handleCloseModal() {
     setEditingOrderId(null)
     setForm({
@@ -774,6 +801,7 @@ function OrdersPage() {
     })
     setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
     setManagerStep(1)
+    setProviderCityFilter('')
     setError('')
     setIsModalOpen(false)
   }
@@ -822,6 +850,15 @@ function OrdersPage() {
     (managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct')
     || (managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'direct_award')
   )
+  const providerCityOptions = useMemo(() => (
+    [...new Set(serviceProviders.map((provider) => provider.city).filter(Boolean))]
+      .sort((firstCity, secondCity) => firstCity.localeCompare(secondCity))
+  ), [serviceProviders])
+  const visibleServiceProviders = useMemo(() => (
+    providerCityFilter
+      ? serviceProviders.filter((provider) => String(provider.city || '') === providerCityFilter)
+      : serviceProviders
+  ), [providerCityFilter, serviceProviders])
 
   return (
     <PageContent
@@ -907,6 +944,7 @@ function OrdersPage() {
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Titel')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Immobilie')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Objekt')}</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Typ')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Anfragender')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Fälligkeitsdatum')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Status')}</h6></th>
@@ -928,6 +966,12 @@ function OrdersPage() {
                           </td>
 
                           <td>{getOrderObjectLabel(order)}</td>
+
+                          <td>
+                            <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
+                              {t(getOrderFlowTypeLabel(order))}
+                            </span>
+                          </td>
 
                           <td>
                             <div>{order.requester_name || '-'}</div>
@@ -953,19 +997,8 @@ function OrdersPage() {
                                   <i className="ti ti-eye"></i>
                                 </Link>
 
-                                {canEditOrders || canDeleteOrders ? (
+                                {canDeleteOrders ? (
                                   <>
-                                    {canEditOrders && String(order.requester_email || '').toLowerCase() === String(user?.email || '').toLowerCase() ? (
-                                      <button
-                                        type="button"
-                                        className="table-action-btn table-action-edit"
-                                        onClick={() => handleEdit(order)}
-                                        title={t('Auftrag bearbeiten')}
-                                      >
-                                        <i className="ti ti-pencil"></i>
-                                      </button>
-                                    ) : null}
-
                                     {canDeleteOrders && String(order.requester_email || '').toLowerCase() === String(user?.email || '').toLowerCase() ? (
                                       <button
                                         type="button"
@@ -986,7 +1019,7 @@ function OrdersPage() {
 
                       {filteredOrders.length === 0 ? (
                         <tr>
-                          <td colSpan={showActionColumn ? 7 : 6} className="text-center text-muted py-4">
+                          <td colSpan={showActionColumn ? 8 : 7} className="text-center text-muted py-4">
                             {t('Keine Aufträge gefunden.')}
                           </td>
                         </tr>
@@ -1141,7 +1174,7 @@ function OrdersPage() {
                               <>
                                 <div className="col-md-3">
                                   <label className="form-label">{t('Besichtigung Datum 1')}</label>
-                                  <input type="date" className="form-control" name="inspection_date_1" value={managerWizard.inspection_date_1} onChange={handleManagerWizardChange} />
+                                  <input type="date" className="form-control" name="inspection_date_1" value={managerWizard.inspection_date_1} min={TODAY_DATE} onChange={handleManagerWizardChange} />
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label">{t('Zeit 1')}</label>
@@ -1149,7 +1182,7 @@ function OrdersPage() {
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label">{t('Besichtigung Datum 2')}</label>
-                                  <input type="date" className="form-control" name="inspection_date_2" value={managerWizard.inspection_date_2} onChange={handleManagerWizardChange} />
+                                  <input type="date" className="form-control" name="inspection_date_2" value={managerWizard.inspection_date_2} min={TODAY_DATE} onChange={handleManagerWizardChange} />
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label">{t('Zeit 2')}</label>
@@ -1205,7 +1238,7 @@ function OrdersPage() {
                                 {managerWizard.completion_mode === 'fixed_date' ? (
                                   <div className="col-md-6">
                                     <label className="form-label">{t('Fälligkeitsdatum')}</label>
-                                    <input type="date" className="form-control" name="due_date" value={managerWizard.due_date} onChange={handleManagerWizardChange} />
+                                    <input type="date" className="form-control" name="due_date" value={managerWizard.due_date} min={TODAY_DATE} onChange={handleManagerWizardChange} />
                                   </div>
                                 ) : null}
                               </>
@@ -1288,7 +1321,7 @@ function OrdersPage() {
 
                                     <div className="col-md-6">
                                       <label className="form-label">{t('Angebotsfrist')}</label>
-                                      <input type="date" className="form-control" name="bid_deadline_at" value={managerWizard.bid_deadline_at} onChange={handleManagerWizardChange} />
+                                      <input type="date" className="form-control" name="bid_deadline_at" value={managerWizard.bid_deadline_at} min={TODAY_DATE} onChange={handleManagerWizardChange} />
                                     </div>
                                   </>
                                 ) : null}
@@ -1373,8 +1406,22 @@ function OrdersPage() {
                                 </p>
                               </div>
 
+                              <div className="mb-3">
+                                <label className="form-label">{t('Nach Ort filtern')}</label>
+                                <select
+                                  className="form-select"
+                                  value={providerCityFilter}
+                                  onChange={(event) => setProviderCityFilter(event.target.value)}
+                                >
+                                  <option value="">{t('Alle Orte')}</option>
+                                  {providerCityOptions.map((city) => (
+                                    <option key={city} value={city}>{city}</option>
+                                  ))}
+                                </select>
+                              </div>
+
                               <div className="vergo-order-provider-grid">
-                                {serviceProviders.map((provider) => (
+                                {visibleServiceProviders.map((provider) => (
                                   <button
                                     key={provider.id}
                                     type="button"
@@ -1382,11 +1429,15 @@ function OrdersPage() {
                                     onClick={() => toggleProviderSelection(provider.id)}
                                   >
                                     <div className="fw-semibold">{provider.company_name}</div>
-                                    <div className="text-muted small">{provider.contact_name || t('Kontaktperson fehlt')}</div>
-                                    <div className="text-muted small">{provider.contact_email || '-'}</div>
+                                    <div className="text-muted small">
+                                      {t('PLZ / Ort')} ({[provider.postal_code, provider.city].filter(Boolean).join(' ') || '-'})
+                                    </div>
                                   </button>
                                 ))}
                               </div>
+                              {visibleServiceProviders.length === 0 ? (
+                                <div className="text-muted small mt-2">{t('Keine Firmen für diesen Ort gefunden.')}</div>
+                              ) : null}
                             </div>
 
                             <div className="col-lg-5">
@@ -1504,7 +1555,7 @@ function OrdersPage() {
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label className="form-label">{t('Fälligkeitsdatum')}</label>
-                            <input type="date" className="form-control" name="due_date" value={form.due_date} onChange={handleChange} />
+                            <input type="date" className="form-control" name="due_date" value={form.due_date} min={TODAY_DATE} onChange={handleChange} />
                           </div>
                         </div>
 

@@ -214,6 +214,7 @@ class OrderController extends Controller
                 $order->property_id === $actor->property_id && $order->requester_email === $actor->email,
                 403
             );
+            abort(422, 'Published orders cannot be edited. Please delete the order and create a new one.');
         } else {
             abort(403, 'Admins can only review orders.');
         }

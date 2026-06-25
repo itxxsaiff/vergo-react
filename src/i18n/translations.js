@@ -2238,6 +2238,13 @@ Object.assign(supplementalTranslations.de, {
   'E-Mail der zuständigen Person': 'E-Mail der zuständigen Person',
   'Zuweisen und E-Mail senden': 'Zuweisen und E-Mail senden',
   'Bitte geben Sie eine E-Mail-Adresse ein.': 'Bitte geben Sie eine E-Mail-Adresse ein.',
+  'Bitte wählen Sie kein Datum in der Vergangenheit.': 'Bitte wählen Sie kein Datum in der Vergangenheit.',
+  'Nach Ort filtern': 'Nach Ort filtern',
+  'Alle Orte': 'Alle Orte',
+  'PLZ / Ort': 'PLZ / Ort',
+  'Keine Firmen für diesen Ort gefunden.': 'Keine Firmen für diesen Ort gefunden.',
+  Besichtigung: 'Besichtigung',
+  Auftrag: 'Auftrag',
   'This email domain does not match your company domain.': 'Diese E-Mail-Domain passt nicht zur Domain Ihrer Firma.',
 })
 
@@ -2293,6 +2300,13 @@ Object.assign(supplementalTranslations.en, {
   'E-Mail der zuständigen Person': 'Email of responsible person',
   'Zuweisen und E-Mail senden': 'Assign and send email',
   'Bitte geben Sie eine E-Mail-Adresse ein.': 'Please enter an email address.',
+  'Bitte wählen Sie kein Datum in der Vergangenheit.': 'Please do not select a date in the past.',
+  'Nach Ort filtern': 'Filter by city',
+  'Alle Orte': 'All cities',
+  'PLZ / Ort': 'ZIP / City',
+  'Keine Firmen für diesen Ort gefunden.': 'No companies found for this city.',
+  Besichtigung: 'Viewing',
+  Auftrag: 'Task',
   'This email domain does not match your company domain.': 'This email domain does not match your company domain.',
 })
 
@@ -2348,6 +2362,13 @@ Object.assign(supplementalTranslations.it, {
   'E-Mail der zuständigen Person': 'E-mail della persona responsabile',
   'Zuweisen und E-Mail senden': 'Assegna e invia e-mail',
   'Bitte geben Sie eine E-Mail-Adresse ein.': 'Inserisci un indirizzo e-mail.',
+  'Bitte wählen Sie kein Datum in der Vergangenheit.': 'Non selezionare una data nel passato.',
+  'Nach Ort filtern': 'Filtra per città',
+  'Alle Orte': 'Tutte le città',
+  'PLZ / Ort': 'CAP / Città',
+  'Keine Firmen für diesen Ort gefunden.': 'Nessuna azienda trovata per questa città.',
+  Besichtigung: 'Sopralluogo',
+  Auftrag: 'Attività',
   'This email domain does not match your company domain.': 'Questo dominio e-mail non corrisponde al dominio della tua azienda.',
 })
 
@@ -2403,6 +2424,13 @@ Object.assign(supplementalTranslations.fr, {
   'E-Mail der zuständigen Person': 'E-mail de la personne responsable',
   'Zuweisen und E-Mail senden': 'Attribuer et envoyer l’e-mail',
   'Bitte geben Sie eine E-Mail-Adresse ein.': 'Veuillez saisir une adresse e-mail.',
+  'Bitte wählen Sie kein Datum in der Vergangenheit.': 'Veuillez ne pas sélectionner une date dans le passé.',
+  'Nach Ort filtern': 'Filtrer par ville',
+  'Alle Orte': 'Toutes les villes',
+  'PLZ / Ort': 'NPA / Ville',
+  'Keine Firmen für diesen Ort gefunden.': 'Aucune entreprise trouvée pour cette ville.',
+  Besichtigung: 'Visite',
+  Auftrag: 'Tâche',
   'This email domain does not match your company domain.': 'Ce domaine e-mail ne correspond pas au domaine de votre entreprise.',
 })
 

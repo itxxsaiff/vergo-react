@@ -12,6 +12,25 @@ function getLatestAnalysisResult(results, analysisType) {
     .sort((firstResult, secondResult) => new Date(secondResult?.created_at ?? 0) - new Date(firstResult?.created_at ?? 0))[0] ?? null
 }
 
+function getInspectionSlots(order) {
+  return order?.workflow_meta?.inspection?.preferred_slots ?? []
+}
+
+function getOnsiteContact(order) {
+  return order?.workflow_meta?.inspection?.onsite_contact ?? {}
+}
+
+function getOnsiteName(contact) {
+  return [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || '-'
+}
+
+function isInspectionOrder(order) {
+  return order?.workflow_type === 'inspection'
+    || order?.workflow_meta?.flow_type === 'inspection'
+    || (order?.workflow_meta?.inspection?.preferred_slots ?? []).length > 0
+    || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
+}
+
 function OrderDetailsPage() {
   const { user } = useAuth()
   const { orderId } = useParams()
@@ -172,21 +191,166 @@ function OrderDetailsPage() {
   const visibleRankedBids = user?.role === 'manager' && isQuoteWorkflow && bidDeadlinePassed
     ? rankedBids.slice(0, visibleRankLimit)
     : rankedBids
+  const inspectionSlots = getInspectionSlots(order)
+  const onsiteContact = getOnsiteContact(order)
+  const isInspectionDetails = isInspectionOrder(order)
 
   return (
     <PageContent
-      title="Auftragsdetails"
-      subtitle="Überprüfen Sie Angebote, Vergleichsergebnisse und unterstützende Dokumente für diesen Auftrag."
+      title={isInspectionDetails ? 'Besichtigungsdetails' : 'Auftragsdetails'}
+      subtitle={isInspectionDetails
+        ? 'Überprüfen Sie die Besichtigung, Termine, Kontaktdaten und beteiligte Dienstleister.'
+        : 'Überprüfen Sie Angebote, Vergleichsergebnisse und unterstützende Dokumente für diesen Auftrag.'}
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Aufträge', href: '/orders' },
-        { label: 'Auftragsdetails' },
+        { label: isInspectionDetails ? 'Besichtigungsdetails' : 'Auftragsdetails' },
       ]}
     >
       {error ? <div className="alert alert-danger py-2">{error}</div> : null}
       {isLoading ? <div className="card"><div className="card-body">Details zur Ladefolge...</div></div> : null}
 
       {!isLoading && order ? (
+        isInspectionDetails ? (
+          <div className="row">
+            <div className="col-xl-7">
+              <div className="card">
+                <div className="card-body">
+                  <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                    <div>
+                      <div className="text-muted small text-uppercase fw-semibold mb-1">Betreff</div>
+                      <h4 className="fw-semibold mb-1">{order.title || '-'}</h4>
+                      <p className="text-muted mb-0">{order.description || 'Keine Beschreibung hinzugefügt.'}</p>
+                    </div>
+                    <span className={getStatusBadgeClass(order.status)}>
+                      {formatStatusLabel(order.status)}
+                    </span>
+                  </div>
+
+                  <div className="border rounded-3 p-3 mb-3">
+                    <div className="text-muted small text-uppercase fw-semibold mb-2">Liegenschaft</div>
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <div className="text-muted small">Name</div>
+                        <div className="fw-semibold">{order.property?.title || '-'}</div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="text-muted small">Adresse</div>
+                        <div className="fw-semibold">{order.property_object?.address || order.property_object?.name || '-'}</div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="text-muted small">PLZ</div>
+                        <div className="fw-semibold">{order.property_object?.postal_code || order.property?.postal_code || '-'}</div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="text-muted small">Ort</div>
+                        <div className="fw-semibold">{order.property_object?.city || order.property?.city || '-'}</div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="text-muted small">LI-Nummer</div>
+                        <div className="fw-semibold">{order.property?.li_number || '-'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-3 p-3 mb-3">
+                    <div className="text-muted small text-uppercase fw-semibold mb-2">Besichtigungstermine</div>
+                    {inspectionSlots.length > 0 ? (
+                      <div className="row g-3">
+                        {inspectionSlots.map((slot, index) => (
+                          <div className="col-md-6" key={`${slot.date}-${slot.time}-${index}`}>
+                            <div className="border rounded-3 p-3 h-100">
+                              <div className="text-muted small">Option {index + 1}</div>
+                              <div className="fw-semibold">{slot.date || '-'}</div>
+                              <div className="text-muted">{slot.time || '-'}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-muted">Keine Besichtigungstermine hinterlegt.</div>
+                    )}
+                  </div>
+
+                  <div className="border rounded-3 p-3">
+                    <div className="text-muted small text-uppercase fw-semibold mb-2">Kontakt vor Ort</div>
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <div className="text-muted small">Firma</div>
+                        <div className="fw-semibold">{onsiteContact.company || '-'}</div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="text-muted small">Name</div>
+                        <div className="fw-semibold">{getOnsiteName(onsiteContact)}</div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="text-muted small">Telefon</div>
+                        <div className="fw-semibold">{onsiteContact.phone || '-'}</div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="text-muted small">E-Mail</div>
+                        <div className="fw-semibold">{onsiteContact.email || '-'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-xl-5">
+              <div className="card">
+                <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+                  <h5 className="card-title fw-semibold mb-0">Dienstleister</h5>
+                  <span className="text-muted">{order.bids?.length ?? 0} Einträge</span>
+                </div>
+                <div className="card-body p-4">
+                  {(order.bids ?? []).length > 0 ? (
+                    <div className="d-flex flex-column gap-3">
+                      {order.bids.map((bid) => {
+                        const selectedSlot = inspectionSlots[Number(bid.workflow_meta?.selected_slot_index)]
+
+                        return (
+                          <div className="border rounded-3 p-3" key={bid.id}>
+                            <div className="d-flex align-items-start justify-content-between gap-3 mb-2">
+                              <div>
+                                <div className="fw-semibold">{bid.service_provider?.company_name || '-'}</div>
+                                <div className="text-muted small">{bid.assigned_provider_email || bid.service_provider?.contact_email || '-'}</div>
+                              </div>
+                              <span className={getStatusBadgeClass(bid.status)}>
+                                {formatStatusLabel(bid.status)}
+                              </span>
+                            </div>
+                            <div className="text-muted small">
+                              Gewählter Termin: {selectedSlot ? `${selectedSlot.date || '-'} ${selectedSlot.time || ''}` : '-'}
+                            </div>
+                            {bid.rejection_reason ? <div className="text-muted small mt-2">{bid.rejection_reason}</div> : null}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-muted">Noch keine Dienstleister für diese Besichtigung vorhanden.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="card-body">
+                  <h5 className="fw-semibold mb-3">Auftragsdaten</h5>
+                  <div className="mb-2">
+                    <strong>Gewerk:</strong> {getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}
+                  </div>
+                  <div className="mb-2">
+                    <strong>Typ:</strong> Besichtigung
+                  </div>
+                  <div className="mb-0">
+                    <strong>Anfragender:</strong> {order.requester_name || '-'} {order.requester_email ? `(${order.requester_email})` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="row">
           <div className="col-xl-4">
             <div className="card">
@@ -698,6 +862,7 @@ function OrderDetailsPage() {
             </div>
           </div>
         </div>
+        )
       ) : null}
     </PageContent>
   )

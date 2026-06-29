@@ -13,6 +13,7 @@ use App\Mail\ProviderOrderNoticeMail;
 use App\Notifications\SystemNotification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 
@@ -78,25 +79,65 @@ class NotificationService
     {
         $order->loadMissing('property');
         $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+        $targetedProviders = [];
+        $skippedProviders = [];
 
         foreach ($providers as $provider) {
-            if (! $provider instanceof ServiceProvider || ! $provider->order_email) {
+            if (! $provider instanceof ServiceProvider) {
+                $skippedProviders[] = [
+                    'provider_id' => null,
+                    'reason' => 'invalid_provider_instance',
+                ];
+                continue;
+            }
+
+            if (! $provider->order_email) {
+                $skippedProviders[] = [
+                    'provider_id' => $provider->id,
+                    'reason' => 'missing_order_email',
+                ];
                 continue;
             }
 
             $loginUrl = sprintf(
-                '%s/email-otp-login?customer_number=%s&force_otp=1',
+                '%s/email-otp-login?customer_number=%s&email=%s&force_otp=1',
                 $frontendBase,
-                urlencode($this->formatProviderCustomerNumber($provider->id))
+                urlencode($this->formatProviderCustomerNumber($provider->id)),
+                urlencode($provider->order_email)
             );
 
-            Mail::mailer('orders')->to($provider->order_email)->send(new ProviderOrderNoticeMail(
-                order: $order,
-                provider: $provider,
-                noticeType: $noticeType,
-                loginUrl: $loginUrl,
-            ));
+            try {
+                Mail::mailer('orders')->to($provider->order_email)->send(new ProviderOrderNoticeMail(
+                    order: $order,
+                    provider: $provider,
+                    noticeType: $noticeType,
+                    loginUrl: $loginUrl,
+                ));
+
+                $targetedProviders[] = [
+                    'provider_id' => $provider->id,
+                    'order_email' => $provider->order_email,
+                ];
+            } catch (\Throwable $exception) {
+                Log::error('Vergo provider order email failed', [
+                    'order_id' => $order->id,
+                    'provider_id' => $provider->id,
+                    'order_email' => $provider->order_email,
+                    'notice_type' => $noticeType,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
+
+        Log::info('Vergo provider order email dispatch completed', [
+            'order_id' => $order->id,
+            'notice_type' => $noticeType,
+            'frontend_base' => $frontendBase,
+            'sent_count' => count($targetedProviders),
+            'skipped_count' => count($skippedProviders),
+            'sent_providers' => $targetedProviders,
+            'skipped_providers' => $skippedProviders,
+        ]);
     }
 
     public function sendProviderPersonalAssignmentEmail(Order $order, ServiceProvider $provider, string $email): void
@@ -225,10 +266,25 @@ class NotificationService
             ->get();
 
         if (! $trade) {
+            Log::info('Vergo provider trade filter resolved', [
+                'trade' => null,
+                'provider_count' => $providers->count(),
+                'provider_ids' => $providers->pluck('id')->values()->all(),
+            ]);
             return $providers;
         }
 
-        return $providers->filter(fn ($provider) => in_array($trade, $provider->trade_groups ?? [], true))->values();
+        $filteredProviders = $providers
+            ->filter(fn ($provider) => $provider->supportsServiceType($trade))
+            ->values();
+
+        Log::info('Vergo provider trade filter resolved', [
+            'trade' => $trade,
+            'provider_count' => $filteredProviders->count(),
+            'provider_ids' => $filteredProviders->pluck('id')->values()->all(),
+        ]);
+
+        return $filteredProviders;
     }
 
     private function formatProviderCustomerNumber(int $id): string

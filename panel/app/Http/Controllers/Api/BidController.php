@@ -196,7 +196,7 @@ class BidController extends Controller
         );
 
         $isVisiblePublicOrder = in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'], true)
-            && (empty($serviceProvider->trade_groups) || in_array($order->service_type, $serviceProvider->trade_groups, true));
+            && $serviceProvider->supportsServiceType($order->service_type);
 
         $bid = Bid::query()
             ->where('order_id', $order->id)

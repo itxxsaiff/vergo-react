@@ -37,15 +37,16 @@ class OrderController extends Controller
         if ($actor instanceof User && $actor->role?->name === 'provider') {
             $serviceProvider = $actor->serviceProvider;
             abort_unless($serviceProvider, 403);
+            $supportedServiceTypes = $serviceProvider->supportedServiceTypes();
 
-            $query->where(function ($providerQuery) use ($serviceProvider) {
+            $query->where(function ($providerQuery) use ($serviceProvider, $supportedServiceTypes) {
                 $providerQuery
-                    ->where(function ($publicQuery) use ($serviceProvider) {
+                    ->where(function ($publicQuery) use ($supportedServiceTypes) {
                         $publicQuery
                             ->whereIn('workflow_status', ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes']);
 
-                        if (! empty($serviceProvider->trade_groups)) {
-                            $publicQuery->whereIn('service_type', $serviceProvider->trade_groups);
+                        if (! empty($supportedServiceTypes)) {
+                            $publicQuery->whereIn('service_type', $supportedServiceTypes);
                         }
                     })
                     ->orWhereHas('bids', function ($bidQuery) use ($serviceProvider) {
@@ -372,7 +373,7 @@ class OrderController extends Controller
                 ->where('service_provider_id', $serviceProvider->id)
                 ->exists();
             $isVisiblePublicOrder = in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'], true)
-                && (empty($serviceProvider->trade_groups) || in_array($order->service_type, $serviceProvider->trade_groups, true));
+                && $serviceProvider->supportsServiceType($order->service_type);
 
             abort_unless($hasLinkedBid || $isVisiblePublicOrder, 403);
             return;

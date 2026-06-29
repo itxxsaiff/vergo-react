@@ -62,6 +62,16 @@
                                     Einloggen
                                 </a>
                             </p>
+
+                            <p style="margin:18px 0 8px;font-size:14px;line-height:1.7;color:#555;">
+                                Falls der Button nicht funktioniert, können Sie stattdessen diesen Link öffnen:
+                            </p>
+
+                            <p style="margin:0;font-size:13px;line-height:1.7;word-break:break-all;">
+                                <a href="{{ $loginUrl }}" style="color:#9f6d54;text-decoration:underline;">
+                                    {{ $loginUrl }}
+                                </a>
+                            </p>
                         </td>
                     </tr>
 

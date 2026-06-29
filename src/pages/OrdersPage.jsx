@@ -139,7 +139,12 @@ function isPastDate(value) {
 }
 
 function getOrderFlowTypeLabel(order) {
-  return order?.workflow_type === 'inspection' ? 'Besichtigung' : 'Auftrag'
+  const isInspection = order?.workflow_type === 'inspection'
+    || order?.workflow_meta?.flow_type === 'inspection'
+    || (order?.workflow_meta?.inspection?.preferred_slots ?? []).length > 0
+    || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
+
+  return isInspection ? 'Besichtigung' : 'Auftrag'
 }
 
 function buildManagerWorkflowMeta(wizard, selectedObjects) {

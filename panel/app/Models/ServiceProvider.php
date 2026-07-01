@@ -84,6 +84,11 @@ class ServiceProvider extends Model
         return $this->hasMany(ProviderReview::class);
     }
 
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class);
+    }
+
     public function getAverageRatingValue(): ?float
     {
         $average = $this->reviews()->avg('rating');
@@ -101,7 +106,7 @@ class ServiceProvider extends Model
 
     public function hasWorkedOnPropertyBefore(int $propertyId, ?int $excludeOrderId = null): bool
     {
-        return $this->bids()
+        $hasCompletedOrderWork = $this->bids()
             ->where('status', 'approved')
             ->whereHas('order', function ($query) use ($propertyId, $excludeOrderId) {
                 $query->where('property_id', $propertyId)
@@ -111,6 +116,15 @@ class ServiceProvider extends Model
                     $query->where('orders.id', '!=', $excludeOrderId);
                 }
             })
+            ->exists();
+
+        if ($hasCompletedOrderWork) {
+            return true;
+        }
+
+        return $this->documents()
+            ->where('property_id', $propertyId)
+            ->where('type', 'invoice')
             ->exists();
     }
 

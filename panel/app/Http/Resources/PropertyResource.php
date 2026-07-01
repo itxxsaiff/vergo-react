@@ -83,6 +83,10 @@ class PropertyResource extends JsonResource
                     'id' => $document->id,
                     'title' => $document->title,
                     'type' => $document->type,
+                    'service_type' => $document->service_type,
+                    'property_object_id' => $document->property_object_id,
+                    'property_object_ids' => $document->property_object_ids ?? [],
+                    'service_provider_id' => $document->service_provider_id,
                     'status' => $document->status,
                     'file_name' => $document->file_name,
                     'analysis_results' => $document->analysisResults->map(fn ($result) => [

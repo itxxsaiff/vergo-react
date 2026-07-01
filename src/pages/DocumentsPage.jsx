@@ -5,22 +5,31 @@ import { useAuth } from '../context/AuthContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
-import { DOCUMENT_TYPE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
+import { DOCUMENT_TYPE_OPTIONS, JOB_TYPE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
 const initialForm = {
-  order_id: '',
-  type: 'contract',
-  title: '',
+  property_id: '',
+  property_object_ids: [],
+  service_type: '',
+  service_provider_id: '',
+  type: 'invoice',
   file: null,
 }
 
+const DISABLED_DOCUMENT_TYPES = ['contract', 'fm_contract']
+const AVAILABLE_DOCUMENT_TYPE_OPTIONS = DOCUMENT_TYPE_OPTIONS.filter((option) => !DISABLED_DOCUMENT_TYPES.includes(option.value))
+
 function DocumentsPage() {
   const { user } = useAuth()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [documents, setDocuments] = useState([])
-  const [orders, setOrders] = useState([])
+  const [properties, setProperties] = useState([])
+  const [propertyObjects, setPropertyObjects] = useState([])
+  const [serviceProviders, setServiceProviders] = useState([])
   const [form, setForm] = useState(initialForm)
-  const [filters, setFilters] = useState({ search: '', status: '', type: searchParams.get('type') || '' })
+  const queryType = searchParams.get('type') || ''
+  const normalizedQueryType = DISABLED_DOCUMENT_TYPES.includes(queryType) ? 'invoice' : queryType
+  const [filters, setFilters] = useState({ search: '', status: '', type: normalizedQueryType })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -28,11 +37,20 @@ function DocumentsPage() {
 
   const canUpload = ['admin', 'owner', 'manager', 'employee'].includes(user?.role)
   const isOwner = user?.role === 'owner'
-  const queryType = searchParams.get('type') || ''
 
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (!DISABLED_DOCUMENT_TYPES.includes(queryType)) {
+      return
+    }
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('type', 'invoice')
+    setSearchParams(nextParams, { replace: true })
+  }, [queryType, searchParams, setSearchParams])
 
   useEffect(() => {
     if (isModalOpen) {
@@ -54,13 +72,17 @@ function DocumentsPage() {
     setError('')
 
     try {
-      const [documentsResponse, ordersResponse] = await Promise.all([
+      const [documentsResponse, propertiesResponse, propertyObjectsResponse, serviceProvidersResponse] = await Promise.all([
         api.getDocuments(),
-        api.getOrders(),
+        api.getProperties(),
+        api.getPropertyObjects(),
+        api.getServiceProviders(),
       ])
 
       setDocuments(documentsResponse.data ?? [])
-      setOrders(ordersResponse.data ?? [])
+      setProperties(propertiesResponse.data ?? [])
+      setPropertyObjects(propertyObjectsResponse.data ?? [])
+      setServiceProviders(serviceProvidersResponse.data ?? [])
     } catch (loadError) {
       setError(loadError.message)
     } finally {
@@ -76,22 +98,33 @@ function DocumentsPage() {
   useEffect(() => {
     setFilters((current) => ({
       ...current,
-      type: queryType,
+      type: normalizedQueryType,
     }))
-  }, [queryType])
+  }, [normalizedQueryType])
 
   function handleChange(event) {
-    const { name, value, files } = event.target
+    const { name, value, files, selectedOptions } = event.target
     setForm((current) => ({
       ...current,
-      [name]: files ? files[0] : value,
+      [name]: files
+        ? files[0]
+        : name === 'property_object_ids'
+          ? Array.from(selectedOptions, (option) => option.value)
+          : value,
+      ...(name === 'property_id'
+        ? {
+          property_object_ids: [],
+        }
+        : {}),
     }))
   }
 
   function openModal() {
     setForm({
       ...initialForm,
-      type: ['contract', 'invoice'].includes(queryType) ? queryType : initialForm.type,
+      type: AVAILABLE_DOCUMENT_TYPE_OPTIONS.some((option) => option.value === normalizedQueryType)
+        ? normalizedQueryType
+        : initialForm.type,
     })
     setError('')
     setIsModalOpen(true)
@@ -108,8 +141,26 @@ function DocumentsPage() {
     setIsSaving(true)
     setError('')
 
-    if (!form.title.trim()) {
-      setError('Ein Dokumenttitel ist erforderlich..')
+    if (!form.property_id) {
+      setError('Bitte wählen Sie eine LI-Nummer aus.')
+      setIsSaving(false)
+      return
+    }
+
+    if (!form.service_type) {
+      setError('Bitte wählen Sie ein Gewerk aus.')
+      setIsSaving(false)
+      return
+    }
+
+    if ((form.property_object_ids ?? []).length === 0) {
+      setError('Bitte wählen Sie mindestens ein Objekt aus.')
+      setIsSaving(false)
+      return
+    }
+
+    if (!form.service_provider_id) {
+      setError('Bitte wählen Sie einen Dienstleister aus.')
       setIsSaving(false)
       return
     }
@@ -122,9 +173,13 @@ function DocumentsPage() {
 
     try {
       const payload = new FormData()
-      if (form.order_id) payload.append('order_id', form.order_id)
+      payload.append('property_id', form.property_id)
       payload.append('type', form.type)
-      payload.append('title', form.title)
+      payload.append('title', buildDocumentTitle())
+      payload.append('service_type', form.service_type)
+      payload.append('service_provider_id', form.service_provider_id)
+      form.property_object_ids.forEach((id) => payload.append('property_object_ids[]', id))
+      payload.append('property_object_id', form.property_object_ids[0])
       payload.append('file', form.file)
 
       const response = await api.createDocument(payload)
@@ -136,6 +191,23 @@ function DocumentsPage() {
       setIsSaving(false)
     }
   }
+
+  function buildDocumentTitle() {
+    const selectedProperty = properties.find((property) => String(property.id) === String(form.property_id))
+    const selectedProvider = serviceProviders.find((provider) => String(provider.id) === String(form.service_provider_id))
+    const selectedTrade = getOptionLabel(JOB_TYPE_OPTIONS, form.service_type)
+    const fileName = form.file?.name?.replace(/\.[^.]+$/, '') || 'Rechnung'
+
+    return [
+      'Rechnung',
+      selectedProperty?.li_number,
+      selectedTrade !== '-' ? selectedTrade : null,
+      selectedProvider?.company_name,
+      fileName,
+    ].filter(Boolean).join(' - ')
+  }
+
+  const availablePropertyObjects = propertyObjects.filter((propertyObject) => String(propertyObject.property_id) === String(form.property_id))
 
   async function handleDelete(documentId) {
     const shouldDelete = await confirmDelete('document')
@@ -198,14 +270,14 @@ function DocumentsPage() {
             </div>
             <div className="col-xl-4 col-lg-12 col-md-6">
               <div className="d-flex align-items-end justify-content-xl-end gap-2 flex-nowrap vergo-action-buttons">
-                <button type="button" className="btn btn-light-primary vergo-filter-reset-btn text-nowrap" onClick={() => setFilters({ search: '', status: '' })}>
+                <button type="button" className="btn btn-light-primary vergo-filter-reset-btn text-nowrap" onClick={() => setFilters({ search: '', status: '', type: normalizedQueryType })}>
                   <i className="ti ti-refresh me-1" aria-hidden="true"></i>
                   Zurücksetzen
                 </button>
                 {canUpload ? (
                   <button type="button" className="btn btn-primary text-nowrap" onClick={openModal}>
                     <i className="ti ti-plus me-1"></i>
-                    {isOwner ? 'Vertrag hochladen zur Preisprüfung' : 'Dokument hochladen'}
+                    {isOwner ? 'Rechnung hochladen zur Preisprüfung' : 'Rechnung hochladen'}
                   </button>
                 ) : null}
               </div>
@@ -275,34 +347,57 @@ function DocumentsPage() {
             <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
-                  <h5 className="modal-title">{isOwner ? 'Vertrag für Preisprüfung hochladen' : 'Dokument hochladen'}</h5>
+                  <h5 className="modal-title">{isOwner ? 'Rechnung für Preisprüfung hochladen' : 'Rechnung hochladen'}</h5>
                   <button type="button" className="btn-close" onClick={closeModal}></button>
                 </div>
                 <form onSubmit={handleSubmit}>
                   <div className="modal-body">
                     <div className="row">
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Befehl</label>
-                        <select className="form-select" name="order_id" value={form.order_id} onChange={handleChange}>
-                          <option value="">Befehl auswählen</option>
-                          {orders.map((order) => (
-                            <option key={order.id} value={order.id}>{order.title}</option>
+                        <label className="form-label">LI-Nummer</label>
+                        <select className="form-select" name="property_id" value={form.property_id} onChange={handleChange}>
+                          <option value="">LI-Nummer auswählen</option>
+                          {properties.map((property) => (
+                            <option key={property.id} value={property.id}>{property.li_number} - {property.title}</option>
                           ))}
                         </select>
                       </div>
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Typ</label>
-                        <select className="form-select" name="type" value={form.type} onChange={handleChange}>
-                          {DOCUMENT_TYPE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
+                        <label className="form-label">Gewerk</label>
+                        <select className="form-select" name="service_type" value={form.service_type} onChange={handleChange}>
+                          <option value="">Gewerk auswählen</option>
+                          {JOB_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Objekte</label>
+                        <select
+                          className="form-select"
+                          name="property_object_ids"
+                          value={form.property_object_ids}
+                          onChange={handleChange}
+                          multiple
+                          size="5"
+                          disabled={!form.property_id}
+                        >
+                          {availablePropertyObjects.map((propertyObject) => (
+                            <option key={propertyObject.id} value={propertyObject.id}>
+                              {propertyObject.address || propertyObject.name}
                             </option>
                           ))}
                         </select>
+                        <small className="text-muted">Mehrfachauswahl möglich.</small>
                       </div>
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Titel</label>
-                        <input className="form-control" name="title" value={form.title} onChange={handleChange} />
+                        <label className="form-label">Dienstleister</label>
+                        <select className="form-select" name="service_provider_id" value={form.service_provider_id} onChange={handleChange}>
+                          <option value="">Dienstleister auswählen</option>
+                          {serviceProviders.map((provider) => (
+                            <option key={provider.id} value={provider.id}>{provider.company_name}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="col-12 mb-0">
                         <label className="form-label">Datei</label>

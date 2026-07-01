@@ -20,7 +20,7 @@ class ServiceProviderController extends Controller
     {
         $actor = $request->user();
         abort_unless(
-            ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true))
+            ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee', 'owner'], true))
             || $actor instanceof PropertyManagerProfile,
             403
         );

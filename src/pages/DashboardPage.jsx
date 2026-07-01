@@ -646,7 +646,7 @@ function DashboardPage({ role }) {
                       <h4 className="fw-semibold mb-1">{t('Vertragsübersicht')}</h4>
                       <p className="text-muted mb-0">{t('Alle hochgeladenen Verträge im Überblick für interne Vergo-Benutzer.')}</p>
                     </div>
-                    <Link to="/documents?type=contract" className="btn btn-light-primary text-nowrap">
+                    <Link to="/documents?type=invoice" className="btn btn-light-primary text-nowrap">
                       {t('Alle Verträge anzeigen')}
                     </Link>
                   </div>

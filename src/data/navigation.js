@@ -20,7 +20,6 @@ export const navigationByRole = {
       title: 'Dokumente',
       icon: 'ti ti-file-analytics',
       children: [
-        { title: 'Verträge', href: '/documents?type=contract' },
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
     },
@@ -46,7 +45,6 @@ export const navigationByRole = {
       title: 'Dokumente',
       icon: 'ti ti-file-analytics',
       children: [
-        { title: 'Verträge', href: '/documents?type=contract' },
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
     },
@@ -73,7 +71,6 @@ export const navigationByRole = {
       title: 'Dokumente',
       icon: 'ti ti-file-analytics',
       children: [
-        { title: 'Verträge', href: '/documents?type=contract' },
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
     },
@@ -99,7 +96,6 @@ export const navigationByRole = {
       title: 'Dokumente',
       icon: 'ti ti-file-analytics',
       children: [
-        { title: 'Verträge', href: '/documents?type=contract' },
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
     },

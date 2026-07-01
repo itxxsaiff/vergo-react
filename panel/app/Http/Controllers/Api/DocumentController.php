@@ -8,7 +8,9 @@ use App\Http\Resources\DocumentResource;
 use App\Models\Document;
 use App\Models\Order;
 use App\Models\Property;
+use App\Models\PropertyObject;
 use App\Models\PropertyManagerProfile;
+use App\Models\ServiceProvider;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -21,7 +23,13 @@ class DocumentController extends Controller
         $actor = $request->user();
 
         $query = Document::query()
-            ->with(['property:id,li_number,title', 'order:id,title', 'analysisResults'])
+            ->with([
+                'property:id,li_number,title',
+                'propertyObject:id,property_id,name,address,postal_code,city',
+                'order:id,title',
+                'serviceProvider:id,company_name,contact_email',
+                'analysisResults',
+            ])
             ->latest();
 
         if ($actor instanceof PropertyManagerProfile) {
@@ -44,11 +52,23 @@ class DocumentController extends Controller
         );
 
         $propertyId = $request->integer('property_id') ?: null;
+        $propertyObjectId = $request->integer('property_object_id') ?: null;
+        $propertyObjectIds = collect($request->input('property_object_ids', []))
+            ->map(fn ($value) => (int) $value)
+            ->filter()
+            ->unique()
+            ->values();
         $orderId = $request->integer('order_id') ?: null;
+        $serviceProviderId = $request->integer('service_provider_id') ?: null;
 
         if ($orderId) {
             $order = Order::query()->findOrFail($orderId);
             $propertyId = $propertyId ?: $order->property_id;
+        }
+
+        if ($propertyObjectId) {
+            $propertyObject = PropertyObject::query()->findOrFail($propertyObjectId);
+            $propertyId = $propertyId ?: $propertyObject->property_id;
         }
 
         if ($propertyId) {
@@ -61,14 +81,44 @@ class DocumentController extends Controller
             }
         }
 
+        if ($propertyObjectId) {
+            abort_unless(
+                PropertyObject::query()
+                    ->whereKey($propertyObjectId)
+                    ->where('property_id', $propertyId)
+                    ->exists(),
+                422,
+                'The selected property object is invalid.'
+            );
+        }
+
+        if ($propertyObjectIds->isNotEmpty()) {
+            $matchingObjectCount = PropertyObject::query()
+                ->whereIn('id', $propertyObjectIds)
+                ->where('property_id', $propertyId)
+                ->count();
+
+            abort_unless($matchingObjectCount === $propertyObjectIds->count(), 422, 'One or more selected property objects are invalid.');
+        }
+
+        if ($serviceProviderId) {
+            ServiceProvider::query()->findOrFail($serviceProviderId);
+        }
+
         $file = $request->file('file');
         $storedPath = $file->store('vergo-documents');
 
         $document = Document::query()->create([
             'property_id' => $propertyId,
+            'property_object_id' => $propertyObjectId,
+            'property_object_ids' => $propertyObjectIds->values()->all(),
             'order_id' => $orderId,
+            'service_provider_id' => $serviceProviderId,
             'uploaded_by' => $actor instanceof User ? $actor->id : null,
             'type' => $request->string('type')->toString(),
+            'service_type' => $request->filled('service_type') ? $request->string('service_type')->toString() : null,
+            'trade_object' => $request->filled('trade_object') ? $request->string('trade_object')->toString() : null,
+            'trade_activity' => $request->filled('trade_activity') ? $request->string('trade_activity')->toString() : null,
             'title' => $request->string('title')->toString(),
             'file_name' => $file->getClientOriginalName(),
             'file_path' => $storedPath,
@@ -77,7 +127,13 @@ class DocumentController extends Controller
             'status' => 'uploaded',
         ]);
 
-        return new DocumentResource($document->load(['property:id,li_number,title', 'order:id,title', 'analysisResults']));
+        return new DocumentResource($document->load([
+            'property:id,li_number,title',
+            'propertyObject:id,property_id,name,address,postal_code,city',
+            'order:id,title',
+            'serviceProvider:id,company_name,contact_email',
+            'analysisResults',
+        ]));
     }
 
     public function destroy(Request $request, Document $document)

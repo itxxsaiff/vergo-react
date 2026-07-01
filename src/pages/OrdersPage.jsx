@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
@@ -210,6 +211,7 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
 function OrdersPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [orders, setOrders] = useState([])
   const [properties, setProperties] = useState([])
   const [objects, setObjects] = useState([])
@@ -282,6 +284,20 @@ function OrdersPage() {
       }))
     }
   }, [isManager, managerWizard.property_id, properties, user?.property?.id])
+
+  useEffect(() => {
+    const shouldOpenCreate = searchParams.get('open') === 'create'
+
+    if (!shouldOpenCreate || !canCreateOrders || isModalOpen || isLoading) {
+      return
+    }
+
+    openCreateModal()
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('open')
+    setSearchParams(nextParams, { replace: true })
+  }, [canCreateOrders, isLoading, isModalOpen, searchParams, setSearchParams, properties.length, user?.property?.id])
 
   useEffect(() => {
     if (isModalOpen) {
@@ -931,7 +947,7 @@ function OrdersPage() {
                     {canCreateOrders ? (
                       <button type="button" className="btn btn-primary text-nowrap" onClick={openCreateModal}>
                         <i className="ti ti-plus me-1"></i>
-                        {t('Auftrag erstellen')}
+                        {t('Auftrag erfassen')}
                       </button>
                     ) : null}
                   </div>

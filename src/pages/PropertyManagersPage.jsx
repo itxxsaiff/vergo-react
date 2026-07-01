@@ -13,6 +13,13 @@ const initialForm = {
   postal_code: '',
   city: '',
   canton: '',
+  invoice_delivery_method: 'email',
+  invoice_email: '',
+  invoice_company_name: '',
+  invoice_company_extra: '',
+  invoice_address: '',
+  invoice_postal_code: '',
+  invoice_city: '',
   domain_suffix: '',
 }
 
@@ -96,7 +103,24 @@ function PropertyManagersPage() {
 
   function handleChange(event) {
     const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+      ...(name === 'invoice_delivery_method' && value === 'email'
+        ? {
+          invoice_company_name: '',
+          invoice_company_extra: '',
+          invoice_address: '',
+          invoice_postal_code: '',
+          invoice_city: '',
+        }
+        : {}),
+      ...(name === 'invoice_delivery_method' && value === 'mail'
+        ? {
+          invoice_email: '',
+        }
+        : {}),
+    }))
     setFieldErrors((current) => {
       if (!current[name]) return current
       const next = { ...current }
@@ -124,6 +148,13 @@ function PropertyManagersPage() {
       postal_code: manager.postal_code || '',
       city: manager.city || '',
       canton: manager.canton || '',
+      invoice_delivery_method: manager.invoice_delivery_method || 'email',
+      invoice_email: manager.invoice_email || '',
+      invoice_company_name: manager.invoice_company_name || '',
+      invoice_company_extra: manager.invoice_company_extra || '',
+      invoice_address: manager.invoice_address || '',
+      invoice_postal_code: manager.invoice_postal_code || '',
+      invoice_city: manager.invoice_city || '',
       domain_suffix: manager.domain_suffix || '',
     })
     setError('')
@@ -145,13 +176,27 @@ function PropertyManagersPage() {
     setError('')
     setFieldErrors({})
 
-    const requiredFields = ['name', 'email', 'phone', 'address', 'postal_code', 'city', 'canton', 'domain_suffix']
+    const requiredFields = ['name', 'email', 'phone', 'address', 'postal_code', 'city', 'canton', 'domain_suffix', 'invoice_delivery_method']
     const nextFieldErrors = requiredFields.reduce((errors, field) => {
       if (!String(form[field] ?? '').trim()) {
         errors[field] = true
       }
       return errors
     }, {})
+
+    if (form.invoice_delivery_method === 'email') {
+      if (!String(form.invoice_email ?? '').trim()) {
+        nextFieldErrors.invoice_email = true
+      }
+    }
+
+    if (form.invoice_delivery_method === 'mail') {
+      ;['invoice_address', 'invoice_postal_code', 'invoice_city'].forEach((field) => {
+        if (!String(form[field] ?? '').trim()) {
+          nextFieldErrors[field] = true
+        }
+      })
+    }
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors)
@@ -168,6 +213,13 @@ function PropertyManagersPage() {
       return
     }
 
+    if (form.invoice_delivery_method === 'email' && !emailPattern.test(form.invoice_email.trim())) {
+      setFieldErrors({ invoice_email: true })
+      setError('Bitte geben Sie eine gültige Rechnungs-E-Mail-Adresse ein.')
+      setIsSaving(false)
+      return
+    }
+
     try {
       if (editingManager) {
         const response = await api.updatePropertyManager(editingManager.id, {
@@ -178,6 +230,13 @@ function PropertyManagersPage() {
           postal_code: form.postal_code.trim(),
           city: form.city.trim(),
           canton: form.canton.trim(),
+          invoice_delivery_method: form.invoice_delivery_method.trim(),
+          invoice_email: form.invoice_delivery_method === 'email' ? form.invoice_email.trim().toLowerCase() : null,
+          invoice_company_name: form.invoice_delivery_method === 'mail' ? form.invoice_company_name.trim() || null : null,
+          invoice_company_extra: form.invoice_delivery_method === 'mail' ? form.invoice_company_extra.trim() || null : null,
+          invoice_address: form.invoice_delivery_method === 'mail' ? form.invoice_address.trim() : null,
+          invoice_postal_code: form.invoice_delivery_method === 'mail' ? form.invoice_postal_code.trim() : null,
+          invoice_city: form.invoice_delivery_method === 'mail' ? form.invoice_city.trim() : null,
           domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         })
         setManagers((current) => current.map((manager) => (manager.id === editingManager.id ? response.data : manager)))
@@ -190,6 +249,13 @@ function PropertyManagersPage() {
           postal_code: form.postal_code.trim(),
           city: form.city.trim(),
           canton: form.canton.trim(),
+          invoice_delivery_method: form.invoice_delivery_method.trim(),
+          invoice_email: form.invoice_delivery_method === 'email' ? form.invoice_email.trim().toLowerCase() : null,
+          invoice_company_name: form.invoice_delivery_method === 'mail' ? form.invoice_company_name.trim() || null : null,
+          invoice_company_extra: form.invoice_delivery_method === 'mail' ? form.invoice_company_extra.trim() || null : null,
+          invoice_address: form.invoice_delivery_method === 'mail' ? form.invoice_address.trim() : null,
+          invoice_postal_code: form.invoice_delivery_method === 'mail' ? form.invoice_postal_code.trim() : null,
+          invoice_city: form.invoice_delivery_method === 'mail' ? form.invoice_city.trim() : null,
           domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         })
         setManagers((current) => [response.data, ...current])
@@ -395,6 +461,61 @@ function PropertyManagersPage() {
                           </select>
                         </div>
                       </div>
+                    </div>
+                    <div className="border rounded-3 p-3 mb-3">
+                      <div className="fw-semibold mb-3">Rechnungsversand</div>
+                      <div className="mb-3">
+                        <label className="form-label">Versandart</label>
+                        <select className={`form-select${fieldErrors.invoice_delivery_method ? ' is-invalid' : ''}`} name="invoice_delivery_method" value={form.invoice_delivery_method} onChange={handleChange}>
+                          <option value="email">E-Mail</option>
+                          <option value="mail">Post</option>
+                        </select>
+                      </div>
+                      {form.invoice_delivery_method === 'email' ? (
+                        <div className="mb-0">
+                          <label className="form-label">E-Mail für Rechnungen</label>
+                          <input
+                            type="email"
+                            className={`form-control${fieldErrors.invoice_email ? ' is-invalid' : ''}`}
+                            name="invoice_email"
+                            value={form.invoice_email}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      ) : (
+                        <div className="row">
+                          <div className="col-md-6">
+                            <div className="mb-3">
+                              <label className="form-label">Firmenname</label>
+                              <input className="form-control" name="invoice_company_name" value={form.invoice_company_name} onChange={handleChange} />
+                            </div>
+                          </div>
+                          <div className="col-md-6">
+                            <div className="mb-3">
+                              <label className="form-label">Co.</label>
+                              <input className="form-control" name="invoice_company_extra" value={form.invoice_company_extra} onChange={handleChange} />
+                            </div>
+                          </div>
+                          <div className="col-12">
+                            <div className="mb-3">
+                              <label className="form-label">Adresse</label>
+                              <input className={`form-control${fieldErrors.invoice_address ? ' is-invalid' : ''}`} name="invoice_address" value={form.invoice_address} onChange={handleChange} />
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="mb-0">
+                              <label className="form-label">PLZ</label>
+                              <input className={`form-control${fieldErrors.invoice_postal_code ? ' is-invalid' : ''}`} name="invoice_postal_code" value={form.invoice_postal_code} onChange={handleChange} />
+                            </div>
+                          </div>
+                          <div className="col-md-8">
+                            <div className="mb-0">
+                              <label className="form-label">Ort</label>
+                              <input className={`form-control${fieldErrors.invoice_city ? ' is-invalid' : ''}`} name="invoice_city" value={form.invoice_city} onChange={handleChange} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Domain-Endung</label>

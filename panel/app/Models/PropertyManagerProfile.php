@@ -22,6 +22,13 @@ class PropertyManagerProfile extends Authenticatable
         'postal_code',
         'city',
         'canton',
+        'invoice_delivery_method',
+        'invoice_email',
+        'invoice_company_name',
+        'invoice_company_extra',
+        'invoice_address',
+        'invoice_postal_code',
+        'invoice_city',
         'domain_suffix',
         'last_login_at',
     ];

@@ -42,6 +42,13 @@ class PropertyManagerProfileController extends Controller
             'postal_code' => $request->string('postal_code')->trim()->toString(),
             'city' => $request->string('city')->trim()->toString(),
             'canton' => strtoupper($request->string('canton')->trim()->toString()),
+            'invoice_delivery_method' => $request->string('invoice_delivery_method')->trim()->toString(),
+            'invoice_email' => $request->filled('invoice_email') ? strtolower($request->string('invoice_email')->trim()->toString()) : null,
+            'invoice_company_name' => $request->filled('invoice_company_name') ? $request->string('invoice_company_name')->trim()->toString() : null,
+            'invoice_company_extra' => $request->filled('invoice_company_extra') ? $request->string('invoice_company_extra')->trim()->toString() : null,
+            'invoice_address' => $request->filled('invoice_address') ? $request->string('invoice_address')->trim()->toString() : null,
+            'invoice_postal_code' => $request->filled('invoice_postal_code') ? $request->string('invoice_postal_code')->trim()->toString() : null,
+            'invoice_city' => $request->filled('invoice_city') ? $request->string('invoice_city')->trim()->toString() : null,
             'domain_suffix' => strtolower(ltrim($request->string('domain_suffix')->trim()->toString(), '@')),
         ]);
 
@@ -67,6 +74,13 @@ class PropertyManagerProfileController extends Controller
             'postal_code' => $request->string('postal_code')->trim()->toString(),
             'city' => $request->string('city')->trim()->toString(),
             'canton' => strtoupper($request->string('canton')->trim()->toString()),
+            'invoice_delivery_method' => $request->string('invoice_delivery_method')->trim()->toString(),
+            'invoice_email' => $request->filled('invoice_email') ? strtolower($request->string('invoice_email')->trim()->toString()) : null,
+            'invoice_company_name' => $request->filled('invoice_company_name') ? $request->string('invoice_company_name')->trim()->toString() : null,
+            'invoice_company_extra' => $request->filled('invoice_company_extra') ? $request->string('invoice_company_extra')->trim()->toString() : null,
+            'invoice_address' => $request->filled('invoice_address') ? $request->string('invoice_address')->trim()->toString() : null,
+            'invoice_postal_code' => $request->filled('invoice_postal_code') ? $request->string('invoice_postal_code')->trim()->toString() : null,
+            'invoice_city' => $request->filled('invoice_city') ? $request->string('invoice_city')->trim()->toString() : null,
             'domain_suffix' => strtolower(ltrim($request->string('domain_suffix')->trim()->toString(), '@')),
         ]);
 

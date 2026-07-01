@@ -19,6 +19,13 @@ class PropertyManagerProfileResource extends JsonResource
             'postal_code' => $this->postal_code,
             'city' => $this->city,
             'canton' => $this->canton,
+            'invoice_delivery_method' => $this->invoice_delivery_method,
+            'invoice_email' => $this->invoice_email,
+            'invoice_company_name' => $this->invoice_company_name,
+            'invoice_company_extra' => $this->invoice_company_extra,
+            'invoice_address' => $this->invoice_address,
+            'invoice_postal_code' => $this->invoice_postal_code,
+            'invoice_city' => $this->invoice_city,
             'domain_suffix' => $this->domain_suffix,
             'last_login_at' => $this->last_login_at?->toDateTimeString(),
             'property' => $this->whenLoaded('property', fn () => [

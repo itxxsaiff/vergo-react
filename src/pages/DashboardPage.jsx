@@ -324,7 +324,7 @@ function DashboardPage({ role }) {
                 </div>
 
                 <div className="d-flex flex-wrap gap-2">
-                  <Link to="/orders" className="btn vergo-manager-quick-link">
+                  <Link to="/orders?open=create" className="btn vergo-manager-quick-link">
                     {t('Auftrag erfassen')}
                   </Link>
                 </div>

@@ -199,7 +199,7 @@ function EmployeePropertyDetailsPage() {
   return (
     <PageContent
       title="Objekte"
-      subtitle="Öffnen Sie die einzelnen Objekte einer Liegenschaft als Kartenansicht und legen Sie bei Bedarf neue Objekte an."
+      subtitle=""
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Liegenschaften', href: '/properties' },

@@ -185,15 +185,19 @@ class BidController extends Controller
         $validated = $request->validate([
             'assigned_provider_email' => ['nullable', 'email', 'max:255'],
         ]);
-        $assignedEmail = strtolower($validated['assigned_provider_email'] ?? $this->providerLoginEmail($request));
-        $assignedDomain = strtolower((string) str($assignedEmail)->after('@'));
-        $allowedDomain = strtolower((string) $serviceProvider->domain_suffix);
+        $providerLoginEmail = $this->providerLoginEmail($request);
+        $assignedEmail = strtolower($validated['assigned_provider_email'] ?? $providerLoginEmail);
 
-        abort_unless(
-            $allowedDomain && $assignedDomain === $allowedDomain,
-            422,
-            'This email domain does not match your company domain.'
-        );
+        if (! empty($validated['assigned_provider_email'])) {
+            $assignedDomain = strtolower((string) str($assignedEmail)->after('@'));
+            $allowedDomain = strtolower((string) $serviceProvider->domain_suffix);
+
+            abort_unless(
+                $allowedDomain && $assignedDomain === $allowedDomain,
+                422,
+                'This email domain does not match your company domain.'
+            );
+        }
 
         $isVisiblePublicOrder = in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'], true)
             && $serviceProvider->supportsServiceType($order->service_type);
@@ -224,11 +228,12 @@ class BidController extends Controller
             'workflow_meta' => [
                 ...($bid->workflow_meta ?? []),
                 'assigned_at' => now()->toDateTimeString(),
-                'assigned_by_email' => $this->providerLoginEmail($request),
+                'assigned_provider_email' => $assignedEmail,
+                'assigned_by_email' => $providerLoginEmail,
             ],
         ]);
 
-        if ($assignedEmail !== $this->providerLoginEmail($request)) {
+        if ($assignedEmail !== $providerLoginEmail) {
             $notificationService->sendProviderPersonalAssignmentEmail(
                 $order->load('property'),
                 $serviceProvider,
@@ -259,6 +264,10 @@ class BidController extends Controller
             'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
             'draft_payload' => $validated['draft_payload'],
             'draft_saved_at' => now(),
+            'workflow_meta' => [
+                ...($bid->workflow_meta ?? []),
+                'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
+            ],
         ]);
 
         return new BidResource($bid->fresh()->load([
@@ -304,6 +313,7 @@ class BidController extends Controller
                 'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
                 'workflow_meta' => [
                     ...($bid->workflow_meta ?? []),
+                    'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
                     'provider_last_action_at' => now()->toDateTimeString(),
                 ],
             ]);

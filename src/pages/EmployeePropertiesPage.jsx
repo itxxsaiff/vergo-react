@@ -82,7 +82,9 @@ function EmployeePropertiesPage() {
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
       const searchValue = [
-        property.address_line_1,
+        property.li_number,
+        property.title,
+        property.postal_code,
       ]
         .filter(Boolean)
         .join(' ')
@@ -297,7 +299,7 @@ function EmployeePropertiesPage() {
                   name="search"
                   value={filters.search}
                   onChange={handleFilterChange}
-                  placeholder="Nach Adresse suchen"
+                  placeholder="Nach Liegenschaftsnummer, Name oder PLZ suchen"
                 />
               </div>
             </div>

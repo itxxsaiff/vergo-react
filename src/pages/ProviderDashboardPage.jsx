@@ -25,6 +25,14 @@ function getOrderLocation(order) {
   return [order.property?.postal_code, order.property?.city].filter(Boolean).join(' ') || '-'
 }
 
+function getAssignedProviderEmail(bid) {
+  return String(
+    bid?.assigned_provider_email
+    || bid?.workflow_meta?.assigned_provider_email
+    || ''
+  ).toLowerCase()
+}
+
 function ProviderOrderCard({ title, order, bid, actionLabel }) {
   const { t } = useLanguage()
 
@@ -48,8 +56,8 @@ function ProviderOrderCard({ title, order, bid, actionLabel }) {
       <div className="d-grid gap-2 small text-muted mb-3">
         <div><span className="fw-semibold text-dark">{t('Gewerk')}:</span> {getOptionLabel(JOB_TYPE_OPTIONS, order.service_type) || '-'}</div>
         <div><span className="fw-semibold text-dark">{t('Ort')}:</span> {getOrderLocation(order)}</div>
-        {bid?.assigned_provider_email ? (
-          <div><span className="fw-semibold text-dark">{t('Bearbeiter')}:</span> {bid.assigned_provider_email}</div>
+        {getAssignedProviderEmail(bid) ? (
+          <div><span className="fw-semibold text-dark">{t('Bearbeiter')}:</span> {getAssignedProviderEmail(bid)}</div>
         ) : null}
       </div>
 
@@ -111,7 +119,7 @@ function ProviderDashboardPage() {
   }, {}), [bids])
 
   const myActiveBids = useMemo(() => bids.filter((bid) => (
-    String(bid.assigned_provider_email || '').toLowerCase() === providerLoginEmail
+    getAssignedProviderEmail(bid) === providerLoginEmail
     && ACTIVE_BID_STATUSES.has(String(bid.status || '').toLowerCase())
   )), [bids, providerLoginEmail])
 

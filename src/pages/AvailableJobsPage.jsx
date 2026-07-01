@@ -44,6 +44,14 @@ function isInspectionWorkflow(order) {
     || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
 }
 
+function getAssignedProviderEmail(bid) {
+  return String(
+    bid?.assigned_provider_email
+    || bid?.workflow_meta?.assigned_provider_email
+    || ''
+  ).toLowerCase()
+}
+
 function AvailableJobsPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -58,6 +66,7 @@ function AvailableJobsPage() {
   const [isAssigning, setIsAssigning] = useState(false)
   const [assignmentMode, setAssignmentMode] = useState('self')
   const [targetProviderEmail, setTargetProviderEmail] = useState('')
+  const [assignmentNotice, setAssignmentNotice] = useState('')
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState('')
   const [error, setError] = useState('')
   const [hasOpenedInitialOrder, setHasOpenedInitialOrder] = useState(false)
@@ -183,6 +192,7 @@ function AvailableJobsPage() {
     setLastDraftSavedAt(providerBidByOrderId[order.id]?.draft_saved_at || '')
     setAssignmentMode('self')
     setTargetProviderEmail('')
+    setAssignmentNotice('')
     setError('')
   }
 
@@ -191,6 +201,7 @@ function AvailableJobsPage() {
     setBidForm(initialBidForm)
     setAssignmentMode('self')
     setTargetProviderEmail('')
+    setAssignmentNotice('')
     setLastDraftSavedAt('')
     setError('')
   }
@@ -200,10 +211,16 @@ function AvailableJobsPage() {
 
     setIsAssigning(true)
     setError('')
+    setAssignmentNotice('')
 
     try {
       const response = await api.assignProviderOrder(selectedOrder.id, targetEmail ? { assigned_provider_email: targetEmail } : {})
-      const assignedBid = response.data
+      const assignedBid = {
+        ...response.data,
+        assigned_provider_email: response.data?.assigned_provider_email
+          || targetEmail
+          || providerLoginEmail,
+      }
       setSubmittedBids((current) => [
         ...current.filter((bid) => bid.order_id !== selectedOrder.id),
         assignedBid,
@@ -212,6 +229,11 @@ function AvailableJobsPage() {
       if (targetEmail) {
         setTargetProviderEmail('')
       }
+      setAssignmentNotice(
+        targetEmail
+          ? t('Die Besichtigung wurde zugewiesen und die E-Mail wurde gesendet.')
+          : t('Die Besichtigung wurde Ihnen erfolgreich zugewiesen.')
+      )
     } catch (assignError) {
       setError(t(assignError.message))
     } finally {
@@ -406,8 +428,8 @@ function AvailableJobsPage() {
 
   const activeProviderBid = selectedOrder ? providerBidByOrderId[selectedOrder.id] : null
   const providerLoginEmail = String(user?.provider_login_email || user?.email || '').toLowerCase()
-  const isAssignedToMe = Boolean(activeProviderBid?.assigned_provider_email)
-    && String(activeProviderBid.assigned_provider_email).toLowerCase() === providerLoginEmail
+  const activeAssignedProviderEmail = getAssignedProviderEmail(activeProviderBid)
+  const isAssignedToMe = Boolean(activeAssignedProviderEmail) && activeAssignedProviderEmail === providerLoginEmail
   const canSubmitCurrentOrder = selectedOrder
     ? selectedOrder.workflow_status === 'public_inspection_open' || (!isInspectionWorkflow(selectedOrder) && isOrderQuoteRequest(selectedOrder))
     : false
@@ -457,7 +479,7 @@ function AvailableJobsPage() {
   const filteredOrders = orders.filter((order) => {
     const providerBid = providerBidByOrderId[order.id]
 
-    if (order.workflow_status === 'public_inspection_open' && providerBid && !providerBid.assigned_provider_email) {
+    if (order.workflow_status === 'public_inspection_open' && providerBid && !getAssignedProviderEmail(providerBid)) {
       return false
     }
 
@@ -794,8 +816,8 @@ function AvailableJobsPage() {
                       <div>
                         <div className="fw-semibold">{t('Bearbeitung')}</div>
                         <div className="text-muted small">
-                          {activeProviderBid?.assigned_provider_email
-                            ? `${t('Zugewiesen an')}: ${activeProviderBid.assigned_provider_email}`
+                          {activeAssignedProviderEmail
+                            ? `${t('Zugewiesen an')}: ${activeAssignedProviderEmail}`
                             : t('Noch niemand aus Ihrer Firma bearbeitet diesen Auftrag.')}
                         </div>
                         {lastDraftSavedAt ? (
@@ -861,6 +883,11 @@ function AvailableJobsPage() {
                             {isAssignedToMe ? t('Mir zugewiesen') : isAssigning ? t('Wird zugewiesen...') : t('Assign to Me')}
                           </button>
                         )}
+                        {assignmentNotice ? (
+                          <div className="alert alert-success py-2 mt-3 mb-0">
+                            {assignmentNotice}
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
 

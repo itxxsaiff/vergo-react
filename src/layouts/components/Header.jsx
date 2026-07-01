@@ -181,8 +181,8 @@ function Header({ user, showSidebarToggle = true }) {
                         <img src="/assets/images/profile/user-1.jpg" alt="notification" className="rounded-circle" width="48" height="48" />
                       </span>
                       <div className="vergo-notification-content">
-                        <h6 className="mb-1 fw-semibold">{notification.title}</h6>
-                        <span className="d-block vergo-notification-message">{notification.message}</span>
+                        <h6 className="mb-1 fw-semibold">{t(notification.title)}</h6>
+                        <span className="d-block vergo-notification-message">{t(notification.message)}</span>
                       </div>
                     </Link>
                   )) : (

@@ -74,6 +74,14 @@ export const translations = {
     Benachrichtigungen: 'Benachrichtigungen',
     'Als gelesen markieren': 'Als gelesen markieren',
     'Noch keine Benachrichtigungen.': 'Noch keine Benachrichtigungen.',
+    'Order Created': 'Auftrag erstellt',
+    'New Bid Submitted': 'Neues Angebot eingereicht',
+    'Inspection Request Assigned': 'Besichtigungsanfrage zugewiesen',
+    'Direct Award Assigned': 'Direktvergabe zugewiesen',
+    'New Public Quote Request': 'Neue öffentliche Offertenanfrage',
+    'New Public Inspection Request': 'Neue öffentliche Besichtigungsanfrage',
+    'AI Analysis Completed': 'KI-Analyse abgeschlossen',
+    'AI Analysis Failed': 'KI-Analyse fehlgeschlagen',
     Benutzerprofil: 'Benutzerprofil',
     'Zum Dashboard': 'Zum Dashboard',
     'Zu den Aufträgen': 'Zu den Aufträgen',
@@ -423,6 +431,14 @@ export const translations = {
     Benachrichtigungen: 'Notifications',
     'Als gelesen markieren': 'Mark all as read',
     'Noch keine Benachrichtigungen.': 'No notifications yet.',
+    'Order Created': 'Order Created',
+    'New Bid Submitted': 'New Bid Submitted',
+    'Inspection Request Assigned': 'Inspection Request Assigned',
+    'Direct Award Assigned': 'Direct Award Assigned',
+    'New Public Quote Request': 'New Public Quote Request',
+    'New Public Inspection Request': 'New Public Inspection Request',
+    'AI Analysis Completed': 'AI Analysis Completed',
+    'AI Analysis Failed': 'AI Analysis Failed',
     Benutzerprofil: 'User Profile',
     'Zum Dashboard': 'Go to dashboard',
     'Zu den Aufträgen': 'Go to orders',
@@ -886,6 +902,14 @@ export const translations = {
     Benachrichtigungen: 'Notifiche',
     'Als gelesen markieren': 'Segna tutto come letto',
     'Noch keine Benachrichtigungen.': 'Nessuna notifica.',
+    'Order Created': 'Ordine creato',
+    'New Bid Submitted': 'Nuova offerta inviata',
+    'Inspection Request Assigned': 'Richiesta di sopralluogo assegnata',
+    'Direct Award Assigned': 'Affidamento diretto assegnato',
+    'New Public Quote Request': 'Nuova richiesta pubblica di offerta',
+    'New Public Inspection Request': 'Nuova richiesta pubblica di sopralluogo',
+    'AI Analysis Completed': 'Analisi IA completata',
+    'AI Analysis Failed': 'Analisi IA non riuscita',
     Benutzerprofil: 'Profilo utente',
     'Zum Dashboard': 'Vai alla dashboard',
     'Zu den Aufträgen': 'Vai agli ordini',
@@ -1351,6 +1375,14 @@ export const translations = {
     Benachrichtigungen: 'Notifications',
     'Als gelesen markieren': 'Tout marquer comme lu',
     'Noch keine Benachrichtigungen.': 'Aucune notification.',
+    'Order Created': 'Commande creee',
+    'New Bid Submitted': 'Nouvelle offre soumise',
+    'Inspection Request Assigned': 'Demande de visite attribuee',
+    'Direct Award Assigned': 'Attribution directe assignee',
+    'New Public Quote Request': 'Nouvelle demande publique d’offre',
+    'New Public Inspection Request': 'Nouvelle demande publique de visite',
+    'AI Analysis Completed': 'Analyse IA terminee',
+    'AI Analysis Failed': 'Echec de l’analyse IA',
     Benutzerprofil: 'Profil utilisateur',
     'Zum Dashboard': 'Aller au tableau de bord',
     'Zu den Aufträgen': 'Aller aux commandes',
@@ -2460,6 +2492,102 @@ const patternTranslations = [
     },
   },
   {
+    pattern: /^A new order "(.+)" was created for (.+)\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `Ein neuer Auftrag "${match[1]}" wurde für ${match[2]} erstellt.`,
+        en: `A new order "${match[1]}" was created for ${match[2]}.`,
+        it: `Un nuovo ordine "${match[1]}" è stato creato per ${match[2]}.`,
+        fr: `Une nouvelle commande "${match[1]}" a ete creee pour ${match[2]}.`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^(.+) submitted a bid for "(.+)"\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `${match[1]} hat ein Angebot für "${match[2]}" eingereicht.`,
+        en: `${match[1]} submitted a bid for "${match[2]}".`,
+        it: `${match[1]} ha inviato un’offerta per "${match[2]}".`,
+        fr: `${match[1]} a soumis une offre pour "${match[2]}".`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^A direct inspection request for "(.+)" is waiting for your response\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `Eine direkte Besichtigungsanfrage für "${match[1]}" wartet auf Ihre Antwort.`,
+        en: `A direct inspection request for "${match[1]}" is waiting for your response.`,
+        it: `Una richiesta di sopralluogo diretto per "${match[1]}" è in attesa della tua risposta.`,
+        fr: `Une demande de visite directe pour "${match[1]}" attend votre reponse.`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^You have been invited to accept the job "(.+)"\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `Sie wurden eingeladen, den Auftrag "${match[1]}" anzunehmen.`,
+        en: `You have been invited to accept the job "${match[1]}".`,
+        it: `Sei stato invitato ad accettare il lavoro "${match[1]}".`,
+        fr: `Vous avez ete invite a accepter la mission "${match[1]}".`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^A new public quote request "(.+)" is now available\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `Eine neue öffentliche Offertenanfrage "${match[1]}" ist jetzt verfügbar.`,
+        en: `A new public quote request "${match[1]}" is now available.`,
+        it: `Una nuova richiesta pubblica di offerta "${match[1]}" è ora disponibile.`,
+        fr: `Une nouvelle demande publique d’offre "${match[1]}" est maintenant disponible.`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^A public inspection request for "(.+)" is now open\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `Eine öffentliche Besichtigungsanfrage für "${match[1]}" ist jetzt offen.`,
+        en: `A public inspection request for "${match[1]}" is now open.`,
+        it: `Una richiesta pubblica di sopralluogo per "${match[1]}" è ora aperta.`,
+        fr: `Une demande publique de visite pour "${match[1]}" est maintenant ouverte.`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^Document "(.+)" finished Gemini analysis\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `Dokument "${match[1]}" hat die Gemini-Analyse abgeschlossen.`,
+        en: `Document "${match[1]}" finished Gemini analysis.`,
+        it: `Il documento "${match[1]}" ha completato l’analisi Gemini.`,
+        fr: `Le document "${match[1]}" a termine l’analyse Gemini.`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^Document "(.+)" failed during Gemini analysis\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `Dokument "${match[1]}" ist während der Gemini-Analyse fehlgeschlagen.`,
+        en: `Document "${match[1]}" failed during Gemini analysis.`,
+        it: `Il documento "${match[1]}" non è riuscito durante l’analisi Gemini.`,
+        fr: `Le document "${match[1]}" a echoue pendant l’analyse Gemini.`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
     pattern: /^(\d+)\s+aktiv$/,
     translate: (match, lang) => {
       const suffixByLanguage = { de: 'aktiv', en: 'active', it: 'attivi', fr: 'actifs' }
@@ -2522,16 +2650,16 @@ export function translateText(input, language = 'de') {
     return supplementalTranslation
   }
 
-  if (language === 'de') {
-    return input
-  }
-
   for (const rule of patternTranslations) {
     const match = input.match(rule.pattern)
 
     if (match) {
       return rule.translate(match, language)
     }
+  }
+
+  if (language === 'de') {
+    return input
   }
 
   return input

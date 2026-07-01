@@ -32,7 +32,6 @@ function PageContent({ title, subtitle, actions = null, children, breadcrumbs = 
             <>
               <div className={actions ? 'col-lg-8 col-md-7 col-12 pt-2' : 'col-12 pt-2'}>
                 {title ? <h2 className="mb-1">{title}</h2> : null}
-                {subtitle ? <p className="text-muted mb-0">{subtitle}</p> : null}
               </div>
               {actions ? (
                 <div className="col-lg-4 col-md-5 col-12 pt-2 d-flex justify-content-md-end">

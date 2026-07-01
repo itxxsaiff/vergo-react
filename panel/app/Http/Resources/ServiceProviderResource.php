@@ -20,6 +20,7 @@ class ServiceProviderResource extends JsonResource
             'address' => $this->address,
             'postal_code' => $this->postal_code,
             'city' => $this->city,
+            'canton' => $this->canton,
             'domain_suffix' => $this->domain_suffix,
             'trade_groups' => $this->trade_groups ?? [],
             'phone' => $this->phone,

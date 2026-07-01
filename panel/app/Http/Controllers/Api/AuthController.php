@@ -715,6 +715,7 @@ class AuthController extends Controller
                 'address' => $assignedManager->address,
                 'postal_code' => $assignedManager->postal_code,
                 'city' => $assignedManager->city,
+                'canton' => $assignedManager->canton,
                 'domain_suffix' => $assignedManager->domain_suffix,
             ],
         );

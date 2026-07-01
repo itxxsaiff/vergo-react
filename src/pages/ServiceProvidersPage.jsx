@@ -13,11 +13,41 @@ const initialForm = {
   address: '',
   postal_code: '',
   city: '',
+  canton: '',
   domain_suffix: '',
   trade_groups: [],
   phone: '',
   status: 'active',
 }
+
+const SWISS_CANTONS = [
+  { value: 'AG', label: 'AG - Aargau' },
+  { value: 'AI', label: 'AI - Appenzell Innerrhoden' },
+  { value: 'AR', label: 'AR - Appenzell Ausserrhoden' },
+  { value: 'BE', label: 'BE - Bern' },
+  { value: 'BL', label: 'BL - Basel-Landschaft' },
+  { value: 'BS', label: 'BS - Basel-Stadt' },
+  { value: 'FR', label: 'FR - Fribourg' },
+  { value: 'GE', label: 'GE - Geneve' },
+  { value: 'GL', label: 'GL - Glarus' },
+  { value: 'GR', label: 'GR - Graubunden' },
+  { value: 'JU', label: 'JU - Jura' },
+  { value: 'LU', label: 'LU - Luzern' },
+  { value: 'NE', label: 'NE - Neuchatel' },
+  { value: 'NW', label: 'NW - Nidwalden' },
+  { value: 'OW', label: 'OW - Obwalden' },
+  { value: 'SG', label: 'SG - St. Gallen' },
+  { value: 'SH', label: 'SH - Schaffhausen' },
+  { value: 'SO', label: 'SO - Solothurn' },
+  { value: 'SZ', label: 'SZ - Schwyz' },
+  { value: 'TG', label: 'TG - Thurgau' },
+  { value: 'TI', label: 'TI - Ticino' },
+  { value: 'UR', label: 'UR - Uri' },
+  { value: 'VD', label: 'VD - Vaud' },
+  { value: 'VS', label: 'VS - Valais' },
+  { value: 'ZG', label: 'ZG - Zug' },
+  { value: 'ZH', label: 'ZH - Zurich' },
+]
 
 function ServiceProvidersPage() {
   const [providers, setProviders] = useState([])
@@ -102,6 +132,7 @@ function ServiceProvidersPage() {
       address: provider.address || '',
       postal_code: provider.postal_code || '',
       city: provider.city || '',
+      canton: provider.canton || '',
       domain_suffix: provider.domain_suffix || '',
       trade_groups: provider.trade_groups || [],
       phone: provider.phone || '',
@@ -126,7 +157,7 @@ function ServiceProvidersPage() {
     setError('')
     setFieldErrors({})
 
-    const requiredFields = ['company_name', 'contact_email', 'order_email', 'address', 'postal_code', 'city', 'phone', 'domain_suffix']
+    const requiredFields = ['company_name', 'contact_email', 'order_email', 'address', 'postal_code', 'city', 'canton', 'phone', 'domain_suffix']
     const nextFieldErrors = requiredFields.reduce((errors, field) => {
       if (!String(form[field] ?? '').trim()) {
         errors[field] = true
@@ -169,6 +200,7 @@ function ServiceProvidersPage() {
         address: form.address.trim(),
         postal_code: form.postal_code.trim(),
         city: form.city.trim(),
+        canton: form.canton.trim(),
         domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         trade_groups: form.trade_groups,
         phone: form.phone.trim(),
@@ -214,6 +246,7 @@ function ServiceProvidersPage() {
       provider.address,
       provider.postal_code,
       provider.city,
+      provider.canton,
       provider.domain_suffix,
       ...(provider.trade_groups || []),
       provider.phone,
@@ -303,7 +336,7 @@ function ServiceProvidersPage() {
                 <td className="fw-semibold">{provider.company_name}</td>
                 <td>
                   <div className="text-muted">{provider.contact_email}</div>
-                  <div className="text-muted small">{[provider.postal_code, provider.city].filter(Boolean).join(' ') || '-'}</div>
+                  <div className="text-muted small">{[provider.postal_code, provider.city, provider.canton].filter(Boolean).join(' ') || '-'}</div>
                 </td>
                 <td>{provider.phone || '-'}</td>
                 <td>{provider.rating ?? '-'}</td>
@@ -349,12 +382,16 @@ function ServiceProvidersPage() {
               <input className={`form-control${fieldErrors.company_name ? ' is-invalid' : ''}`} name="company_name" value={form.company_name} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
+              <label className="form-label">E-Mail für Aufträge</label>
+              <input type="email" className={`form-control${fieldErrors.order_email ? ' is-invalid' : ''}`} name="order_email" value={form.order_email} onChange={handleChange} />
+            </div>
+            <div className="col-md-6 mb-3">
               <label className="form-label">Kontakt-E-Mail</label>
               <input type="email" className={`form-control${fieldErrors.contact_email ? ' is-invalid' : ''}`} name="contact_email" value={form.contact_email} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label">E-Mail für Aufträge</label>
-              <input type="email" className={`form-control${fieldErrors.order_email ? ' is-invalid' : ''}`} name="order_email" value={form.order_email} onChange={handleChange} />
+              <label className="form-label">Telefon</label>
+              <input className={`form-control${fieldErrors.phone ? ' is-invalid' : ''}`} name="phone" value={form.phone} onChange={handleChange} />
             </div>
             <div className="col-12 mb-3">
               <label className="form-label">Adresse</label>
@@ -364,15 +401,20 @@ function ServiceProvidersPage() {
               <label className="form-label">PLZ</label>
               <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
             </div>
-            <div className="col-md-8 mb-3">
+            <div className="col-md-5 mb-3">
               <label className="form-label">Ort</label>
               <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
             </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Domain-Endung</label>
-              <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+            <div className="col-md-3 mb-3">
+              <label className="form-label">Kanton</label>
+              <select className={`form-select${fieldErrors.canton ? ' is-invalid' : ''}`} name="canton" value={form.canton} onChange={handleChange}>
+                <option value="">Kanton wählen</option>
+                {SWISS_CANTONS.map((canton) => (
+                  <option key={canton.value} value={canton.value}>{canton.label}</option>
+                ))}
+              </select>
             </div>
-            <div className="col-md-6 mb-3">
+            <div className="col-12 mb-3">
               <label className="form-label">Gewerk</label>
               <select className={`form-select${fieldErrors.trade_groups ? ' is-invalid' : ''}`} name="trade_groups" value={form.trade_groups} onChange={handleChange} multiple size="5">
                 {JOB_TYPE_OPTIONS.map((option) => (
@@ -389,16 +431,16 @@ function ServiceProvidersPage() {
               ) : null}
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label">Telefon</label>
-              <input className={`form-control${fieldErrors.phone ? ' is-invalid' : ''}`} name="phone" value={form.phone} onChange={handleChange} />
-            </div>
-            <div className="col-md-6 mb-0">
               <label className="form-label">Status</label>
               <select className="form-select" name="status" value={form.status} onChange={handleChange}>
                 <option value="active">Aktiv</option>
                 <option value="pending">Ausstehend</option>
                 <option value="inactive">Inaktiv</option>
               </select>
+            </div>
+            <div className="col-md-6 mb-0">
+              <label className="form-label">Domain-Endung</label>
+              <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
             </div>
             <div className="col-12">
               <div className="alert alert-light border small mb-0">

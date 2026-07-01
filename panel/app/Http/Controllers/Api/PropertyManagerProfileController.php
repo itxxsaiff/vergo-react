@@ -20,7 +20,10 @@ class PropertyManagerProfileController extends Controller
         return PropertyManagerProfileResource::collection(
             PropertyManagerProfile::query()
                 ->with('property:id,li_number,title')
-                ->withCount('orders')
+                ->withCount('assignedProperties')
+                ->withCount([
+                    'orders as active_orders_count' => fn ($query) => $query->whereNotIn('status', ['completed', 'closed']),
+                ])
                 ->latest()
                 ->get()
         );
@@ -38,11 +41,16 @@ class PropertyManagerProfileController extends Controller
             'address' => $request->string('address')->trim()->toString(),
             'postal_code' => $request->string('postal_code')->trim()->toString(),
             'city' => $request->string('city')->trim()->toString(),
+            'canton' => strtoupper($request->string('canton')->trim()->toString()),
             'domain_suffix' => strtolower(ltrim($request->string('domain_suffix')->trim()->toString(), '@')),
         ]);
 
         return new PropertyManagerProfileResource(
-            $profile->load('property:id,li_number,title')->loadCount('orders')
+            $profile->load('property:id,li_number,title')
+                ->loadCount('assignedProperties')
+                ->loadCount([
+                    'orders as active_orders_count' => fn ($query) => $query->whereNotIn('status', ['completed', 'closed']),
+                ])
         );
     }
 
@@ -58,11 +66,16 @@ class PropertyManagerProfileController extends Controller
             'address' => $request->string('address')->trim()->toString(),
             'postal_code' => $request->string('postal_code')->trim()->toString(),
             'city' => $request->string('city')->trim()->toString(),
+            'canton' => strtoupper($request->string('canton')->trim()->toString()),
             'domain_suffix' => strtolower(ltrim($request->string('domain_suffix')->trim()->toString(), '@')),
         ]);
 
         return new PropertyManagerProfileResource(
-            $propertyManagerProfile->load('property:id,li_number,title')->loadCount('orders')
+            $propertyManagerProfile->load('property:id,li_number,title')
+                ->loadCount('assignedProperties')
+                ->loadCount([
+                    'orders as active_orders_count' => fn ($query) => $query->whereNotIn('status', ['completed', 'closed']),
+                ])
         );
     }
 

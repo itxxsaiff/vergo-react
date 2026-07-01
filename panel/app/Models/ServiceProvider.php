@@ -51,6 +51,7 @@ class ServiceProvider extends Model
         'address',
         'postal_code',
         'city',
+        'canton',
         'domain_suffix',
         'trade_groups',
         'phone',

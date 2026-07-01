@@ -21,6 +21,7 @@ class PropertyManagerProfile extends Authenticatable
         'address',
         'postal_code',
         'city',
+        'canton',
         'domain_suffix',
         'last_login_at',
     ];
@@ -49,5 +50,10 @@ class PropertyManagerProfile extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'property_manager_profile_id');
+    }
+
+    public function assignedProperties(): HasMany
+    {
+        return $this->hasMany(Property::class, 'property_manager_profile_id');
     }
 }

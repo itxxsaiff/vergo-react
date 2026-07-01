@@ -18,6 +18,7 @@ class PropertyManagerProfileResource extends JsonResource
             'address' => $this->address,
             'postal_code' => $this->postal_code,
             'city' => $this->city,
+            'canton' => $this->canton,
             'domain_suffix' => $this->domain_suffix,
             'last_login_at' => $this->last_login_at?->toDateTimeString(),
             'property' => $this->whenLoaded('property', fn () => [
@@ -25,7 +26,8 @@ class PropertyManagerProfileResource extends JsonResource
                 'li_number' => $this->property->li_number,
                 'title' => $this->property->title,
             ]),
-            'orders_count' => $this->whenCounted('orders'),
+            'assigned_properties_count' => $this->whenCounted('assignedProperties'),
+            'active_orders_count' => $this->active_orders_count ?? 0,
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
     }

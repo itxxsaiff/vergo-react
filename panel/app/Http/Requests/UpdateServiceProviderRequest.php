@@ -7,6 +7,11 @@ use Illuminate\Validation\Rule;
 
 class UpdateServiceProviderRequest extends FormRequest
 {
+    private const SWISS_CANTONS = [
+        'AG', 'AI', 'AR', 'BE', 'BL', 'BS', 'FR', 'GE', 'GL', 'GR', 'JU', 'LU', 'NE',
+        'NW', 'OW', 'SG', 'SH', 'SO', 'SZ', 'TG', 'TI', 'UR', 'VD', 'VS', 'ZG', 'ZH',
+    ];
+
     public function authorize(): bool
     {
         return true;
@@ -25,6 +30,7 @@ class UpdateServiceProviderRequest extends FormRequest
             'address' => ['sometimes', 'required', 'string', 'max:255'],
             'postal_code' => ['sometimes', 'required', 'string', 'max:50'],
             'city' => ['sometimes', 'required', 'string', 'max:255'],
+            'canton' => ['sometimes', 'required', 'string', Rule::in(self::SWISS_CANTONS)],
             'domain_suffix' => ['sometimes', 'required', 'string', 'max:255'],
             'trade_groups' => ['sometimes', 'required', 'array', 'min:1'],
             'trade_groups.*' => ['required', 'string', 'max:255'],
@@ -46,6 +52,7 @@ class UpdateServiceProviderRequest extends FormRequest
             'address.required' => 'Address is required.',
             'postal_code.required' => 'Postal code is required.',
             'city.required' => 'City is required.',
+            'canton.required' => 'Canton is required.',
             'domain_suffix.required' => 'Domain suffix is required.',
             'trade_groups.required' => 'Please select at least one trade group.',
             'phone.required' => 'Phone number is required.',

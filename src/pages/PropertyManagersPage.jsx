@@ -12,8 +12,38 @@ const initialForm = {
   address: '',
   postal_code: '',
   city: '',
+  canton: '',
   domain_suffix: '',
 }
+
+const SWISS_CANTONS = [
+  { value: 'AG', label: 'AG - Aargau' },
+  { value: 'AI', label: 'AI - Appenzell Innerrhoden' },
+  { value: 'AR', label: 'AR - Appenzell Ausserrhoden' },
+  { value: 'BE', label: 'BE - Bern' },
+  { value: 'BL', label: 'BL - Basel-Landschaft' },
+  { value: 'BS', label: 'BS - Basel-Stadt' },
+  { value: 'FR', label: 'FR - Fribourg' },
+  { value: 'GE', label: 'GE - Geneve' },
+  { value: 'GL', label: 'GL - Glarus' },
+  { value: 'GR', label: 'GR - Graubunden' },
+  { value: 'JU', label: 'JU - Jura' },
+  { value: 'LU', label: 'LU - Luzern' },
+  { value: 'NE', label: 'NE - Neuchatel' },
+  { value: 'NW', label: 'NW - Nidwalden' },
+  { value: 'OW', label: 'OW - Obwalden' },
+  { value: 'SG', label: 'SG - St. Gallen' },
+  { value: 'SH', label: 'SH - Schaffhausen' },
+  { value: 'SO', label: 'SO - Solothurn' },
+  { value: 'SZ', label: 'SZ - Schwyz' },
+  { value: 'TG', label: 'TG - Thurgau' },
+  { value: 'TI', label: 'TI - Ticino' },
+  { value: 'UR', label: 'UR - Uri' },
+  { value: 'VD', label: 'VD - Vaud' },
+  { value: 'VS', label: 'VS - Valais' },
+  { value: 'ZG', label: 'ZG - Zug' },
+  { value: 'ZH', label: 'ZH - Zurich' },
+]
 
 function PropertyManagersPage() {
   const [managers, setManagers] = useState([])
@@ -93,6 +123,7 @@ function PropertyManagersPage() {
       address: manager.address || '',
       postal_code: manager.postal_code || '',
       city: manager.city || '',
+      canton: manager.canton || '',
       domain_suffix: manager.domain_suffix || '',
     })
     setError('')
@@ -114,7 +145,7 @@ function PropertyManagersPage() {
     setError('')
     setFieldErrors({})
 
-    const requiredFields = ['name', 'email', 'phone', 'address', 'postal_code', 'city', 'domain_suffix']
+    const requiredFields = ['name', 'email', 'phone', 'address', 'postal_code', 'city', 'canton', 'domain_suffix']
     const nextFieldErrors = requiredFields.reduce((errors, field) => {
       if (!String(form[field] ?? '').trim()) {
         errors[field] = true
@@ -146,6 +177,7 @@ function PropertyManagersPage() {
           address: form.address.trim(),
           postal_code: form.postal_code.trim(),
           city: form.city.trim(),
+          canton: form.canton.trim(),
           domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         })
         setManagers((current) => current.map((manager) => (manager.id === editingManager.id ? response.data : manager)))
@@ -157,6 +189,7 @@ function PropertyManagersPage() {
           address: form.address.trim(),
           postal_code: form.postal_code.trim(),
           city: form.city.trim(),
+          canton: form.canton.trim(),
           domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         })
         setManagers((current) => [response.data, ...current])
@@ -192,6 +225,7 @@ function PropertyManagersPage() {
         manager.address,
         manager.postal_code,
         manager.city,
+        manager.canton,
         manager.domain_suffix,
         manager.property?.li_number,
         manager.property?.title,
@@ -263,9 +297,9 @@ function PropertyManagersPage() {
                 <thead className="text-dark fs-4">
                   <tr>
                     <th><h6 className="fs-4 fw-semibold mb-0">Verwalter</h6></th>
-                    <th><h6 className="fs-4 fw-semibold mb-0">Immobilie</h6></th>
+                    <th><h6 className="fs-4 fw-semibold mb-0">Kanton</h6></th>
+                    <th><h6 className="fs-4 fw-semibold mb-0">Liegenschaften</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Aufträge</h6></th>
-                    <th><h6 className="fs-4 fw-semibold mb-0">Letzte Anmeldung</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
                     <th width="110"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
                   </tr>
@@ -277,13 +311,16 @@ function PropertyManagersPage() {
                         <div>{manager.name || 'Immobilienverwalter'}</div>
                         <div className="text-muted">{manager.email}</div>
                         <div className="text-muted small">{manager.phone || '-'}</div>
+                        <div className="text-muted small">
+                          {[manager.postal_code, manager.city, manager.canton].filter(Boolean).join(' ') || '-'}
+                        </div>
                       </td>
+                      <td>{manager.canton || '-'}</td>
                       <td>
-                        <div className="fw-semibold">{manager.property?.li_number ?? '-'}</div>
-                        <div className="text-muted">{manager.property?.title ?? '-'}</div>
+                        <div className="fw-semibold">{manager.assigned_properties_count ?? 0}</div>
+                        <div className="text-muted small">zugewiesene Liegenschaften</div>
                       </td>
-                      <td>{manager.orders_count ?? 0}</td>
-                      <td>{manager.last_login_at || '-'}</td>
+                      <td>{manager.active_orders_count ?? 0}</td>
                       <td><span className={getStatusBadgeClass('active')}>{formatStatusLabel('active')}</span></td>
                       <td>
                         <div className="table-action-group">
@@ -319,16 +356,16 @@ function PropertyManagersPage() {
                 <form onSubmit={handleSubmit} noValidate>
                   <div className="modal-body">
                     <div className="mb-3">
+                      <label className="form-label">Firmenname</label>
+                      <input className={`form-control${fieldErrors.name ? ' is-invalid' : ''}`} name="name" value={form.name} onChange={handleChange} placeholder="Immobilienverwalter" />
+                    </div>
+                    <div className="mb-3">
                       <label className="form-label">E-Mail</label>
                       <input type="email" className={`form-control${fieldErrors.email ? ' is-invalid' : ''}`} name="email" value={form.email} onChange={handleChange} />
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Telefon</label>
                       <input className={`form-control${fieldErrors.phone ? ' is-invalid' : ''}`} name="phone" value={form.phone} onChange={handleChange} />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Firmenname</label>
-                      <input className={`form-control${fieldErrors.name ? ' is-invalid' : ''}`} name="name" value={form.name} onChange={handleChange} placeholder="Immobilienverwalter" />
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Adresse</label>
@@ -341,10 +378,21 @@ function PropertyManagersPage() {
                           <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
                         </div>
                       </div>
-                      <div className="col-md-8">
+                      <div className="col-md-5">
                         <div className="mb-3">
                           <label className="form-label">Ort</label>
                           <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
+                        </div>
+                      </div>
+                      <div className="col-md-3">
+                        <div className="mb-3">
+                          <label className="form-label">Kanton</label>
+                          <select className={`form-select${fieldErrors.canton ? ' is-invalid' : ''}`} name="canton" value={form.canton} onChange={handleChange}>
+                            <option value="">Kanton wählen</option>
+                            {SWISS_CANTONS.map((canton) => (
+                              <option key={canton.value} value={canton.value}>{canton.label}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>

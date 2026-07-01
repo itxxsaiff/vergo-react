@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
+import vergoLogoUrl from '/VERGO.png'
 
 const initialForm = {
   title: '',
@@ -57,12 +58,11 @@ function getPrintablePropertyCards(property) {
   }]
 }
 
-function buildPropertyPdfHtml(property) {
+function buildPropertyPdfHtml(property, logoSrc) {
   const ownerLabel = getOwnerNames(property) || '-'
   const managerLabel = property?.assigned_manager_profile?.name || property?.management || '-'
   const cards = getPrintablePropertyCards(property)
   const usageLabel = getOptionLabel(PROPERTY_USAGE_OPTIONS, property?.usage)
-  const logoUrl = `${window.location.origin}/VERGO.png`
   const cardsHtml = cards.map((card) => `
     <article class="property-card">
       <div class="property-card-icon-wrap">
@@ -277,7 +277,7 @@ function buildPropertyPdfHtml(property) {
           <header class="header">
             <h1 class="property-number">${escapeHtml(property?.li_number || '-')}</h1>
             <div class="logo-wrap">
-              <img class="logo" src="${logoUrl}" alt="Vergo" />
+              <img class="logo" src="${logoSrc}" alt="Vergo" />
             </div>
           </header>
 
@@ -317,6 +317,26 @@ function buildPropertyPdfHtml(property) {
   `
 }
 
+function readBlobAsDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('The logo image could not be prepared for printing.'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function getPrintableLogoSrc() {
+  const response = await fetch(vergoLogoUrl)
+
+  if (!response.ok) {
+    throw new Error('The logo image could not be loaded for the PDF preview.')
+  }
+
+  const blob = await response.blob()
+  return readBlobAsDataUrl(blob)
+}
+
 function printPropertyPdf(html) {
   const existingFrame = document.getElementById('vergo-property-pdf-frame')
 
@@ -346,9 +366,24 @@ function printPropertyPdf(html) {
   frameDocument.close()
 
   iframe.onload = () => {
-    iframe.contentWindow?.focus()
-    iframe.contentWindow?.print()
-    window.setTimeout(() => iframe.remove(), 1000)
+    const frameWindow = iframe.contentWindow
+    const images = Array.from(frameDocument.images)
+    const imageLoadPromises = images.map((image) => {
+      if (image.complete) {
+        return Promise.resolve()
+      }
+
+      return new Promise((resolve) => {
+        image.addEventListener('load', resolve, { once: true })
+        image.addEventListener('error', resolve, { once: true })
+      })
+    })
+
+    Promise.all(imageLoadPromises).finally(() => {
+      frameWindow?.focus()
+      frameWindow?.print()
+      window.setTimeout(() => iframe.remove(), 1000)
+    })
   }
 }
 
@@ -620,7 +655,8 @@ function PropertiesPage() {
         throw new Error('Die Liegenschaft konnte nicht geladen werden.')
       }
 
-      printPropertyPdf(buildPropertyPdfHtml(property))
+      const logoSrc = await getPrintableLogoSrc()
+      printPropertyPdf(buildPropertyPdfHtml(property, logoSrc))
     } catch (pdfError) {
       setError(pdfError.message)
     }

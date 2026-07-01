@@ -131,6 +131,7 @@ class ServiceProviderController extends Controller
             'address' => $request->string('address')->trim()->toString(),
             'postal_code' => $request->string('postal_code')->trim()->toString(),
             'city' => $request->string('city')->trim()->toString(),
+            'canton' => strtoupper($request->string('canton')->trim()->toString()),
             'domain_suffix' => ltrim(strtolower($request->string('domain_suffix')->trim()->toString()), '@'),
             'trade_groups' => array_values($request->input('trade_groups', [])),
             'phone' => $request->string('phone')->trim()->toString(),

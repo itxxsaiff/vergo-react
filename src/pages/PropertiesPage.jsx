@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
-import vergoLogoUrl from '/VERGO.png'
 
 const initialForm = {
   title: '',
@@ -29,364 +28,6 @@ function getOwnerNames(property) {
     .join(', ')
 }
 
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
-function getPrintablePropertyCards(property) {
-  const objects = property?.objects ?? []
-
-  if (objects.length > 0) {
-    return objects.map((object) => ({
-      id: object.id ?? `${object.address}-${object.postal_code}-${object.city}`,
-      address: object.address || object.name || '-',
-      postalCode: object.postal_code || property?.postal_code || '-',
-      city: object.city || property?.city || '-',
-    }))
-  }
-
-  return [{
-    id: `property-${property?.id ?? 'summary'}`,
-    address: property?.address_line_1 || property?.title || '-',
-    postalCode: property?.postal_code || '-',
-    city: property?.city || '-',
-  }]
-}
-
-function buildPropertyPdfHtml(property, logoSrc) {
-  const ownerLabel = getOwnerNames(property) || '-'
-  const managerLabel = property?.assigned_manager_profile?.name || property?.management || '-'
-  const cards = getPrintablePropertyCards(property)
-  const usageLabel = getOptionLabel(PROPERTY_USAGE_OPTIONS, property?.usage)
-  const cardsHtml = cards.map((card) => `
-    <article class="property-card">
-      <div class="property-card-icon-wrap">
-        <div class="property-card-icon">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 10.5 12 4l8 6.5"></path>
-            <path d="M7.5 10v8h9v-8"></path>
-            <path d="M10.5 18v-4h3v4"></path>
-          </svg>
-        </div>
-      </div>
-      <div class="property-card-label">Adresse</div>
-      <div class="property-card-address">${escapeHtml(card.address)}</div>
-      <div class="property-card-meta">
-        <div>
-          <div class="property-card-label">PLZ</div>
-          <div class="property-card-value">${escapeHtml(card.postalCode)}</div>
-        </div>
-        <div>
-          <div class="property-card-label">Ort</div>
-          <div class="property-card-value">${escapeHtml(card.city)}</div>
-        </div>
-      </div>
-    </article>
-  `).join('')
-
-  return `
-    <!DOCTYPE html>
-    <html lang="de">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${escapeHtml(property?.li_number || 'Liegenschaft')} - Vergo PDF</title>
-        <style>
-          :root {
-            --vergo-accent: #bb8867;
-            --vergo-accent-soft: rgba(187, 136, 103, 0.18);
-            --vergo-border: #efe7df;
-            --vergo-text: #22304a;
-            --vergo-muted: #8a93a8;
-            --vergo-surface: #ffffff;
-            --vergo-page: #f7f8fc;
-          }
-
-          * {
-            box-sizing: border-box;
-          }
-
-          body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            color: var(--vergo-text);
-            background: var(--vergo-page);
-          }
-
-          .page {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto;
-            padding: 18mm 12mm 14mm;
-            background: var(--vergo-surface);
-          }
-
-          .header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 24px;
-            margin-bottom: 18px;
-          }
-
-          .property-number {
-            margin: 0;
-            font-size: 28px;
-            line-height: 1.1;
-            font-weight: 500;
-            letter-spacing: 0.02em;
-            color: #000;
-          }
-
-          .logo-wrap {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 14px;
-            border-radius: 0;
-            background: var(--vergo-accent);
-          }
-
-          .logo {
-            width: 190px;
-            max-width: 100%;
-            display: block;
-            object-fit: contain;
-          }
-
-          .summary {
-            display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 14px;
-            margin-bottom: 28px;
-            width: 100%;
-            padding: 20px 18px;
-            border: 1px solid var(--vergo-border);
-            border-radius: 20px;
-            background: linear-gradient(180deg, #fff, #fcfbfa);
-          }
-
-          .summary-label,
-          .property-card-label {
-            margin-bottom: 6px;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.14em;
-            font-weight: 700;
-            color: var(--vergo-muted);
-          }
-
-          .summary-value {
-            font-size: 13px;
-            line-height: 1.4;
-            font-weight: 700;
-            word-break: break-word;
-          }
-
-          .cards {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
-            align-items: start;
-          }
-
-          .property-card {
-            position: relative;
-            min-height: 110px;
-            padding: 28px 14px 14px;
-            border: 1px solid var(--vergo-border);
-            border-radius: 18px;
-            background: #fff;
-            box-shadow: 0 8px 22px rgba(34, 48, 74, 0.05);
-          }
-
-          .property-card-icon-wrap {
-            position: absolute;
-            top: -19px;
-            left: 50%;
-            transform: translateX(-50%);
-          }
-
-          .property-card-icon {
-            width: 38px;
-            height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 999px;
-            border: 1px solid rgba(187, 136, 103, 0.18);
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.98), rgba(255,245,239,0.95));
-            box-shadow: 0 8px 20px rgba(187, 136, 103, 0.24);
-          }
-
-          .property-card-icon svg {
-            width: 16px;
-            height: 16px;
-            stroke: var(--vergo-accent);
-            stroke-width: 1.8;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-          }
-
-          .property-card-address {
-            min-height: 34px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            line-height: 1.35;
-            font-weight: 700;
-            word-break: break-word;
-          }
-
-          .property-card-meta {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-          }
-
-          .property-card-value {
-            font-size: 14px;
-            font-weight: 700;
-          }
-
-          @page {
-            size: A4;
-            margin: 0;
-          }
-
-          @media print {
-            body {
-              background: #fff;
-            }
-
-            .page {
-              width: 210mm;
-              min-height: 297mm;
-              margin: 0;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <main class="page">
-          <header class="header">
-            <h1 class="property-number">${escapeHtml(property?.li_number || '-')}</h1>
-            <div class="logo-wrap">
-              <img class="logo" src="${logoSrc}" alt="Vergo" />
-            </div>
-          </header>
-
-          <section class="summary">
-            <div>
-              <div class="summary-label">Bezeichnung</div>
-              <div class="summary-value">${escapeHtml(property?.title || '-')}</div>
-            </div>
-            <div>
-              <div class="summary-label">Bewirtschaftung</div>
-              <div class="summary-value">${escapeHtml(managerLabel)}</div>
-            </div>
-            <div>
-              <div class="summary-label">Eigentümer</div>
-              <div class="summary-value">${escapeHtml(ownerLabel)}</div>
-            </div>
-            <div>
-              <div class="summary-label">PLZ</div>
-              <div class="summary-value">${escapeHtml(property?.postal_code || '-')}</div>
-            </div>
-            <div>
-              <div class="summary-label">Ort</div>
-              <div class="summary-value">${escapeHtml(property?.city || '-')}</div>
-            </div>
-            <div>
-              <div class="summary-label">Nutzung</div>
-              <div class="summary-value">${escapeHtml(usageLabel || '-')}</div>
-            </div>
-          </section>
-
-          <section class="cards">
-            ${cardsHtml}
-          </section>
-        </main>
-      </body>
-    </html>
-  `
-}
-
-function readBlobAsDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(String(reader.result || ''))
-    reader.onerror = () => reject(new Error('The logo image could not be prepared for printing.'))
-    reader.readAsDataURL(blob)
-  })
-}
-
-async function getPrintableLogoSrc() {
-  const response = await fetch(vergoLogoUrl)
-
-  if (!response.ok) {
-    throw new Error('The logo image could not be loaded for the PDF preview.')
-  }
-
-  const blob = await response.blob()
-  return readBlobAsDataUrl(blob)
-}
-
-function printPropertyPdf(html) {
-  const existingFrame = document.getElementById('vergo-property-pdf-frame')
-
-  if (existingFrame) {
-    existingFrame.remove()
-  }
-
-  const iframe = document.createElement('iframe')
-  iframe.id = 'vergo-property-pdf-frame'
-  iframe.style.position = 'fixed'
-  iframe.style.width = '0'
-  iframe.style.height = '0'
-  iframe.style.border = '0'
-  iframe.style.opacity = '0'
-  iframe.style.pointerEvents = 'none'
-  document.body.appendChild(iframe)
-
-  const frameDocument = iframe.contentWindow?.document
-
-  if (!frameDocument || !iframe.contentWindow) {
-    iframe.remove()
-    throw new Error('PDF preview could not be prepared.')
-  }
-
-  frameDocument.open()
-  frameDocument.write(html)
-  frameDocument.close()
-
-  iframe.onload = () => {
-    const frameWindow = iframe.contentWindow
-    const images = Array.from(frameDocument.images)
-    const imageLoadPromises = images.map((image) => {
-      if (image.complete) {
-        return Promise.resolve()
-      }
-
-      return new Promise((resolve) => {
-        image.addEventListener('load', resolve, { once: true })
-        image.addEventListener('error', resolve, { once: true })
-      })
-    })
-
-    Promise.all(imageLoadPromises).finally(() => {
-      frameWindow?.focus()
-      frameWindow?.print()
-      window.setTimeout(() => iframe.remove(), 1000)
-    })
-  }
-}
-
 function getOwnerCompanyLabel(property) {
   const ownerNames = (property?.owners ?? [])
     .map((owner) => owner?.name)
@@ -406,6 +47,7 @@ function PropertiesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [pdfGeneratingId, setPdfGeneratingId] = useState(null)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const isInternalUser = ['admin', 'employee'].includes(user?.role)
@@ -646,19 +288,14 @@ function PropertiesPage() {
 
   async function handleGeneratePdf(propertyId) {
     setError('')
+    setPdfGeneratingId(propertyId)
 
     try {
-      const response = await api.getProperty(propertyId)
-      const property = response.data ?? null
-
-      if (!property) {
-        throw new Error('Die Liegenschaft konnte nicht geladen werden.')
-      }
-
-      const logoSrc = await getPrintableLogoSrc()
-      printPropertyPdf(buildPropertyPdfHtml(property, logoSrc))
+      await api.openPropertyPdf(propertyId)
     } catch (pdfError) {
       setError(pdfError.message)
+    } finally {
+      setPdfGeneratingId(null)
     }
   }
 
@@ -770,9 +407,14 @@ function PropertiesPage() {
                             type="button"
                             className="table-action-btn table-action-view"
                             onClick={() => handleGeneratePdf(property.id)}
+                            disabled={pdfGeneratingId === property.id}
                             title="Liegenschaft als PDF drucken"
                           >
-                            <i className="ti ti-file-invoice"></i>
+                            {pdfGeneratingId === property.id ? (
+                              <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            ) : (
+                              <i className="ti ti-file-invoice"></i>
+                            )}
                           </button>
 
                           {canManageProperties ? (

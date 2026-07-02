@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('/properties', [PropertyController::class, 'index']);
     Route::post('/properties', [PropertyController::class, 'store']);
+    Route::get('/properties/{property}/pdf', [PropertyController::class, 'pdf'])->name('properties.pdf');
     Route::get('/properties/{property}', [PropertyController::class, 'show']);
     Route::put('/properties/{property}', [PropertyController::class, 'update']);
     Route::delete('/properties/{property}', [PropertyController::class, 'destroy']);
@@ -79,6 +80,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::put('/orders/{order}', [OrderController::class, 'update']);
+    Route::get('/orders/{order}/attachment', [OrderController::class, 'downloadAttachment'])->name('orders.attachment.download');
     Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
     Route::post('/orders/{order}/complete', [OrderController::class, 'markCompleted']);
     Route::post('/orders/{order}/reviews', [ProviderReviewController::class, 'store']);

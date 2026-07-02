@@ -17,6 +17,7 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class OrderController extends Controller
 {
@@ -139,6 +140,8 @@ class OrderController extends Controller
             ->filter()
             ->unique()
             ->values();
+        $attachment = $request->file('attachment');
+        $attachmentPath = $attachment?->store('vergo-order-attachments');
 
         $order = DB::transaction(function () use (
             $actor,
@@ -148,8 +151,15 @@ class OrderController extends Controller
             $propertyObjectIds,
             $workflowStatus,
             $selectedProviderIds,
+            $attachment,
+            $attachmentPath,
             $notificationService
         ) {
+            $workflowMeta = $this->normalizeWorkflowMeta(
+                $request->input('workflow_meta', []),
+                $actor,
+            );
+
             $order = Order::query()->create([
                 'property_id' => $property->id,
                 'property_manager_profile_id' => $actor instanceof PropertyManagerProfile ? $actor->id : null,
@@ -170,8 +180,12 @@ class OrderController extends Controller
                 'bid_priority' => $request->input('bid_priority'),
                 'due_date' => $request->input('due_date'),
                 'bid_deadline_at' => $request->input('bid_deadline_at'),
-                'workflow_meta' => $request->input('workflow_meta'),
+                'workflow_meta' => $workflowMeta,
                 'quote_items' => $request->input('quote_items'),
+                'attachment_name' => $attachment?->getClientOriginalName(),
+                'attachment_path' => $attachmentPath,
+                'attachment_mime_type' => $attachment?->getMimeType(),
+                'attachment_size' => $attachment?->getSize(),
                 'requested_at' => $request->input('requested_at', now()),
             ]);
 
@@ -276,10 +290,30 @@ class OrderController extends Controller
             'bid_priority' => $request->input('bid_priority', $order->bid_priority),
             'due_date' => $request->input('due_date', $order->due_date),
             'bid_deadline_at' => $request->input('bid_deadline_at', $order->bid_deadline_at),
-            'workflow_meta' => $request->input('workflow_meta', $order->workflow_meta),
+            'workflow_meta' => $this->normalizeWorkflowMeta(
+                $request->input('workflow_meta', $order->workflow_meta ?? []),
+                $actor,
+                $order->workflow_meta ?? []
+            ),
             'quote_items' => $request->input('quote_items', $order->quote_items),
             'requested_at' => $request->input('requested_at', $order->requested_at),
         ]);
+
+        if ($request->hasFile('attachment')) {
+            if ($order->attachment_path) {
+                Storage::delete($order->attachment_path);
+            }
+
+            $attachment = $request->file('attachment');
+            $attachmentPath = $attachment?->store('vergo-order-attachments');
+
+            $order->update([
+                'attachment_name' => $attachment?->getClientOriginalName(),
+                'attachment_path' => $attachmentPath,
+                'attachment_mime_type' => $attachment?->getMimeType(),
+                'attachment_size' => $attachment?->getSize(),
+            ]);
+        }
 
         return new OrderResource($order->load([
             'property:id,li_number,title,postal_code,city,country',
@@ -300,6 +334,10 @@ class OrderController extends Controller
             );
         } else {
             abort(403, 'Only property managers can delete orders.');
+        }
+
+        if ($order->attachment_path) {
+            Storage::delete($order->attachment_path);
         }
 
         $order->delete();
@@ -343,6 +381,15 @@ class OrderController extends Controller
             'documents',
             'analysisResults',
         ])->loadCount('bids'));
+    }
+
+    public function downloadAttachment(Request $request, Order $order)
+    {
+        $this->authorizeOrderAccess($request->user(), $order);
+
+        abort_unless($order->attachment_path, 404, 'No order attachment found.');
+
+        return Storage::download($order->attachment_path, $order->attachment_name ?: 'order-attachment');
     }
 
     private function authorizeOrderAccess(mixed $actor, Order $order): void
@@ -414,6 +461,75 @@ class OrderController extends Controller
         }
 
         return 'created';
+    }
+
+    private function normalizeWorkflowMeta(array $workflowMeta, PropertyManagerProfile $actor, array $existingWorkflowMeta = []): array
+    {
+        $existingAssignment = data_get($existingWorkflowMeta, 'assignment');
+        $assignment = data_get($workflowMeta, 'assignment');
+
+        if (! is_array($existingAssignment)) {
+            $existingAssignment = [];
+        }
+
+        if (! is_array($assignment)) {
+            $assignment = [];
+        }
+
+        $existingInvoiceRecipient = data_get($existingAssignment, 'invoice_recipient');
+        $invoiceRecipient = data_get($assignment, 'invoice_recipient');
+
+        if (! is_array($existingInvoiceRecipient)) {
+            $existingInvoiceRecipient = [];
+        }
+
+        if (! is_array($invoiceRecipient)) {
+            $invoiceRecipient = [];
+        }
+
+        if (data_get($invoiceRecipient, 'recipient_type') === 'manager_profile') {
+            $invoiceRecipient = [
+                'recipient_type' => 'manager_profile',
+                'recipient_label' => $actor->name ?: 'Property Manager',
+                'delivery_method' => $actor->invoice_delivery_method ?: 'email',
+                'email' => $actor->invoice_email,
+                'company_name' => $actor->invoice_company_name,
+                'company_extra' => $actor->invoice_company_extra,
+                'first_name' => null,
+                'last_name' => null,
+                'address' => $actor->invoice_address,
+                'postal_code' => $actor->invoice_postal_code,
+                'city' => $actor->invoice_city,
+            ];
+        } elseif (data_get($invoiceRecipient, 'recipient_type') === 'third_party') {
+            $deliveryMethod = data_get($invoiceRecipient, 'delivery_method');
+
+            $invoiceRecipient = [
+                'recipient_type' => 'third_party',
+                'recipient_label' => 'Third Party',
+                'delivery_method' => $deliveryMethod,
+                'email' => $deliveryMethod === 'email' ? data_get($invoiceRecipient, 'email') : null,
+                'company_name' => data_get($invoiceRecipient, 'company_name'),
+                'company_extra' => data_get($invoiceRecipient, 'company_extra'),
+                'first_name' => data_get($invoiceRecipient, 'first_name'),
+                'last_name' => data_get($invoiceRecipient, 'last_name'),
+                'address' => data_get($invoiceRecipient, 'address'),
+                'postal_code' => data_get($invoiceRecipient, 'postal_code'),
+                'city' => data_get($invoiceRecipient, 'city'),
+            ];
+        } else {
+            $invoiceRecipient = $existingInvoiceRecipient;
+        }
+
+        return [
+            ...$existingWorkflowMeta,
+            ...$workflowMeta,
+            'assignment' => [
+                ...$existingAssignment,
+                ...$assignment,
+                'invoice_recipient' => $invoiceRecipient,
+            ],
+        ];
     }
 
     private function createDirectProviderInvitations(

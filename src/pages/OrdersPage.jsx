@@ -42,6 +42,35 @@ const BID_PRIORITY_OPTIONS = [
   { value: 'high_quality_materials', label: 'Hochwertige Materialien' },
 ]
 
+const SWISS_CANTONS = [
+  { value: 'AG', label: 'AG - Aargau' },
+  { value: 'AI', label: 'AI - Appenzell Innerrhoden' },
+  { value: 'AR', label: 'AR - Appenzell Ausserrhoden' },
+  { value: 'BE', label: 'BE - Bern' },
+  { value: 'BL', label: 'BL - Basel-Landschaft' },
+  { value: 'BS', label: 'BS - Basel-Stadt' },
+  { value: 'FR', label: 'FR - Fribourg' },
+  { value: 'GE', label: 'GE - Geneve' },
+  { value: 'GL', label: 'GL - Glarus' },
+  { value: 'GR', label: 'GR - Graubunden' },
+  { value: 'JU', label: 'JU - Jura' },
+  { value: 'LU', label: 'LU - Luzern' },
+  { value: 'NE', label: 'NE - Neuchatel' },
+  { value: 'NW', label: 'NW - Nidwalden' },
+  { value: 'OW', label: 'OW - Obwalden' },
+  { value: 'SG', label: 'SG - St. Gallen' },
+  { value: 'SH', label: 'SH - Schaffhausen' },
+  { value: 'SO', label: 'SO - Solothurn' },
+  { value: 'SZ', label: 'SZ - Schwyz' },
+  { value: 'TG', label: 'TG - Thurgau' },
+  { value: 'TI', label: 'TI - Ticino' },
+  { value: 'UR', label: 'UR - Uri' },
+  { value: 'VD', label: 'VD - Vaud' },
+  { value: 'VS', label: 'VS - Valais' },
+  { value: 'ZG', label: 'ZG - Zug' },
+  { value: 'ZH', label: 'ZH - Zurich' },
+]
+
 function getTodayDateValue() {
   const date = new Date()
   const year = date.getFullYear()
@@ -52,6 +81,18 @@ function getTodayDateValue() {
 }
 
 const TODAY_DATE = getTodayDateValue()
+
+function getDateOffsetValue(offsetDays) {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+const MIN_BID_DEADLINE_DATE = getDateOffsetValue(2)
 
 const MANAGER_ORDER_STEPS = [
   { id: 1, label: 'Liegenschaft', helper: 'Objekte wählen', icon: 'ti ti-building-estate' },
@@ -73,8 +114,11 @@ function getInitialManagerWizard(propertyId = '') {
     description: '',
     inspection_date_1: '',
     inspection_time_1: '',
+    inspection_quote_due_date_1: '',
     inspection_date_2: '',
     inspection_time_2: '',
+    inspection_quote_due_date_2: '',
+    has_second_inspection_option: false,
     onsite_company: '',
     onsite_first_name: '',
     onsite_last_name: '',
@@ -83,10 +127,21 @@ function getInitialManagerWizard(propertyId = '') {
     inspection_request_mode: '',
     completion_mode: 'fixed_date',
     due_date: '',
+    attachment: null,
     award_mode: '',
     cost_estimate_range: '',
     bid_priority: '',
     bid_deadline_at: '',
+    invoice_recipient_type: 'manager_profile',
+    invoice_delivery_method: 'email',
+    invoice_email: '',
+    invoice_company_name: '',
+    invoice_company_extra: '',
+    invoice_first_name: '',
+    invoice_last_name: '',
+    invoice_address: '',
+    invoice_postal_code: '',
+    invoice_city: '',
     quote_items: [],
     selected_provider_ids: [],
     manual_provider_company: '',
@@ -166,11 +221,19 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
     inspection: wizard.flow_type === 'inspection'
       ? {
         preferred_slots: [
-          wizard.inspection_date_1 || wizard.inspection_time_1
-            ? { date: wizard.inspection_date_1 || null, time: wizard.inspection_time_1 || null }
+          wizard.inspection_date_1 || wizard.inspection_time_1 || wizard.inspection_quote_due_date_1
+            ? {
+              date: wizard.inspection_date_1 || null,
+              time: wizard.inspection_time_1 || null,
+              quote_due_date: wizard.inspection_quote_due_date_1 || null,
+            }
             : null,
-          wizard.inspection_date_2 || wizard.inspection_time_2
-            ? { date: wizard.inspection_date_2 || null, time: wizard.inspection_time_2 || null }
+          wizard.has_second_inspection_option && (wizard.inspection_date_2 || wizard.inspection_time_2 || wizard.inspection_quote_due_date_2)
+            ? {
+              date: wizard.inspection_date_2 || null,
+              time: wizard.inspection_time_2 || null,
+              quote_due_date: wizard.inspection_quote_due_date_2 || null,
+            }
             : null,
         ].filter(Boolean),
         onsite_contact: {
@@ -186,10 +249,40 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
     assignment: wizard.flow_type === 'direct_order'
       ? {
         completion_mode: wizard.completion_mode,
-        award_mode: wizard.award_mode || null,
-        cost_estimate_range: wizard.cost_estimate_range || null,
-        bid_priority: wizard.bid_priority || null,
+        award_mode: 'request_quotes',
+        cost_estimate_range: null,
+        bid_priority: null,
         bid_deadline_at: wizard.bid_deadline_at || null,
+        invoice_recipient: {
+          recipient_type: wizard.invoice_recipient_type || 'manager_profile',
+          delivery_method: wizard.invoice_recipient_type === 'third_party'
+            ? wizard.invoice_delivery_method || 'email'
+            : null,
+          email: wizard.invoice_recipient_type === 'third_party' && wizard.invoice_delivery_method === 'email'
+            ? wizard.invoice_email || null
+            : null,
+          company_name: wizard.invoice_recipient_type === 'third_party'
+            ? wizard.invoice_company_name || null
+            : null,
+          company_extra: wizard.invoice_recipient_type === 'third_party'
+            ? wizard.invoice_company_extra || null
+            : null,
+          first_name: wizard.invoice_recipient_type === 'third_party'
+            ? wizard.invoice_first_name || null
+            : null,
+          last_name: wizard.invoice_recipient_type === 'third_party'
+            ? wizard.invoice_last_name || null
+            : null,
+          address: wizard.invoice_recipient_type === 'third_party'
+            ? wizard.invoice_address || null
+            : null,
+          postal_code: wizard.invoice_recipient_type === 'third_party'
+            ? wizard.invoice_postal_code || null
+            : null,
+          city: wizard.invoice_recipient_type === 'third_party'
+            ? wizard.invoice_city || null
+            : null,
+        },
       }
       : null,
     provider_selection: {
@@ -219,7 +312,7 @@ function OrdersPage() {
   const [form, setForm] = useState(initialForm)
   const [managerWizard, setManagerWizard] = useState(getInitialManagerWizard())
   const [managerStep, setManagerStep] = useState(1)
-  const [providerCityFilter, setProviderCityFilter] = useState('')
+  const [providerCantonFilter, setProviderCantonFilter] = useState('')
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -347,10 +440,28 @@ function OrdersPage() {
       ...(name === 'flow_type'
         ? {
           inspection_request_mode: '',
-          award_mode: '',
+          inspection_date_1: '',
+          inspection_time_1: '',
+          inspection_quote_due_date_1: '',
+          inspection_date_2: '',
+          inspection_time_2: '',
+          inspection_quote_due_date_2: '',
+          has_second_inspection_option: false,
+          attachment: null,
+          award_mode: value === 'direct_order' ? 'request_quotes' : '',
           cost_estimate_range: '',
           bid_priority: '',
           bid_deadline_at: '',
+          invoice_recipient_type: 'manager_profile',
+          invoice_delivery_method: 'email',
+          invoice_email: '',
+          invoice_company_name: '',
+          invoice_company_extra: '',
+          invoice_first_name: '',
+          invoice_last_name: '',
+          invoice_address: '',
+          invoice_postal_code: '',
+          invoice_city: '',
           quote_items: [],
           selected_provider_ids: [],
           manual_provider_company: '',
@@ -378,6 +489,57 @@ function OrdersPage() {
           quote_items: seedQuoteItemsForTrade(current.service_type),
         }
         : {}),
+      ...(name === 'invoice_recipient_type' && value === 'manager_profile'
+        ? {
+          invoice_delivery_method: 'email',
+          invoice_email: '',
+          invoice_company_name: '',
+          invoice_company_extra: '',
+          invoice_first_name: '',
+          invoice_last_name: '',
+          invoice_address: '',
+          invoice_postal_code: '',
+          invoice_city: '',
+        }
+        : {}),
+      ...(name === 'invoice_delivery_method' && value === 'mail'
+        ? {
+          invoice_email: '',
+        }
+        : {}),
+      ...(name === 'has_second_inspection_option' && value !== 'true'
+        ? {
+          inspection_date_2: '',
+          inspection_time_2: '',
+          inspection_quote_due_date_2: '',
+        }
+        : {}),
+    }))
+  }
+
+  function handleManagerWizardFileChange(event) {
+    const { name, files } = event.target
+
+    setManagerWizard((current) => ({
+      ...current,
+      [name]: files?.[0] ?? null,
+    }))
+  }
+
+  function enableSecondInspectionOption() {
+    setManagerWizard((current) => ({
+      ...current,
+      has_second_inspection_option: true,
+    }))
+  }
+
+  function removeSecondInspectionOption() {
+    setManagerWizard((current) => ({
+      ...current,
+      has_second_inspection_option: false,
+      inspection_date_2: '',
+      inspection_time_2: '',
+      inspection_quote_due_date_2: '',
     }))
   }
 
@@ -479,6 +641,28 @@ function OrdersPage() {
     })
   }
 
+  function applyRegisteredProviderSuggestion(provider) {
+    if (!provider) {
+      return
+    }
+
+    setManagerWizard((current) => {
+      const normalizedProviderId = String(provider.id)
+      const selectedProviderIds = current.selected_provider_ids.includes(normalizedProviderId)
+        ? current.selected_provider_ids
+        : [...current.selected_provider_ids, normalizedProviderId]
+
+      return {
+        ...current,
+        selected_provider_ids: selectedProviderIds,
+        manual_provider_company: provider.company_name || '',
+        manual_provider_contact: provider.contact_name || '',
+        manual_provider_email: provider.order_email || provider.contact_email || '',
+        manual_provider_phone: provider.phone || '',
+      }
+    })
+  }
+
   function handleFilterChange(event) {
     const { name, value } = event.target
 
@@ -536,7 +720,7 @@ function OrdersPage() {
     })
     setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
     setManagerStep(1)
-    setProviderCityFilter('')
+    setProviderCantonFilter('')
     setIsModalOpen(true)
   }
 
@@ -575,6 +759,31 @@ function OrdersPage() {
           return false
         }
 
+        if (!managerWizard.inspection_quote_due_date_1) {
+          setError(t('Bitte geben Sie an, bis wann die Offerte für den ersten Termin erstellt werden soll.'))
+          return false
+        }
+
+        if (managerWizard.inspection_quote_due_date_1 < managerWizard.inspection_date_1) {
+          setError(t('Die Offertfrist für den ersten Termin darf nicht vor dem Besichtigungsdatum liegen.'))
+          return false
+        }
+
+        if (managerWizard.has_second_inspection_option && (!managerWizard.inspection_date_2 || !managerWizard.inspection_time_2)) {
+          setError(t('Bitte vervollständigen Sie den zweiten Besichtigungstermin oder entfernen Sie ihn wieder.'))
+          return false
+        }
+
+        if (managerWizard.has_second_inspection_option && !managerWizard.inspection_quote_due_date_2) {
+          setError(t('Bitte geben Sie an, bis wann die Offerte für den zweiten Termin erstellt werden soll.'))
+          return false
+        }
+
+        if (managerWizard.has_second_inspection_option && managerWizard.inspection_quote_due_date_2 < managerWizard.inspection_date_2) {
+          setError(t('Die Offertfrist für den zweiten Termin darf nicht vor dem Besichtigungsdatum liegen.'))
+          return false
+        }
+
         if (isPastDate(managerWizard.inspection_date_1) || isPastDate(managerWizard.inspection_date_2)) {
           setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
           return false
@@ -600,6 +809,32 @@ function OrdersPage() {
         setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
         return false
       }
+
+      if (managerWizard.flow_type === 'direct_order' && managerWizard.invoice_recipient_type === 'third_party') {
+        if (!managerWizard.invoice_first_name.trim() || !managerWizard.invoice_last_name.trim()) {
+          setError(t('Bitte hinterlegen Sie Vor- und Nachnamen für den Rechnungsempfänger.'))
+          return false
+        }
+
+        if (!managerWizard.invoice_address.trim() || !managerWizard.invoice_postal_code.trim() || !managerWizard.invoice_city.trim()) {
+          setError(t('Bitte hinterlegen Sie Adresse, PLZ und Ort für den Rechnungsempfänger.'))
+          return false
+        }
+
+        if (managerWizard.invoice_delivery_method === 'email') {
+          if (!managerWizard.invoice_email.trim()) {
+            setError(t('Bitte geben Sie die E-Mail-Adresse für den Rechnungsversand ein.'))
+            return false
+          }
+
+          const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+          if (!emailPattern.test(managerWizard.invoice_email.trim())) {
+            setError(t('Bitte geben Sie eine gültige Rechnungs-E-Mail-Adresse ein.'))
+            return false
+          }
+        }
+      }
     }
 
     if (step === 4) {
@@ -609,37 +844,20 @@ function OrdersPage() {
       }
 
       if (managerWizard.flow_type === 'direct_order') {
-        if (!managerWizard.award_mode) {
-          setError(t('Bitte wählen Sie Direktvergabe oder Offertenanfrage.'))
+        if (!managerWizard.bid_deadline_at) {
+          setError(t('Bitte geben Sie eine Angebotsfrist an.'))
           return false
         }
 
-        if (managerWizard.award_mode === 'direct_award' && !managerWizard.cost_estimate_range) {
-          setError(t('Bitte wählen Sie einen Kostenrahmen aus.'))
+        if (managerWizard.bid_deadline_at < MIN_BID_DEADLINE_DATE) {
+          setError(t('Bitte wählen Sie eine Angebotsfrist frühestens ab zwei Tagen ab heute.'))
           return false
-        }
-
-        if (managerWizard.award_mode === 'request_quotes') {
-          if (!managerWizard.bid_priority) {
-            setError(t('Bitte wählen Sie eine Priorität für die Offertenanfrage.'))
-            return false
-          }
-
-          if (!managerWizard.bid_deadline_at) {
-            setError(t('Bitte geben Sie eine Angebotsfrist an.'))
-            return false
-          }
-
-          if (isPastDate(managerWizard.bid_deadline_at)) {
-            setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
-            return false
-          }
         }
       }
     }
 
     if (step === 5) {
-      if (managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'request_quotes') {
+      if (managerWizard.flow_type === 'direct_order') {
         const validQuoteItems = (managerWizard.quote_items ?? []).filter((item) => item.label.trim())
 
         if (validQuoteItems.length === 0) {
@@ -650,7 +868,6 @@ function OrdersPage() {
 
       const requiresProviderSelection = (
         (managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct')
-        || (managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'direct_award')
       )
 
       const normalizedSelectedProviderIds = (managerWizard.selected_provider_ids ?? []).filter(Boolean)
@@ -678,62 +895,105 @@ function OrdersPage() {
     setManagerStep((current) => Math.max(current - 1, 1))
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault()
+  async function handleManagerCreateSubmit() {
     setIsSaving(true)
     setError('')
 
-    if (isManagerCreateFlow) {
-      if (!validateManagerStep(5)) {
-        setIsSaving(false)
-        return
+    if (!validateManagerStep(5)) {
+      setIsSaving(false)
+      return
+    }
+
+    try {
+      const workflowMeta = buildManagerWorkflowMeta(managerWizard, selectedManagerObjects)
+      const payload = {
+        property_id: Number(managerWizard.property_id),
+        property_object_id: managerWizard.selected_object_ids[0] ? Number(managerWizard.selected_object_ids[0]) : null,
+        property_object_ids: managerWizard.selected_object_ids.map((id) => Number(id)),
+        title: managerWizard.title.trim(),
+        service_type: normalizeServiceTypeForApi(managerWizard.service_type),
+        description: managerWizard.description.trim() || null,
+        workflow_type: managerWizard.flow_type,
+        workflow_status: managerWizard.flow_type === 'inspection'
+          ? (managerWizard.inspection_request_mode === 'direct' ? 'inspection_requested' : 'public_inspection_open')
+          : 'published_for_quotes',
+        bid_priority: null,
+        bid_deadline_at: managerWizard.flow_type === 'direct_order'
+          ? `${managerWizard.bid_deadline_at} 23:59:00`
+          : null,
+        quote_items: managerWizard.flow_type === 'direct_order'
+          ? (managerWizard.quote_items ?? [])
+            .filter((item) => item.label.trim())
+            .map((item) => {
+              const payloadItem = { ...item }
+              delete payloadItem.id
+              return payloadItem
+            })
+          : [],
+        due_date: managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date'
+          ? managerWizard.due_date
+          : null,
+        workflow_meta: workflowMeta,
       }
+      const requestBody = managerWizard.attachment
+        ? (() => {
+          const formData = new FormData()
+          formData.append('property_id', String(payload.property_id))
 
-      try {
-        const workflowMeta = buildManagerWorkflowMeta(managerWizard, selectedManagerObjects)
-        const payload = {
-          property_id: Number(managerWizard.property_id),
-          property_object_id: managerWizard.selected_object_ids[0] ? Number(managerWizard.selected_object_ids[0]) : null,
-          property_object_ids: managerWizard.selected_object_ids.map((id) => Number(id)),
-          title: managerWizard.title.trim(),
-          service_type: normalizeServiceTypeForApi(managerWizard.service_type),
-          description: managerWizard.description.trim() || null,
-          workflow_type: managerWizard.flow_type,
-          workflow_status: managerWizard.flow_type === 'inspection'
-            ? (managerWizard.inspection_request_mode === 'direct' ? 'inspection_requested' : 'public_inspection_open')
-            : (managerWizard.award_mode === 'direct_award' ? 'direct_award_pending_acceptance' : 'published_for_quotes'),
-          bid_priority: managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'request_quotes'
-            ? managerWizard.bid_priority
-            : null,
-          bid_deadline_at: managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'request_quotes'
-            ? `${managerWizard.bid_deadline_at} 23:59:00`
-            : null,
-          quote_items: managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'request_quotes'
-            ? (managerWizard.quote_items ?? [])
-              .filter((item) => item.label.trim())
-              .map((item) => {
-                const payloadItem = { ...item }
-                delete payloadItem.id
-                return payloadItem
-              })
-            : [],
-          due_date: managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date'
-            ? managerWizard.due_date
-            : null,
-          workflow_meta: workflowMeta,
-        }
+          if (payload.property_object_id) {
+            formData.append('property_object_id', String(payload.property_object_id))
+          }
 
-        const response = await api.createOrder(payload)
-        setOrders((current) => [response.data, ...current])
-        handleCloseModal()
-      } catch (saveError) {
-        setError(saveError.message)
-      } finally {
-        setIsSaving(false)
+          formData.append('property_object_ids', JSON.stringify(payload.property_object_ids))
+          formData.append('title', payload.title)
+          formData.append('service_type', payload.service_type)
+
+          if (payload.description) {
+            formData.append('description', payload.description)
+          }
+
+          formData.append('workflow_type', payload.workflow_type)
+          formData.append('workflow_status', payload.workflow_status)
+
+          if (payload.bid_deadline_at) {
+            formData.append('bid_deadline_at', payload.bid_deadline_at)
+          }
+
+          if (payload.due_date) {
+            formData.append('due_date', payload.due_date)
+          }
+
+          formData.append('workflow_meta', JSON.stringify(payload.workflow_meta))
+          formData.append('quote_items', JSON.stringify(payload.quote_items))
+          formData.append('attachment', managerWizard.attachment)
+
+          return formData
+        })()
+        : payload
+
+      const response = await api.createOrder(requestBody)
+      setOrders((current) => [response.data, ...current])
+      handleCloseModal()
+    } catch (saveError) {
+      setError(saveError.message)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+
+    if (isManagerCreateFlow) {
+      if (managerStep < 5) {
+        handleManagerNextStep()
       }
 
       return
     }
+
+    setIsSaving(true)
+    setError('')
 
     if (!form.property_id) {
       setError(t('Bitte wählen Sie eine Immobilie aus.'))
@@ -822,7 +1082,7 @@ function OrdersPage() {
     })
     setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
     setManagerStep(1)
-    setProviderCityFilter('')
+    setProviderCantonFilter('')
     setError('')
     setIsModalOpen(false)
   }
@@ -868,18 +1128,25 @@ function OrdersPage() {
   })
 
   const requiresProviderSelection = (
-    (managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct')
-    || (managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'direct_award')
+    managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct'
   )
-  const providerCityOptions = useMemo(() => (
-    [...new Set(serviceProviders.map((provider) => provider.city).filter(Boolean))]
-      .sort((firstCity, secondCity) => firstCity.localeCompare(secondCity))
-  ), [serviceProviders])
   const visibleServiceProviders = useMemo(() => (
-    providerCityFilter
-      ? serviceProviders.filter((provider) => String(provider.city || '') === providerCityFilter)
+    providerCantonFilter
+      ? serviceProviders.filter((provider) => String(provider.canton || '').trim().toUpperCase() === providerCantonFilter)
       : serviceProviders
-  ), [providerCityFilter, serviceProviders])
+  ), [providerCantonFilter, serviceProviders])
+  const manualProviderSuggestions = useMemo(() => {
+    const search = managerWizard.manual_provider_company.trim().toLowerCase()
+
+    if (!search) {
+      return []
+    }
+
+    return serviceProviders
+      .filter((provider) => String(provider.company_name || '').trim().toLowerCase().startsWith(search))
+      .sort((firstProvider, secondProvider) => String(firstProvider.company_name || '').localeCompare(String(secondProvider.company_name || '')))
+      .slice(0, 8)
+  }, [managerWizard.manual_provider_company, serviceProviders])
 
   return (
     <PageContent
@@ -1201,14 +1468,53 @@ function OrdersPage() {
                                   <label className="form-label">{t('Zeit 1')}</label>
                                   <input type="time" className="form-control" name="inspection_time_1" value={managerWizard.inspection_time_1} onChange={handleManagerWizardChange} />
                                 </div>
-                                <div className="col-md-3">
-                                  <label className="form-label">{t('Besichtigung Datum 2')}</label>
-                                  <input type="date" className="form-control" name="inspection_date_2" value={managerWizard.inspection_date_2} min={TODAY_DATE} onChange={handleManagerWizardChange} />
+                                <div className="col-md-6">
+                                  <label className="form-label">{t('Offerte erstellen bis')}</label>
+                                  <input
+                                    type="date"
+                                    className="form-control"
+                                    name="inspection_quote_due_date_1"
+                                    value={managerWizard.inspection_quote_due_date_1}
+                                    min={managerWizard.inspection_date_1 || TODAY_DATE}
+                                    onChange={handleManagerWizardChange}
+                                  />
                                 </div>
-                                <div className="col-md-3">
-                                  <label className="form-label">{t('Zeit 2')}</label>
-                                  <input type="time" className="form-control" name="inspection_time_2" value={managerWizard.inspection_time_2} onChange={handleManagerWizardChange} />
-                                </div>
+                                {!managerWizard.has_second_inspection_option ? (
+                                  <div className="col-12">
+                                    <button type="button" className="btn btn-light-primary" onClick={enableSecondInspectionOption}>
+                                      <i className="ti ti-plus me-1"></i>
+                                      {t('Add Second Option (Date/Time)')}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="col-12 d-flex align-items-center justify-content-between">
+                                      <div className="fw-semibold">{t('Zweite Besichtigungsoption')}</div>
+                                      <button type="button" className="btn btn-link text-danger p-0" onClick={removeSecondInspectionOption} aria-label={t('Zweite Option entfernen')}>
+                                        <i className="ti ti-x fs-5"></i>
+                                      </button>
+                                    </div>
+                                    <div className="col-md-3">
+                                      <label className="form-label">{t('Besichtigung Datum 2')}</label>
+                                      <input type="date" className="form-control" name="inspection_date_2" value={managerWizard.inspection_date_2} min={TODAY_DATE} onChange={handleManagerWizardChange} />
+                                    </div>
+                                    <div className="col-md-3">
+                                      <label className="form-label">{t('Zeit 2')}</label>
+                                      <input type="time" className="form-control" name="inspection_time_2" value={managerWizard.inspection_time_2} onChange={handleManagerWizardChange} />
+                                    </div>
+                                    <div className="col-md-6">
+                                      <label className="form-label">{t('Offerte erstellen bis')}</label>
+                                      <input
+                                        type="date"
+                                        className="form-control"
+                                        name="inspection_quote_due_date_2"
+                                        value={managerWizard.inspection_quote_due_date_2}
+                                        min={managerWizard.inspection_date_2 || TODAY_DATE}
+                                        onChange={handleManagerWizardChange}
+                                      />
+                                    </div>
+                                  </>
+                                )}
                                 {isWeekendDate(managerWizard.inspection_date_1) || isWeekendDate(managerWizard.inspection_date_2) ? (
                                   <div className="col-12">
                                     <div className="alert alert-warning py-2 mb-0">
@@ -1262,6 +1568,88 @@ function OrdersPage() {
                                     <input type="date" className="form-control" name="due_date" value={managerWizard.due_date} min={TODAY_DATE} onChange={handleManagerWizardChange} />
                                   </div>
                                 ) : null}
+                                <div className="col-12">
+                                  <label className="form-label">{t('Anhang')}</label>
+                                  <input type="file" className="form-control" name="attachment" accept=".pdf,.png,.jpg,.jpeg" onChange={handleManagerWizardFileChange} />
+                                  <div className="form-text">{t('Optional. Laden Sie ein PDF oder Bild bis zu 10 MB hoch.')}</div>
+                                </div>
+                                <div className="col-12">
+                                  <div className="border rounded-3 p-3">
+                                    <div className="fw-semibold mb-3">{t('Rechnungsversand')}</div>
+                                    <div className="row g-3">
+                                      <div className="col-md-6">
+                                        <button
+                                          type="button"
+                                          className={`vergo-order-choice-card h-100 text-start${managerWizard.invoice_recipient_type === 'manager_profile' ? ' is-selected' : ''}`}
+                                          onClick={() => handleManagerWizardChange({ target: { name: 'invoice_recipient_type', value: 'manager_profile' } })}
+                                        >
+                                          <div className="fw-semibold mb-2">{t('An Immobilienverwalter senden')}</div>
+                                          <div className="text-muted small">{t('Verwendet die hinterlegten Rechnungsdaten des Immobilienverwalters.')}</div>
+                                        </button>
+                                      </div>
+                                      <div className="col-md-6">
+                                        <button
+                                          type="button"
+                                          className={`vergo-order-choice-card h-100 text-start${managerWizard.invoice_recipient_type === 'third_party' ? ' is-selected' : ''}`}
+                                          onClick={() => handleManagerWizardChange({ target: { name: 'invoice_recipient_type', value: 'third_party' } })}
+                                        >
+                                          <div className="fw-semibold mb-2">{t('An Dritte senden')}</div>
+                                          <div className="text-muted small">{t('Rechnungsadresse und Versandart für einen abweichenden Empfänger erfassen.')}</div>
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {managerWizard.invoice_recipient_type === 'third_party' ? (
+                                      <div className="row g-3 mt-1">
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Firmenname')}</label>
+                                          <input className="form-control" name="invoice_company_name" value={managerWizard.invoice_company_name} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Co.')}</label>
+                                          <input className="form-control" name="invoice_company_extra" value={managerWizard.invoice_company_extra} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Vorname')}</label>
+                                          <input className="form-control" name="invoice_first_name" value={managerWizard.invoice_first_name} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Nachname')}</label>
+                                          <input className="form-control" name="invoice_last_name" value={managerWizard.invoice_last_name} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-12">
+                                          <label className="form-label">{t('Adresse')}</label>
+                                          <input className="form-control" name="invoice_address" value={managerWizard.invoice_address} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-4">
+                                          <label className="form-label">{t('PLZ')}</label>
+                                          <input className="form-control" name="invoice_postal_code" value={managerWizard.invoice_postal_code} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-8">
+                                          <label className="form-label">{t('Ort')}</label>
+                                          <input className="form-control" name="invoice_city" value={managerWizard.invoice_city} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Versandart')}</label>
+                                          <select className="form-select" name="invoice_delivery_method" value={managerWizard.invoice_delivery_method} onChange={handleManagerWizardChange}>
+                                            <option value="email">{t('E-Mail')}</option>
+                                            <option value="mail">{t('Post')}</option>
+                                          </select>
+                                        </div>
+                                        {managerWizard.invoice_delivery_method === 'email' ? (
+                                          <div className="col-md-6">
+                                            <label className="form-label">{t('E-Mail für Rechnungen')}</label>
+                                            <input type="email" className="form-control" name="invoice_email" value={managerWizard.invoice_email} onChange={handleManagerWizardChange} />
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : (
+                                      <div className="alert alert-light border small mt-3 mb-0">
+                                        {t('Der ausgewählte Dienstleister erhält nach Abschluss die beim Immobilienverwalter hinterlegte Rechnungsadresse.')}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </>
                             ) : null}
                           </div>
@@ -1296,56 +1684,81 @@ function OrdersPage() {
 
                             {managerWizard.flow_type === 'direct_order' ? (
                               <>
-                                <div className="col-md-6">
+                                <div className="col-12">
                                   <button
                                     type="button"
-                                    className={`vergo-order-choice-card h-100 text-start${managerWizard.award_mode === 'direct_award' ? ' is-selected' : ''}`}
-                                    onClick={() => handleManagerWizardChange({ target: { name: 'award_mode', value: 'direct_award' } })}
-                                  >
-                                    <div className="fw-semibold mb-2">{t('Direkt vergeben')}</div>
-                                    <div className="text-muted small">{t('Eine Firma auswählen und direkt beauftragen.')}</div>
-                                  </button>
-                                </div>
-                                <div className="col-md-6">
-                                  <button
-                                    type="button"
-                                    className={`vergo-order-choice-card h-100 text-start${managerWizard.award_mode === 'request_quotes' ? ' is-selected' : ''}`}
+                                    className="vergo-order-choice-card h-100 text-start is-selected"
                                     onClick={() => handleManagerWizardChange({ target: { name: 'award_mode', value: 'request_quotes' } })}
                                   >
                                     <div className="fw-semibold mb-2">{t('Offerten einholen')}</div>
                                     <div className="text-muted small">{t('Mehrere Firmen anfragen und Angebote vergleichen.')}</div>
                                   </button>
                                 </div>
-                                {managerWizard.award_mode === 'direct_award' ? (
-                                  <div className="col-md-12">
-                                    <label className="form-label">{t('Kostenrahmen')}</label>
-                                    <select className="form-select" name="cost_estimate_range" value={managerWizard.cost_estimate_range} onChange={handleManagerWizardChange}>
-                                      <option value="">{t('Kostenrahmen auswählen')}</option>
-                                      {COST_ESTIMATE_OPTIONS.map((option) => (
-                                        <option key={option.value} value={option.value}>{t(option.label)}</option>
-                                      ))}
-                                    </select>
+                                <div className="col-md-6">
+                                  <label className="form-label">{t('Angebotsfrist')}</label>
+                                  <input type="date" className="form-control" name="bid_deadline_at" value={managerWizard.bid_deadline_at} min={MIN_BID_DEADLINE_DATE} onChange={handleManagerWizardChange} />
+                                </div>
+                                <div className="col-12">
+                                  <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+                                    <div>
+                                      <h6 className="fw-semibold mb-1">{t('Leistungspositionen')}</h6>
+                                      <p className="text-muted small mb-0">{t('Diese Positionen werden öffentlich ausgeschrieben. Anbieter sehen die Arbeit, aber nicht die Preise anderer Firmen.')}</p>
+                                    </div>
+                                    <button type="button" className="btn btn-light-primary btn-sm" onClick={addQuoteItem}>
+                                      <i className="ti ti-plus me-1"></i>
+                                      {t('Position hinzufügen')}
+                                    </button>
                                   </div>
-                                ) : null}
 
-                                {managerWizard.award_mode === 'request_quotes' ? (
-                                  <>
-                                    <div className="col-md-6">
-                                      <label className="form-label">{t('Priorität')}</label>
-                                      <select className="form-select" name="bid_priority" value={managerWizard.bid_priority} onChange={handleManagerWizardChange}>
-                                        <option value="">{t('Priorität auswählen')}</option>
-                                        {BID_PRIORITY_OPTIONS.map((option) => (
-                                          <option key={option.value} value={option.value}>{t(option.label)}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-
-                                    <div className="col-md-6">
-                                      <label className="form-label">{t('Angebotsfrist')}</label>
-                                      <input type="date" className="form-control" name="bid_deadline_at" value={managerWizard.bid_deadline_at} min={TODAY_DATE} onChange={handleManagerWizardChange} />
-                                    </div>
-                                  </>
-                                ) : null}
+                                  <div className="row g-3">
+                                    {(managerWizard.quote_items ?? []).map((item) => (
+                                      <div className="col-12" key={item.id}>
+                                        <div className="border rounded-3 p-3">
+                                          <div className="row g-3 align-items-end">
+                                            <div className="col-lg-5">
+                                              <label className="form-label">{t('Leistung / Position')}</label>
+                                              <input
+                                                className="form-control"
+                                                value={item.label}
+                                                onChange={(event) => updateQuoteItem(item.id, 'label', event.target.value)}
+                                                placeholder={t('z. B. Steckdose austauschen')}
+                                              />
+                                            </div>
+                                            <div className="col-lg-2">
+                                              <label className="form-label">{t('Einheit')}</label>
+                                              <input
+                                                className="form-control"
+                                                value={item.unit}
+                                                onChange={(event) => updateQuoteItem(item.id, 'unit', event.target.value)}
+                                                placeholder={t('Stück')}
+                                              />
+                                            </div>
+                                            <div className="col-lg-2">
+                                              <label className="form-label">{t('Menge')}</label>
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                className="form-control"
+                                                value={item.quantity}
+                                                onChange={(event) => updateQuoteItem(item.id, 'quantity', event.target.value)}
+                                              />
+                                            </div>
+                                            <div className="col-lg-2">
+                                              <label className="form-label">{t('Typ')}</label>
+                                              <input className="form-control" value={item.is_custom ? t('Andere') : t('Katalog')} readOnly />
+                                            </div>
+                                            <div className="col-lg-1">
+                                              <button type="button" className="btn btn-light-danger text-danger w-100" onClick={() => removeQuoteItem(item.id)}>
+                                                <i className="ti ti-trash"></i>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               </>
                             ) : null}
                           </div>
@@ -1353,70 +1766,6 @@ function OrdersPage() {
 
                         {managerStep === 5 ? (
                           <div className="row g-4">
-                            {managerWizard.flow_type === 'direct_order' && managerWizard.award_mode === 'request_quotes' ? (
-                              <div className="col-12">
-                                <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
-                                  <div>
-                                    <h6 className="fw-semibold mb-1">{t('Leistungspositionen')}</h6>
-                                    <p className="text-muted small mb-0">{t('Diese Positionen werden öffentlich ausgeschrieben. Anbieter sehen die Arbeit, aber nicht die Preise anderer Firmen.')}</p>
-                                  </div>
-                                  <button type="button" className="btn btn-light-primary btn-sm" onClick={addQuoteItem}>
-                                    <i className="ti ti-plus me-1"></i>
-                                    {t('Position hinzufügen')}
-                                  </button>
-                                </div>
-
-                                <div className="row g-3">
-                                  {(managerWizard.quote_items ?? []).map((item) => (
-                                    <div className="col-12" key={item.id}>
-                                      <div className="border rounded-3 p-3">
-                                        <div className="row g-3 align-items-end">
-                                          <div className="col-lg-5">
-                                            <label className="form-label">{t('Leistung / Position')}</label>
-                                            <input
-                                              className="form-control"
-                                              value={item.label}
-                                              onChange={(event) => updateQuoteItem(item.id, 'label', event.target.value)}
-                                              placeholder={t('z. B. Steckdose austauschen')}
-                                            />
-                                          </div>
-                                          <div className="col-lg-2">
-                                            <label className="form-label">{t('Einheit')}</label>
-                                            <input
-                                              className="form-control"
-                                              value={item.unit}
-                                              onChange={(event) => updateQuoteItem(item.id, 'unit', event.target.value)}
-                                              placeholder={t('Stück')}
-                                            />
-                                          </div>
-                                          <div className="col-lg-2">
-                                            <label className="form-label">{t('Menge')}</label>
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              step="0.01"
-                                              className="form-control"
-                                              value={item.quantity}
-                                              onChange={(event) => updateQuoteItem(item.id, 'quantity', event.target.value)}
-                                            />
-                                          </div>
-                                          <div className="col-lg-2">
-                                            <label className="form-label">{t('Typ')}</label>
-                                            <input className="form-control" value={item.is_custom ? t('Andere') : t('Katalog')} readOnly />
-                                          </div>
-                                          <div className="col-lg-1">
-                                            <button type="button" className="btn btn-light-danger text-danger w-100" onClick={() => removeQuoteItem(item.id)}>
-                                              <i className="ti ti-trash"></i>
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-
                             <div className="col-lg-7">
                               <div className="mb-3">
                                 <h6 className="fw-semibold mb-1">{t('Firmenauswahl')}</h6>
@@ -1428,15 +1777,15 @@ function OrdersPage() {
                               </div>
 
                               <div className="mb-3">
-                                <label className="form-label">{t('Nach Ort filtern')}</label>
+                                <label className="form-label">{t('Nach Kanton filtern')}</label>
                                 <select
                                   className="form-select"
-                                  value={providerCityFilter}
-                                  onChange={(event) => setProviderCityFilter(event.target.value)}
+                                  value={providerCantonFilter}
+                                  onChange={(event) => setProviderCantonFilter(event.target.value)}
                                 >
-                                  <option value="">{t('Alle Orte')}</option>
-                                  {providerCityOptions.map((city) => (
-                                    <option key={city} value={city}>{city}</option>
+                                  <option value="">{t('Alle Kantone')}</option>
+                                  {SWISS_CANTONS.map((canton) => (
+                                    <option key={canton.value} value={canton.value}>{canton.label}</option>
                                   ))}
                                 </select>
                               </div>
@@ -1451,13 +1800,13 @@ function OrdersPage() {
                                   >
                                     <div className="fw-semibold">{provider.company_name}</div>
                                     <div className="text-muted small">
-                                      {t('PLZ / Ort')} ({[provider.postal_code, provider.city].filter(Boolean).join(' ') || '-'})
+                                      {[provider.postal_code, provider.city, provider.canton].filter(Boolean).join(' ') || '-'}
                                     </div>
                                   </button>
                                 ))}
                               </div>
                               {visibleServiceProviders.length === 0 ? (
-                                <div className="text-muted small mt-2">{t('Keine Firmen für diesen Ort gefunden.')}</div>
+                                <div className="text-muted small mt-2">{t('Keine Firmen für diesen Kanton gefunden.')}</div>
                               ) : null}
                             </div>
 
@@ -1471,6 +1820,34 @@ function OrdersPage() {
                                 <div className="col-12">
                                   <label className="form-label">{t('Firma')}</label>
                                   <input className="form-control" name="manual_provider_company" value={managerWizard.manual_provider_company} onChange={handleManagerWizardChange} />
+                                  {manualProviderSuggestions.length > 0 ? (
+                                    <div className="list-group mt-2">
+                                      {manualProviderSuggestions.map((provider) => {
+                                        const isSelected = managerWizard.selected_provider_ids.includes(String(provider.id))
+
+                                        return (
+                                          <button
+                                            key={provider.id}
+                                            type="button"
+                                            className="list-group-item list-group-item-action"
+                                            onClick={() => applyRegisteredProviderSuggestion(provider)}
+                                          >
+                                            <div className="d-flex align-items-start justify-content-between gap-3">
+                                              <div className="text-start">
+                                                <div className="fw-semibold">{provider.company_name}</div>
+                                                <div className="text-muted small">
+                                                  {[provider.postal_code, provider.city, provider.canton].filter(Boolean).join(' ') || '-'}
+                                                </div>
+                                              </div>
+                                              <span className={`badge ${isSelected ? 'bg-success-subtle text-success' : 'bg-light text-muted'}`}>
+                                                {isSelected ? t('Bereits ausgewählt') : t('Übernehmen')}
+                                              </span>
+                                            </div>
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  ) : null}
                                 </div>
                                 <div className="col-12">
                                   <label className="form-label">{t('Kontaktperson')}</label>
@@ -1617,7 +1994,7 @@ function OrdersPage() {
                             {t('Weiter')}
                           </button>
                         ) : (
-                          <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                          <button type="button" className="btn btn-primary" disabled={isSaving} onClick={handleManagerCreateSubmit}>
                             {isSaving ? t('Wird gespeichert...') : t('Auftrag erstellen')}
                           </button>
                         )}

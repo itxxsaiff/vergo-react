@@ -10,6 +10,27 @@ use Illuminate\Validation\Rule;
 
 class UpdateOrderRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+
+        foreach (['property_object_ids', 'workflow_meta', 'quote_items'] as $field) {
+            $value = $this->input($field);
+
+            if (is_string($value) && $value !== '') {
+                $decoded = json_decode($value, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $merge[$field] = $decoded;
+                }
+            }
+        }
+
+        if ($merge !== []) {
+            $this->merge($merge);
+        }
+    }
+
     public function authorize(): bool
     {
         $actor = $this->user();
@@ -36,6 +57,7 @@ class UpdateOrderRequest extends FormRequest
             'due_date' => ['nullable', 'date', 'after_or_equal:today'],
             'bid_deadline_at' => ['nullable', 'date', 'after_or_equal:today'],
             'workflow_meta' => ['nullable', 'array'],
+            'attachment' => ['nullable', 'file', 'mimes:pdf,png,jpg,jpeg', 'max:10240'],
             'quote_items' => ['nullable', 'array'],
             'quote_items.*.label' => ['required_with:quote_items', 'string', 'max:255'],
             'quote_items.*.code' => ['nullable', 'string', 'max:100'],
@@ -64,6 +86,8 @@ class UpdateOrderRequest extends FormRequest
             'due_date.after_or_equal' => 'Please do not select a date in the past.',
             'bid_deadline_at.after_or_equal' => 'Please do not select a date in the past.',
             'bid_priority.in' => 'Please select a valid bid priority.',
+            'attachment.max' => 'Attachment size must not exceed 10 MB.',
+            'attachment.mimes' => 'Attachment must be a PDF or image file.',
         ];
     }
 
@@ -107,6 +131,48 @@ class UpdateOrderRequest extends FormRequest
                 if ($date && $date < $today) {
                     $validator->errors()->add('workflow_meta.inspection.preferred_slots', 'Please do not select a date in the past.');
                     break;
+                }
+            }
+
+            $workflowType = $this->input('workflow_type', $order?->workflow_type);
+            $bidDeadlineAt = $this->input('bid_deadline_at', $order?->bid_deadline_at?->toDateTimeString());
+            $minimumBidDeadline = now()->addDays(2)->startOfDay()->toDateString();
+
+            if ($workflowType === 'direct_order' && $bidDeadlineAt && substr((string) $bidDeadlineAt, 0, 10) < $minimumBidDeadline) {
+                $validator->errors()->add('bid_deadline_at', 'Please select a bid deadline at least two days from today.');
+            }
+
+            $workflowMeta = $this->input('workflow_meta', $order?->workflow_meta ?? []);
+            $invoiceRecipientType = data_get($workflowMeta, 'assignment.invoice_recipient.recipient_type');
+            $invoiceDeliveryMethod = data_get($workflowMeta, 'assignment.invoice_recipient.delivery_method');
+
+            if ($workflowType === 'direct_order' && $invoiceRecipientType === 'third_party') {
+                if (! data_get($workflowMeta, 'assignment.invoice_recipient.first_name')) {
+                    $validator->errors()->add('workflow_meta.assignment.invoice_recipient.first_name', 'Please enter the invoice recipient first name.');
+                }
+
+                if (! data_get($workflowMeta, 'assignment.invoice_recipient.last_name')) {
+                    $validator->errors()->add('workflow_meta.assignment.invoice_recipient.last_name', 'Please enter the invoice recipient last name.');
+                }
+
+                if (! data_get($workflowMeta, 'assignment.invoice_recipient.address')) {
+                    $validator->errors()->add('workflow_meta.assignment.invoice_recipient.address', 'Please enter the invoice recipient address.');
+                }
+
+                if (! data_get($workflowMeta, 'assignment.invoice_recipient.postal_code')) {
+                    $validator->errors()->add('workflow_meta.assignment.invoice_recipient.postal_code', 'Please enter the invoice recipient ZIP code.');
+                }
+
+                if (! data_get($workflowMeta, 'assignment.invoice_recipient.city')) {
+                    $validator->errors()->add('workflow_meta.assignment.invoice_recipient.city', 'Please enter the invoice recipient city.');
+                }
+
+                if (! in_array($invoiceDeliveryMethod, ['email', 'mail'], true)) {
+                    $validator->errors()->add('workflow_meta.assignment.invoice_recipient.delivery_method', 'Please select whether the invoice should be sent by email or mail.');
+                }
+
+                if ($invoiceDeliveryMethod === 'email' && ! data_get($workflowMeta, 'assignment.invoice_recipient.email')) {
+                    $validator->errors()->add('workflow_meta.assignment.invoice_recipient.email', 'Please enter the invoice email address.');
                 }
             }
         });

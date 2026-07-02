@@ -30,6 +30,10 @@ class Order extends Model
         'bid_deadline_at',
         'workflow_meta',
         'quote_items',
+        'attachment_name',
+        'attachment_path',
+        'attachment_mime_type',
+        'attachment_size',
         'requested_at',
         'completed_at',
     ];

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
@@ -33,6 +34,7 @@ function isInspectionOrder(order) {
 
 function OrderDetailsPage() {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const { orderId } = useParams()
   const [order, setOrder] = useState(null)
   const [comparison, setComparison] = useState(null)
@@ -197,18 +199,18 @@ function OrderDetailsPage() {
 
   return (
     <PageContent
-      title={isInspectionDetails ? 'Besichtigungsdetails' : 'Auftragsdetails'}
+      title={isInspectionDetails ? t('Besichtigungsdetails') : t('Auftragsdetails')}
       subtitle={isInspectionDetails
-        ? 'Überprüfen Sie die Besichtigung, Termine, Kontaktdaten und beteiligte Dienstleister.'
-        : 'Überprüfen Sie Angebote, Vergleichsergebnisse und unterstützende Dokumente für diesen Auftrag.'}
+        ? ''
+        : t('Überprüfen Sie Angebote, Vergleichsergebnisse und unterstützende Dokumente für diesen Auftrag.')}
       breadcrumbs={[
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Aufträge', href: '/orders' },
-        { label: isInspectionDetails ? 'Besichtigungsdetails' : 'Auftragsdetails' },
+        { label: t('Dashboard'), href: '/dashboard' },
+        { label: t('Aufträge'), href: '/orders' },
+        { label: isInspectionDetails ? t('Besichtigungsdetails') : t('Auftragsdetails') },
       ]}
     >
       {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-      {isLoading ? <div className="card"><div className="card-body">Details zur Ladefolge...</div></div> : null}
+      {isLoading ? <div className="card"><div className="card-body">{t('Details werden geladen...')}</div></div> : null}
 
       {!isLoading && order ? (
         isInspectionDetails ? (
@@ -218,78 +220,87 @@ function OrderDetailsPage() {
                 <div className="card-body">
                   <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
                     <div>
-                      <div className="text-muted small text-uppercase fw-semibold mb-1">Betreff</div>
+                      <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Betreff')}</div>
                       <h4 className="fw-semibold mb-1">{order.title || '-'}</h4>
-                      <p className="text-muted mb-0">{order.description || 'Keine Beschreibung hinzugefügt.'}</p>
+                      <p className="text-muted mb-0">{order.description || t('Keine Beschreibung hinzugefügt.')}</p>
                     </div>
                     <span className={getStatusBadgeClass(order.status)}>
                       {formatStatusLabel(order.status)}
                     </span>
                   </div>
 
-                  <div className="border rounded-3 p-3 mb-3">
-                    <div className="text-muted small text-uppercase fw-semibold mb-2">Liegenschaft</div>
-                    <div className="row g-3">
-                      <div className="col-md-6">
-                        <div className="text-muted small">Name</div>
-                        <div className="fw-semibold">{order.property?.title || '-'}</div>
+                  <div className="vergo-inspection-section mb-3">
+                    <div className="vergo-inspection-section-title">{t('Liegenschaft')}</div>
+                    <div className="vergo-inspection-property-grid">
+                      <div className="vergo-inspection-property-cell">
+                        <span>{t('Name')}</span>
+                        <strong>{order.property?.title || '-'}</strong>
                       </div>
-                      <div className="col-md-6">
-                        <div className="text-muted small">Adresse</div>
-                        <div className="fw-semibold">{order.property_object?.address || order.property_object?.name || '-'}</div>
+                      <div className="vergo-inspection-property-cell">
+                        <span>{t('LI-Nummer')}</span>
+                        <strong>{order.property?.li_number || '-'}</strong>
                       </div>
-                      <div className="col-md-4">
-                        <div className="text-muted small">PLZ</div>
-                        <div className="fw-semibold">{order.property_object?.postal_code || order.property?.postal_code || '-'}</div>
+                      <div className="vergo-inspection-property-cell">
+                        <span>{t('Adresse')}</span>
+                        <strong>{order.property_object?.address || order.property_object?.name || '-'}</strong>
                       </div>
-                      <div className="col-md-4">
-                        <div className="text-muted small">Ort</div>
-                        <div className="fw-semibold">{order.property_object?.city || order.property?.city || '-'}</div>
+                      <div className="vergo-inspection-property-cell">
+                        <span>{t('PLZ')}</span>
+                        <strong>{order.property_object?.postal_code || order.property?.postal_code || '-'}</strong>
                       </div>
-                      <div className="col-md-4">
-                        <div className="text-muted small">LI-Nummer</div>
-                        <div className="fw-semibold">{order.property?.li_number || '-'}</div>
+                      <div className="vergo-inspection-property-cell">
+                        <span>{t('Ort')}</span>
+                        <strong>{order.property_object?.city || order.property?.city || '-'}</strong>
                       </div>
                     </div>
                   </div>
 
-                  <div className="border rounded-3 p-3 mb-3">
-                    <div className="text-muted small text-uppercase fw-semibold mb-2">Besichtigungstermine</div>
+                  <div className="vergo-inspection-section mb-3">
+                    <div className="vergo-inspection-section-title">{t('Besichtigungstermine')}</div>
                     {inspectionSlots.length > 0 ? (
                       <div className="row g-3">
                         {inspectionSlots.map((slot, index) => (
                           <div className="col-md-6" key={`${slot.date}-${slot.time}-${index}`}>
-                            <div className="border rounded-3 p-3 h-100">
-                              <div className="text-muted small">Option {index + 1}</div>
-                              <div className="fw-semibold">{slot.date || '-'}</div>
-                              <div className="text-muted">{slot.time || '-'}</div>
+                            <div className="vergo-inspection-detail-card h-100">
+                              <div className="vergo-inspection-detail-label">{t('Option')} {index + 1}</div>
+                              <div className="vergo-inspection-detail-value">{slot.date || '-'}</div>
+                              <div className="vergo-inspection-detail-subvalue">{slot.time || '-'}</div>
+                              <div className="vergo-inspection-detail-subvalue">{t('Offerte erstellen bis')}: {slot.quote_due_date || '-'}</div>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-muted">Keine Besichtigungstermine hinterlegt.</div>
+                      <div className="vergo-inspection-empty">{t('Keine Besichtigungstermine hinterlegt.')}</div>
                     )}
                   </div>
 
-                  <div className="border rounded-3 p-3">
-                    <div className="text-muted small text-uppercase fw-semibold mb-2">Kontakt vor Ort</div>
+                  <div className="vergo-inspection-section">
+                    <div className="vergo-inspection-section-title">{t('Kontakt vor Ort')}</div>
                     <div className="row g-3">
                       <div className="col-md-6">
-                        <div className="text-muted small">Firma</div>
-                        <div className="fw-semibold">{onsiteContact.company || '-'}</div>
+                        <div className="vergo-inspection-detail-card h-100">
+                          <div className="vergo-inspection-detail-label">{t('Firma')}</div>
+                          <div className="vergo-inspection-detail-value">{onsiteContact.company || '-'}</div>
+                        </div>
                       </div>
                       <div className="col-md-6">
-                        <div className="text-muted small">Name</div>
-                        <div className="fw-semibold">{getOnsiteName(onsiteContact)}</div>
+                        <div className="vergo-inspection-detail-card h-100">
+                          <div className="vergo-inspection-detail-label">{t('Name')}</div>
+                          <div className="vergo-inspection-detail-value">{getOnsiteName(onsiteContact)}</div>
+                        </div>
                       </div>
                       <div className="col-md-6">
-                        <div className="text-muted small">Telefon</div>
-                        <div className="fw-semibold">{onsiteContact.phone || '-'}</div>
+                        <div className="vergo-inspection-detail-card h-100">
+                          <div className="vergo-inspection-detail-label">{t('Telefon')}</div>
+                          <div className="vergo-inspection-detail-value">{onsiteContact.phone || '-'}</div>
+                        </div>
                       </div>
                       <div className="col-md-6">
-                        <div className="text-muted small">E-Mail</div>
-                        <div className="fw-semibold">{onsiteContact.email || '-'}</div>
+                        <div className="vergo-inspection-detail-card h-100">
+                          <div className="vergo-inspection-detail-label">{t('E-Mail')}</div>
+                          <div className="vergo-inspection-detail-value">{onsiteContact.email || '-'}</div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -300,8 +311,8 @@ function OrderDetailsPage() {
             <div className="col-xl-5">
               <div className="card">
                 <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
-                  <h5 className="card-title fw-semibold mb-0">Dienstleister</h5>
-                  <span className="text-muted">{order.bids?.length ?? 0} Einträge</span>
+                  <h5 className="card-title fw-semibold mb-0">{t('Dienstleister')}</h5>
+                  <span className="text-muted">{order.bids?.length ?? 0} {t('Einträge')}</span>
                 </div>
                 <div className="card-body p-4">
                   {(order.bids ?? []).length > 0 ? (
@@ -310,7 +321,7 @@ function OrderDetailsPage() {
                         const selectedSlot = inspectionSlots[Number(bid.workflow_meta?.selected_slot_index)]
 
                         return (
-                          <div className="border rounded-3 p-3" key={bid.id}>
+                          <div className="vergo-inspection-detail-card" key={bid.id}>
                             <div className="d-flex align-items-start justify-content-between gap-3 mb-2">
                               <div>
                                 <div className="fw-semibold">{bid.service_provider?.company_name || '-'}</div>
@@ -320,8 +331,11 @@ function OrderDetailsPage() {
                                 {formatStatusLabel(bid.status)}
                               </span>
                             </div>
-                            <div className="text-muted small">
-                              Gewählter Termin: {selectedSlot ? `${selectedSlot.date || '-'} ${selectedSlot.time || ''}` : '-'}
+                            <div className="vergo-inspection-detail-subvalue">
+                              {t('Gewählter Termin')}: {selectedSlot ? `${selectedSlot.date || '-'} ${selectedSlot.time || ''}` : '-'}
+                            </div>
+                            <div className="vergo-inspection-detail-subvalue">
+                              {t('Offerte erstellen bis')}: {selectedSlot?.quote_due_date || '-'}
                             </div>
                             {bid.rejection_reason ? <div className="text-muted small mt-2">{bid.rejection_reason}</div> : null}
                           </div>
@@ -329,22 +343,31 @@ function OrderDetailsPage() {
                       })}
                     </div>
                   ) : (
-                    <div className="text-muted">Noch keine Dienstleister für diese Besichtigung vorhanden.</div>
+                    <div className="text-muted">{t('Noch keine Dienstleister für diese Besichtigung vorhanden.')}</div>
                   )}
                 </div>
               </div>
 
               <div className="card">
                 <div className="card-body">
-                  <h5 className="fw-semibold mb-3">Auftragsdaten</h5>
-                  <div className="mb-2">
-                    <strong>Gewerk:</strong> {getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}
-                  </div>
-                  <div className="mb-2">
-                    <strong>Typ:</strong> Besichtigung
-                  </div>
-                  <div className="mb-0">
-                    <strong>Anfragender:</strong> {order.requester_name || '-'} {order.requester_email ? `(${order.requester_email})` : ''}
+                  <h5 className="fw-semibold mb-3">{t('Auftragsdaten')}</h5>
+                  <div className="vergo-inspection-section">
+                    <div className="d-flex flex-column gap-3">
+                      <div className="vergo-inspection-detail-card">
+                        <div className="vergo-inspection-detail-label">{t('Gewerk')}</div>
+                        <div className="vergo-inspection-detail-value">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
+                      </div>
+                      <div className="vergo-inspection-detail-card">
+                        <div className="vergo-inspection-detail-label">{t('Typ')}</div>
+                        <div className="vergo-inspection-detail-value">{t('Besichtigung')}</div>
+                      </div>
+                      <div className="vergo-inspection-detail-card">
+                        <div className="vergo-inspection-detail-label">{t('Anfragender')}</div>
+                        <div className="vergo-inspection-detail-value">
+                          {order.requester_name || '-'} {order.requester_email ? `(${order.requester_email})` : ''}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -356,7 +379,7 @@ function OrderDetailsPage() {
             <div className="card">
               <div className="card-body">
                 <h5 className="fw-semibold mb-3">{order.title}</h5>
-                <p className="text-muted mb-3">{order.description || 'Keine Beschreibung hinzugefügt.'}</p>
+                <p className="text-muted mb-3">{order.description || t('Keine Beschreibung hinzugefügt.')}</p>
 
                 <div className="mb-2">
                   <strong>Immobilie:</strong> {order.property?.li_number} - {order.property?.title}

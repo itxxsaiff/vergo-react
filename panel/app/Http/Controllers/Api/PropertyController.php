@@ -11,6 +11,7 @@ use App\Models\PropertyManagerProfile;
 use App\Models\PropertyManagerDomain;
 use App\Models\PropertyOwnerAssignment;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,28 @@ class PropertyController extends Controller
             ->loadCount(['objects', 'orders', 'documents']);
 
         return new PropertyResource($property);
+    }
+
+    public function pdf(Request $request, Property $property)
+    {
+        $this->authorizePropertyAccess($request->user(), $property);
+
+        $property->load([
+            'owners:id,name,email',
+            'assignedManagerProfile:id,name,email,domain_suffix',
+            'objects:id,name,address,postal_code,city',
+        ]);
+
+        $pdf = Pdf::loadView('pdf.property', [
+            'property' => $property,
+            'ownerLabel' => $property->owners->pluck('name')->filter()->join(', ') ?: '-',
+            'managerLabel' => $property->assignedManagerProfile?->name ?: ($property->management ?: '-'),
+            'usageLabel' => $this->getPropertyUsageLabel($property->usage),
+            'objectCards' => $this->getPropertyPdfCards($property),
+            'logoDataUri' => $this->getPdfLogoDataUri(),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream(($property->li_number ?: 'property').'.pdf');
     }
 
     public function store(StorePropertyRequest $request): PropertyResource
@@ -186,5 +209,46 @@ class PropertyController extends Controller
         }
 
         abort(403);
+    }
+
+    private function getPropertyUsageLabel(?string $usage): string
+    {
+        return match ($usage) {
+            'residential' => 'Wohnen',
+            'commercial' => 'Gewerbe',
+            'mixed' => 'Gemischt',
+            default => $usage ?: '-',
+        };
+    }
+
+    private function getPropertyPdfCards(Property $property): array
+    {
+        if ($property->objects->isNotEmpty()) {
+            return $property->objects->map(fn ($object) => [
+                'address' => $object->address ?: ($object->name ?: '-'),
+                'postal_code' => $object->postal_code ?: ($property->postal_code ?: '-'),
+                'city' => $object->city ?: ($property->city ?: '-'),
+            ])->values()->all();
+        }
+
+        return [[
+            'address' => $property->address_line_1 ?: ($property->title ?: '-'),
+            'postal_code' => $property->postal_code ?: '-',
+            'city' => $property->city ?: '-',
+        ]];
+    }
+
+    private function getPdfLogoDataUri(): string
+    {
+        $logoPath = public_path('VERGO.png');
+
+        if (!file_exists($logoPath)) {
+            return '';
+        }
+
+        $mimeType = mime_content_type($logoPath) ?: 'image/png';
+        $contents = file_get_contents($logoPath);
+
+        return $contents ? 'data:'.$mimeType.';base64,'.base64_encode($contents) : '';
     }
 }

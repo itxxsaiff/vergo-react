@@ -52,6 +52,10 @@ function getAssignedProviderEmail(bid) {
   ).toLowerCase()
 }
 
+function getInvoiceRecipient(order) {
+  return order?.workflow_meta?.assignment?.invoice_recipient ?? null
+}
+
 function AvailableJobsPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -510,6 +514,7 @@ function AvailableJobsPage() {
   const selectedOrderIsInspection = isInspectionWorkflow(selectedOrder)
   const selectedInspectionSlots = getInspectionSlots(selectedOrder)
   const selectedOnsiteContact = getOnsiteContact(selectedOrder)
+  const selectedInvoiceRecipient = getInvoiceRecipient(selectedOrder)
   const selectedOnsiteName = [
     selectedOnsiteContact.first_name,
     selectedOnsiteContact.last_name,
@@ -767,6 +772,9 @@ function AvailableJobsPage() {
                                     <div className="text-muted small">{t(`Termin ${slotIndex + 1}`)}</div>
                                     <div className="fw-semibold">{slot?.date || '-'}</div>
                                     <div className="text-muted">{slot?.time || '-'}</div>
+                                    <div className="text-muted small mt-2">
+                                      {t('Offerte erstellen bis')}: {slot?.quote_due_date || '-'}
+                                    </div>
                                   </div>
                                 </div>
                               )
@@ -893,6 +901,72 @@ function AvailableJobsPage() {
 
                     {!selectedOrderIsInspection ? (
                       <div className="row">
+                        {selectedOrder?.attachment_name ? (
+                          <div className="col-12 mb-3">
+                            <div className="border rounded-3 p-3">
+                              <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                                <div>
+                                  <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Anhang')}</div>
+                                  <div className="fw-semibold">{selectedOrder.attachment_name}</div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-light-primary btn-sm"
+                                  onClick={() => api.downloadOrderAttachment(selectedOrder.id, selectedOrder.attachment_name)}
+                                >
+                                  {t('Anhang herunterladen')}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                        {selectedInvoiceRecipient ? (
+                          <div className="col-12 mb-3">
+                            <div className="border rounded-3 p-3">
+                              <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Rechnungsversand')}</div>
+                              <div className="row g-3">
+                                <div className="col-md-4">
+                                  <div className="text-muted small">{t('Empfänger')}</div>
+                                  <div className="fw-semibold">
+                                    {selectedInvoiceRecipient.recipient_type === 'manager_profile'
+                                      ? t('Immobilienverwalter')
+                                      : t('Dritte')}
+                                  </div>
+                                </div>
+                                <div className="col-md-4">
+                                  <div className="text-muted small">{t('Versandart')}</div>
+                                  <div className="fw-semibold">{selectedInvoiceRecipient.delivery_method === 'mail' ? t('Post') : t('E-Mail')}</div>
+                                </div>
+                                {selectedInvoiceRecipient.email ? (
+                                  <div className="col-md-4">
+                                    <div className="text-muted small">{t('E-Mail für Rechnungen')}</div>
+                                    <div className="fw-semibold">{selectedInvoiceRecipient.email}</div>
+                                  </div>
+                                ) : null}
+                                {selectedInvoiceRecipient.company_name || selectedInvoiceRecipient.company_extra ? (
+                                  <div className="col-md-6">
+                                    <div className="text-muted small">{t('Firma')}</div>
+                                    <div className="fw-semibold">{[selectedInvoiceRecipient.company_name, selectedInvoiceRecipient.company_extra].filter(Boolean).join(' / ') || '-'}</div>
+                                  </div>
+                                ) : null}
+                                {selectedInvoiceRecipient.first_name || selectedInvoiceRecipient.last_name ? (
+                                  <div className="col-md-6">
+                                    <div className="text-muted small">{t('Name')}</div>
+                                    <div className="fw-semibold">{[selectedInvoiceRecipient.first_name, selectedInvoiceRecipient.last_name].filter(Boolean).join(' ') || '-'}</div>
+                                  </div>
+                                ) : null}
+                                {selectedInvoiceRecipient.address || selectedInvoiceRecipient.postal_code || selectedInvoiceRecipient.city ? (
+                                  <div className="col-12">
+                                    <div className="text-muted small">{t('Adresse')}</div>
+                                    <div className="fw-semibold">
+                                      {[selectedInvoiceRecipient.address, selectedInvoiceRecipient.postal_code, selectedInvoiceRecipient.city].filter(Boolean).join(', ') || '-'}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
                         {isOrderQuoteRequest(selectedOrder) ? (
                           <div className="col-12 mb-3">
                             <label className="form-label">Positionen und Preise</label>

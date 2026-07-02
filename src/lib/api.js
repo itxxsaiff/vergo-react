@@ -77,6 +77,35 @@ async function download(path, fallbackFileName = 'document') {
   window.URL.revokeObjectURL(objectUrl)
 }
 
+async function openPdfInNewTab(path) {
+  const headers = {}
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+
+  if (!response.ok) {
+    throw new Error('PDF could not be generated')
+  }
+
+  const blob = await response.blob()
+  const objectUrl = window.URL.createObjectURL(blob)
+
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.target = '_blank'
+  link.rel = 'noopener noreferrer'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(objectUrl)
+  }, 60000)
+}
+
 export const api = {
   login(data) {
     return request('/auth/login', {
@@ -199,6 +228,9 @@ export const api = {
   getProperty(id) {
     return request(`/properties/${id}`)
   },
+  openPropertyPdf(id) {
+    return openPdfInNewTab(`/properties/${id}/pdf`)
+  },
   comparePropertyPrice(id) {
     return request(`/properties/${id}/compare-price`, {
       method: 'POST',
@@ -230,14 +262,17 @@ export const api = {
   createOrder(data) {
     return request('/orders', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data instanceof FormData ? data : JSON.stringify(data),
     })
   },
   updateOrder(id, data) {
     return request(`/orders/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: data instanceof FormData ? data : JSON.stringify(data),
     })
+  },
+  downloadOrderAttachment(id, fileName) {
+    return download(`/orders/${id}/attachment`, fileName || 'order-attachment')
   },
   completeOrder(id) {
     return request(`/orders/${id}/complete`, {

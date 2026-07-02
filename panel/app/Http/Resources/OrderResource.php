@@ -28,6 +28,10 @@ class OrderResource extends JsonResource
             'due_date' => $this->due_date?->toDateString(),
             'bid_deadline_at' => $this->bid_deadline_at?->toDateTimeString(),
             'workflow_meta' => $this->workflow_meta ?? [],
+            'attachment_name' => $this->attachment_name,
+            'attachment_mime_type' => $this->attachment_mime_type,
+            'attachment_size' => $this->attachment_size,
+            'attachment_download_url' => $this->attachment_path ? route('orders.attachment.download', $this->id) : null,
             'quote_items' => collect($this->quote_items ?? [])
                 ->map(fn ($item) => [
                     'label' => data_get($item, 'label'),

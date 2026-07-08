@@ -4,6 +4,7 @@ import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
+import { formatDateDisplay, formatDateTimeDisplay, formatTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
@@ -263,9 +264,9 @@ function OrderDetailsPage() {
                           <div className="col-md-6" key={`${slot.date}-${slot.time}-${index}`}>
                             <div className="vergo-inspection-detail-card h-100">
                               <div className="vergo-inspection-detail-label">{t('Option')} {index + 1}</div>
-                              <div className="vergo-inspection-detail-value">{slot.date || '-'}</div>
-                              <div className="vergo-inspection-detail-subvalue">{slot.time || '-'}</div>
-                              <div className="vergo-inspection-detail-subvalue">{t('Offerte erstellen bis')}: {slot.quote_due_date || '-'}</div>
+                              <div className="vergo-inspection-detail-value">{formatDateDisplay(slot.date)}</div>
+                              <div className="vergo-inspection-detail-subvalue">{formatTimeDisplay(slot.time)}</div>
+                              <div className="vergo-inspection-detail-subvalue">{t('Offerte erstellen bis')}: {formatDateDisplay(slot.quote_due_date)}</div>
                             </div>
                           </div>
                         ))}
@@ -332,10 +333,10 @@ function OrderDetailsPage() {
                               </span>
                             </div>
                             <div className="vergo-inspection-detail-subvalue">
-                              {t('Gewählter Termin')}: {selectedSlot ? `${selectedSlot.date || '-'} ${selectedSlot.time || ''}` : '-'}
+                              {t('Gewählter Termin')}: {selectedSlot ? `${formatDateDisplay(selectedSlot.date)} ${formatTimeDisplay(selectedSlot.time)}` : '-'}
                             </div>
                             <div className="vergo-inspection-detail-subvalue">
-                              {t('Offerte erstellen bis')}: {selectedSlot?.quote_due_date || '-'}
+                              {t('Offerte erstellen bis')}: {formatDateDisplay(selectedSlot?.quote_due_date)}
                             </div>
                             {bid.rejection_reason ? <div className="text-muted small mt-2">{bid.rejection_reason}</div> : null}
                           </div>
@@ -402,11 +403,11 @@ function OrderDetailsPage() {
                 </div>
 
                 <div className="mb-2">
-                  <strong>Fälligkeitsdatum:</strong> {order.due_date || '-'}
+                  <strong>Fälligkeitsdatum:</strong> {formatDateDisplay(order.due_date)}
                 </div>
 
                 <div className="mb-2">
-                  <strong>Abgeschlossen am:</strong> {order.completed_at || '-'}
+                  <strong>Abgeschlossen am:</strong> {formatDateTimeDisplay(order.completed_at)}
                 </div>
 
                 <div className="mb-3">
@@ -594,7 +595,7 @@ function OrderDetailsPage() {
                     <div className="fw-semibold mb-1">Bieterrunde läuft noch</div>
                     <div>
                       Bis zur Angebotsfrist sehen Sie nur die Anzahl der eingegangenen Angebote.
-                      {order?.bid_deadline_at ? ` Frist: ${order.bid_deadline_at}` : ''}
+                      {order?.bid_deadline_at ? ` Frist: ${formatDateDisplay(order.bid_deadline_at)}` : ''}
                     </div>
                     <div className="mt-2 fw-semibold">{order.bids?.length ?? 0} Angebote eingegangen</div>
                   </div>

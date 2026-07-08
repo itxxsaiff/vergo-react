@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
+import { formatDateDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import {
   getOptionLabel,
@@ -1266,7 +1267,7 @@ function OrdersPage() {
                             <div className="text-muted">{order.requester_email || '-'}</div>
                           </td>
 
-                          <td>{order.due_date || '-'}</td>
+                          <td>{formatDateDisplay(order.due_date)}</td>
 
                           <td>
                             <span className={getStatusBadgeClass(order.status)}>

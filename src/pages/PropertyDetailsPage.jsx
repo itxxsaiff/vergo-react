@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
+import { formatDateDisplay, formatDateTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
@@ -185,7 +186,7 @@ function PropertyDetailsPage() {
                       <tbody>
                         {propertyBenchmarkHistory.map((result) => (
                           <tr key={result.id}>
-                            <td>{result.created_at || '-'}</td>
+                            <td>{formatDateTimeDisplay(result.created_at)}</td>
                             <td>
                               <span className={getStatusBadgeClass(result.comparison_data?.pricing_signal)}>
                                 {formatStatusLabel(result.comparison_data?.pricing_signal)}
@@ -266,7 +267,7 @@ function PropertyDetailsPage() {
                               <div className="text-muted">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
                             </td>
                             <td>{order.property_object?.name || '-'}</td>
-                            <td>{order.due_date || '-'}</td>
+                            <td>{formatDateDisplay(order.due_date)}</td>
                             <td><span className={getStatusBadgeClass(order.status)}>{formatStatusLabel(order.status)}</span></td>
                             <td>
                               <Link className="btn btn-light-primary btn-sm" to={`/orders/${order.id}`}>

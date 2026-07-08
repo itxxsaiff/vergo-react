@@ -4,6 +4,7 @@ import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
+import { formatDateDisplay, formatTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
@@ -652,7 +653,7 @@ function AvailableJobsPage() {
                             <div className="mt-3 small text-muted">
                               {order.workflow_status === 'public_inspection_open'
                                 ? 'Öffentliche Besichtigungsanfrage'
-                                : `Öffentliche Offertenanfrage${order.bid_deadline_at ? ` bis ${order.bid_deadline_at.slice(0, 10)}` : ''}`}
+                                : `Öffentliche Offertenanfrage${order.bid_deadline_at ? ` bis ${formatDateDisplay(order.bid_deadline_at)}` : ''}`}
                             </div>
                           </div>
 
@@ -678,7 +679,7 @@ function AvailableJobsPage() {
 
                             <div className="vergo-job-meta-item">
                               <i className="ti ti-calendar-due"></i>
-                              <span>{order.due_date || '-'}</span>
+                              <span>{formatDateDisplay(order.due_date)}</span>
                             </div>
                           </div>
 
@@ -770,10 +771,10 @@ function AvailableJobsPage() {
                                 <div className="col-md-6" key={slotIndex}>
                                   <div className="bg-light rounded-3 p-3 h-100">
                                     <div className="text-muted small">{t(`Termin ${slotIndex + 1}`)}</div>
-                                    <div className="fw-semibold">{slot?.date || '-'}</div>
-                                    <div className="text-muted">{slot?.time || '-'}</div>
+                                    <div className="fw-semibold">{formatDateDisplay(slot?.date)}</div>
+                                    <div className="text-muted">{formatTimeDisplay(slot?.time)}</div>
                                     <div className="text-muted small mt-2">
-                                      {t('Offerte erstellen bis')}: {slot?.quote_due_date || '-'}
+                                      {t('Offerte erstellen bis')}: {formatDateDisplay(slot?.quote_due_date)}
                                     </div>
                                   </div>
                                 </div>
@@ -788,9 +789,9 @@ function AvailableJobsPage() {
                             <select className="form-select" name="selected_inspection_slot" value={bidForm.selected_inspection_slot} onChange={handleBidChange}>
                               <option value="">{t('Termin auswählen')}</option>
                               {selectedInspectionSlots.map((slot, index) => (
-                                <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
-                                  {slot.date || '-'} {slot.time || ''}
-                                </option>
+                              <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
+                                  {formatDateDisplay(slot.date)} {formatTimeDisplay(slot.time)}
+                              </option>
                               ))}
                             </select>
                           </div>

@@ -19,7 +19,19 @@ export function getStatusBadgeClass(status) {
     return 'badge bg-light-warning text-warning fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 
-  if (['submitted', 'shortlisted', 'in_review', 'open', 'awaiting_owner_approval'].includes(normalizedStatus)) {
+  if ([
+    'submitted',
+    'shortlisted',
+    'in_review',
+    'open',
+    'awaiting_owner_approval',
+    'working',
+    'inspection_requested',
+    'inspection_interest',
+    'inspection_confirmed',
+    'awarded_pending_acceptance',
+    'accepted',
+  ].includes(normalizedStatus)) {
     return 'badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 

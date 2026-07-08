@@ -22,7 +22,12 @@ function getOrderFromBid(bid) {
 }
 
 function getOrderLocation(order) {
-  return [order.property?.postal_code, order.property?.city].filter(Boolean).join(' ') || '-'
+  const address = order?.property_object?.address || order?.property_object?.name || ''
+  const postalCode = order?.property_object?.postal_code || order?.property?.postal_code || ''
+  const city = order?.property_object?.city || order?.property?.city || ''
+  const locality = [postalCode, city].filter(Boolean).join(' ')
+
+  return [address, locality].filter(Boolean).join(', ') || locality || address || '-'
 }
 
 function getAssignedProviderEmail(bid) {
@@ -48,14 +53,14 @@ function ProviderOrderCard({ title, order, bid, actionLabel }) {
         </div>
         {bid ? (
           <span className={getStatusBadgeClass(bid.status)}>
-            {formatStatusLabel(bid.status)}
+            {t(formatStatusLabel(bid.status))}
           </span>
         ) : null}
       </div>
 
       <div className="d-grid gap-2 small text-muted mb-3">
         <div><span className="fw-semibold text-dark">{t('Gewerk')}:</span> {getOptionLabel(JOB_TYPE_OPTIONS, order.service_type) || '-'}</div>
-        <div><span className="fw-semibold text-dark">{t('Ort')}:</span> {getOrderLocation(order)}</div>
+        <div><span className="fw-semibold text-dark">{t('Standort')}:</span> {getOrderLocation(order)}</div>
         {getAssignedProviderEmail(bid) ? (
           <div><span className="fw-semibold text-dark">{t('Bearbeiter')}:</span> {getAssignedProviderEmail(bid)}</div>
         ) : null}

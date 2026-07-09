@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AiAnalysisController;
 use App\Http\Controllers\Api\BackgroundJobController;
 use App\Http\Controllers\Api\BidController;
 use App\Http\Controllers\Api\CronController;
+use App\Http\Controllers\Api\CompanyAdditionRequestController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\EmployeeController;
@@ -87,6 +88,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/orders/{order}/compare-bids', OrderComparisonController::class);
     Route::post('/orders/{order}/compare-price', [OrderComparisonController::class, 'comparePrice']);
     Route::post('/orders/{order}/provider-assign', [BidController::class, 'assignToProvider']);
+    Route::get('/company-addition-requests', [CompanyAdditionRequestController::class, 'index']);
+    Route::post('/company-addition-requests', [CompanyAdditionRequestController::class, 'store']);
+    Route::put('/company-addition-requests/{companyAdditionRequest}', [CompanyAdditionRequestController::class, 'update']);
 
     Route::get('/bids', [BidController::class, 'index']);
     Route::post('/bids', [BidController::class, 'store']);

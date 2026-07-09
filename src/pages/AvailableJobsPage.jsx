@@ -100,6 +100,7 @@ function AvailableJobsPage() {
   const [bidForm, setBidForm] = useState(initialBidForm)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
   const [assignmentMode, setAssignmentMode] = useState('self')
   const [targetProviderEmail, setTargetProviderEmail] = useState('')
@@ -498,6 +499,34 @@ function AvailableJobsPage() {
 
     return () => window.clearInterval(intervalId)
   }, [activeProviderBid?.id, bidForm, isAssignedToMe, selectedOrder])
+
+  async function handleSaveDraft() {
+    if (!activeProviderBid?.id || !isAssignedToMe) {
+      return
+    }
+
+    setIsSavingDraft(true)
+
+    try {
+      const response = await api.saveBidDraft(activeProviderBid.id, {
+        draft_payload: {
+          amount: bidForm.amount,
+          currency: bidForm.currency,
+          estimated_start_date: bidForm.estimated_start_date,
+          estimated_completion_date: bidForm.estimated_completion_date,
+          notes: bidForm.notes,
+          selected_inspection_slot: bidForm.selected_inspection_slot,
+          line_items: bidForm.line_items,
+        },
+      })
+
+      setLastDraftSavedAt(response.data?.draft_saved_at || '')
+    } catch {
+      // Manual draft saving should stay non-blocking.
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
 
   function isOrderQuoteRequest(order) {
     const providerBid = providerBidByOrderId[order.id]
@@ -1127,6 +1156,11 @@ function AvailableJobsPage() {
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>{t('Abbrechen')}</button>
+                    {canSubmitCurrentOrder && activeProviderBid?.id && isAssignedToMe ? (
+                      <button type="button" className="btn btn-light-primary" disabled={isSavingDraft} onClick={handleSaveDraft}>
+                        {isSavingDraft ? t('Wird gespeichert...') : t('Als Entwurf speichern')}
+                      </button>
+                    ) : null}
                     {activeProviderBid?.status === 'inspection_requested' ? (
                       <>
                         <button type="button" className="btn btn-light-danger text-danger" disabled={isSaving} onClick={() => handleProviderDecision('rejected')}>

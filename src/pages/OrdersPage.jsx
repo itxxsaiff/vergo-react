@@ -30,6 +30,16 @@ const initialForm = {
   due_date: '',
 }
 
+const initialCompanyRequestForm = {
+  company_name: '',
+  contact_name: '',
+  email: '',
+  phone: '',
+  canton: '',
+  city: '',
+  notes: '',
+}
+
 const COST_ESTIMATE_OPTIONS = [
   { value: '1-1000', label: '1 - 1000' },
   { value: '1001-5000', label: '1001 - 5000' },
@@ -145,10 +155,6 @@ function getInitialManagerWizard(propertyId = '') {
     invoice_city: '',
     quote_items: [],
     selected_provider_ids: [],
-    manual_provider_company: '',
-    manual_provider_contact: '',
-    manual_provider_email: '',
-    manual_provider_phone: '',
   }
 }
 
@@ -167,13 +173,13 @@ function getOrderObjectLabel(order) {
   return order?.property_object?.name || '-'
 }
 
-function hasManualProviderSelection(wizard) {
-  return Boolean(
-    wizard.manual_provider_company.trim()
-    || wizard.manual_provider_contact.trim()
-    || wizard.manual_provider_email.trim()
-    || wizard.manual_provider_phone.trim(),
-  )
+function serializeManagerWizardDraft(wizard, currentStep, providerCantonFilter) {
+  return {
+    ...wizard,
+    attachment: null,
+    current_step: currentStep,
+    provider_canton_filter: providerCantonFilter,
+  }
 }
 
 function isWeekendDate(value) {
@@ -290,14 +296,7 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
       selected_provider_ids: wizard.selected_provider_ids
         .filter((id) => id !== null && id !== undefined && id !== '')
         .map((id) => Number(id)),
-      manual_provider: hasManualProviderSelection(wizard)
-        ? {
-          company_name: wizard.manual_provider_company || null,
-          contact_name: wizard.manual_provider_contact || null,
-          email: wizard.manual_provider_email || null,
-          phone: wizard.manual_provider_phone || null,
-        }
-        : null,
+      manual_provider: null,
     },
   }
 }
@@ -314,6 +313,11 @@ function OrdersPage() {
   const [managerWizard, setManagerWizard] = useState(getInitialManagerWizard())
   const [managerStep, setManagerStep] = useState(1)
   const [providerCantonFilter, setProviderCantonFilter] = useState('')
+  const [isCompanyRequestModalOpen, setIsCompanyRequestModalOpen] = useState(false)
+  const [companyRequestForm, setCompanyRequestForm] = useState(initialCompanyRequestForm)
+  const [companyRequestSuccess, setCompanyRequestSuccess] = useState('')
+  const [isSubmittingCompanyRequest, setIsSubmittingCompanyRequest] = useState(false)
+  const [existingAttachmentName, setExistingAttachmentName] = useState('')
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -332,7 +336,7 @@ function OrdersPage() {
   const showActionColumn = isAdmin || canEditOrders || canDeleteOrders
   const isManager = user?.role === 'manager'
   const isOwner = user?.role === 'owner'
-  const isManagerCreateFlow = isManager && !editingOrderId
+  const isManagerOrderFlow = isManager
 
   async function loadData() {
     setIsLoading(true)
@@ -465,28 +469,16 @@ function OrdersPage() {
           invoice_city: '',
           quote_items: [],
           selected_provider_ids: [],
-          manual_provider_company: '',
-          manual_provider_contact: '',
-          manual_provider_email: '',
-          manual_provider_phone: '',
         }
         : {}),
       ...(name === 'inspection_request_mode' && value === 'public'
         ? {
           selected_provider_ids: [],
-          manual_provider_company: '',
-          manual_provider_contact: '',
-          manual_provider_email: '',
-          manual_provider_phone: '',
         }
         : {}),
       ...(name === 'award_mode' && value === 'request_quotes'
         ? {
           selected_provider_ids: [],
-          manual_provider_company: '',
-          manual_provider_contact: '',
-          manual_provider_email: '',
-          manual_provider_phone: '',
           quote_items: seedQuoteItemsForTrade(current.service_type),
         }
         : {}),
@@ -642,28 +634,6 @@ function OrdersPage() {
     })
   }
 
-  function applyRegisteredProviderSuggestion(provider) {
-    if (!provider) {
-      return
-    }
-
-    setManagerWizard((current) => {
-      const normalizedProviderId = String(provider.id)
-      const selectedProviderIds = current.selected_provider_ids.includes(normalizedProviderId)
-        ? current.selected_provider_ids
-        : [...current.selected_provider_ids, normalizedProviderId]
-
-      return {
-        ...current,
-        selected_provider_ids: selectedProviderIds,
-        manual_provider_company: provider.company_name || '',
-        manual_provider_contact: provider.contact_name || '',
-        manual_provider_email: provider.order_email || provider.contact_email || '',
-        manual_provider_phone: provider.phone || '',
-      }
-    })
-  }
-
   function handleFilterChange(event) {
     const { name, value } = event.target
 
@@ -704,17 +674,19 @@ function OrdersPage() {
   )
 
   useEffect(() => {
-    if (isManagerCreateFlow && managerAvailableObjects.length === 1 && managerWizard.selected_object_ids.length === 0) {
+    if (isManagerOrderFlow && managerAvailableObjects.length === 1 && managerWizard.selected_object_ids.length === 0) {
       setManagerWizard((current) => ({
         ...current,
         selected_object_ids: [managerAvailableObjects[0].id],
       }))
     }
-  }, [isManagerCreateFlow, managerAvailableObjects, managerWizard.selected_object_ids.length])
+  }, [isManagerOrderFlow, managerAvailableObjects, managerWizard.selected_object_ids.length])
 
   function openCreateModal() {
     setEditingOrderId(null)
     setError('')
+    setCompanyRequestSuccess('')
+    setExistingAttachmentName('')
     setForm({
       ...initialForm,
       property_id: isManager ? String(user?.property?.id ?? properties[0]?.id ?? '') : '',
@@ -722,6 +694,89 @@ function OrdersPage() {
     setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
     setManagerStep(1)
     setProviderCantonFilter('')
+    setIsModalOpen(true)
+  }
+
+  function openCompanyRequestModal() {
+    setCompanyRequestForm((current) => ({
+      ...initialCompanyRequestForm,
+      canton: current.canton || providerCantonFilter || '',
+      city: current.city || '',
+    }))
+    setIsCompanyRequestModalOpen(true)
+  }
+
+  function closeCompanyRequestModal() {
+    setIsCompanyRequestModalOpen(false)
+    setCompanyRequestForm(initialCompanyRequestForm)
+  }
+
+  function handleCompanyRequestChange(event) {
+    const { name, value } = event.target
+
+    setCompanyRequestForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
+  }
+
+  async function handleSubmitCompanyRequest(event) {
+    event.preventDefault()
+    setIsSubmittingCompanyRequest(true)
+    setError('')
+
+    try {
+      await api.createCompanyAdditionRequest({
+        property_id: Number(managerWizard.property_id),
+        ...companyRequestForm,
+      })
+
+      setCompanyRequestSuccess(t('Ihre Firmenanfrage wurde an das Vergo-Team gesendet.'))
+      closeCompanyRequestModal()
+    } catch (requestError) {
+      setError(t(requestError.message))
+    } finally {
+      setIsSubmittingCompanyRequest(false)
+    }
+  }
+
+  function hydrateManagerWizardFromDraft(order) {
+    const draftState = order?.workflow_meta?.manager_wizard_draft ?? {}
+    const baseWizard = getInitialManagerWizard(String(order?.property_id ?? user?.property?.id ?? properties[0]?.id ?? ''))
+    const selectedObjectIds = Array.isArray(draftState.selected_object_ids)
+      ? draftState.selected_object_ids
+      : (order?.property_object_ids ?? []).map((id) => Number(id))
+
+    setManagerWizard({
+      ...baseWizard,
+      ...draftState,
+      property_id: String(draftState.property_id ?? order?.property_id ?? baseWizard.property_id),
+      selected_object_ids: selectedObjectIds,
+      selected_provider_ids: (draftState.selected_provider_ids ?? []).map((id) => String(id)),
+      attachment: null,
+    })
+    setManagerStep(Number(draftState.current_step) || 1)
+    setProviderCantonFilter(draftState.provider_canton_filter || '')
+    setExistingAttachmentName(order?.attachment_name || '')
+  }
+
+  function openEditModal(order) {
+    setEditingOrderId(order.id)
+    setError('')
+    setCompanyRequestSuccess('')
+    setForm({
+      ...initialForm,
+      property_id: String(order.property_id ?? ''),
+      property_object_id: String(order.property_object_id ?? ''),
+      requester_name: order.requester_name ?? '',
+      requester_email: order.requester_email ?? '',
+      title: order.title ?? '',
+      service_type: order.service_type ?? '',
+      description: order.description ?? '',
+      status: order.status ?? 'open',
+      due_date: order.due_date ?? '',
+    })
+    hydrateManagerWizardFromDraft(order)
     setIsModalOpen(true)
   }
 
@@ -873,8 +928,8 @@ function OrdersPage() {
 
       const normalizedSelectedProviderIds = (managerWizard.selected_provider_ids ?? []).filter(Boolean)
 
-      if (requiresProviderSelection && normalizedSelectedProviderIds.length === 0 && !hasManualProviderSelection(managerWizard)) {
-        setError(t('Bitte wählen Sie mindestens eine Firma aus oder erfassen Sie eine manuell.'))
+      if (requiresProviderSelection && normalizedSelectedProviderIds.length === 0) {
+        setError(t('Bitte wählen Sie mindestens eine Firma aus der Liste aus.'))
         return false
       }
     }
@@ -896,6 +951,123 @@ function OrdersPage() {
     setManagerStep((current) => Math.max(current - 1, 1))
   }
 
+  function buildManagerOrderPayload(saveAsDraft = false) {
+    const workflowMeta = {
+      ...buildManagerWorkflowMeta(managerWizard, selectedManagerObjects),
+      manager_wizard_draft: serializeManagerWizardDraft(managerWizard, managerStep, providerCantonFilter),
+    }
+
+    return {
+      property_id: Number(managerWizard.property_id),
+      property_object_id: managerWizard.selected_object_ids[0] ? Number(managerWizard.selected_object_ids[0]) : null,
+      property_object_ids: managerWizard.selected_object_ids.map((id) => Number(id)),
+      title: managerWizard.title.trim() || null,
+      service_type: managerWizard.service_type ? normalizeServiceTypeForApi(managerWizard.service_type) : null,
+      description: managerWizard.description.trim() || null,
+      status: saveAsDraft ? 'draft' : 'open',
+      workflow_type: managerWizard.flow_type || null,
+      workflow_status: saveAsDraft
+        ? 'draft'
+        : (managerWizard.flow_type === 'inspection'
+            ? (managerWizard.inspection_request_mode === 'direct' ? 'inspection_requested' : 'public_inspection_open')
+            : 'published_for_quotes'),
+      bid_priority: null,
+      bid_deadline_at: managerWizard.flow_type === 'direct_order' && managerWizard.bid_deadline_at
+        ? `${managerWizard.bid_deadline_at} 23:59:00`
+        : null,
+      quote_items: managerWizard.flow_type === 'direct_order'
+        ? (managerWizard.quote_items ?? [])
+          .filter((item) => item.label.trim())
+          .map((item) => {
+            const payloadItem = { ...item }
+            delete payloadItem.id
+            return payloadItem
+          })
+        : [],
+      due_date: managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date'
+        ? managerWizard.due_date || null
+        : null,
+      workflow_meta: workflowMeta,
+    }
+  }
+
+  function buildManagerOrderRequestBody(payload) {
+    if (!managerWizard.attachment) {
+      return payload
+    }
+
+    const formData = new FormData()
+    formData.append('property_id', String(payload.property_id))
+
+    if (payload.property_object_id) {
+      formData.append('property_object_id', String(payload.property_object_id))
+    }
+
+    formData.append('property_object_ids', JSON.stringify(payload.property_object_ids))
+
+    if (payload.title) {
+      formData.append('title', payload.title)
+    }
+
+    if (payload.service_type) {
+      formData.append('service_type', payload.service_type)
+    }
+
+    if (payload.description) {
+      formData.append('description', payload.description)
+    }
+
+    if (payload.workflow_type) {
+      formData.append('workflow_type', payload.workflow_type)
+    }
+
+    formData.append('status', payload.status)
+    formData.append('workflow_status', payload.workflow_status)
+
+    if (payload.bid_deadline_at) {
+      formData.append('bid_deadline_at', payload.bid_deadline_at)
+    }
+
+    if (payload.due_date) {
+      formData.append('due_date', payload.due_date)
+    }
+
+    formData.append('workflow_meta', JSON.stringify(payload.workflow_meta))
+    formData.append('quote_items', JSON.stringify(payload.quote_items))
+    formData.append('attachment', managerWizard.attachment)
+
+    return formData
+  }
+
+  async function persistManagerOrder(saveAsDraft = false) {
+    const payload = buildManagerOrderPayload(saveAsDraft)
+    const requestBody = buildManagerOrderRequestBody(payload)
+    const response = editingOrderId
+      ? await api.updateOrder(editingOrderId, requestBody)
+      : await api.createOrder(requestBody)
+
+    setOrders((current) => {
+      const nextOrders = current.filter((order) => order.id !== response.data.id)
+      return [response.data, ...nextOrders]
+    })
+
+    return response.data
+  }
+
+  async function handleSaveManagerDraft() {
+    setIsSaving(true)
+    setError('')
+
+    try {
+      await persistManagerOrder(true)
+      handleCloseModal()
+    } catch (saveError) {
+      setError(t(saveError.message))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function handleManagerCreateSubmit() {
     setIsSaving(true)
     setError('')
@@ -906,77 +1078,10 @@ function OrdersPage() {
     }
 
     try {
-      const workflowMeta = buildManagerWorkflowMeta(managerWizard, selectedManagerObjects)
-      const payload = {
-        property_id: Number(managerWizard.property_id),
-        property_object_id: managerWizard.selected_object_ids[0] ? Number(managerWizard.selected_object_ids[0]) : null,
-        property_object_ids: managerWizard.selected_object_ids.map((id) => Number(id)),
-        title: managerWizard.title.trim(),
-        service_type: normalizeServiceTypeForApi(managerWizard.service_type),
-        description: managerWizard.description.trim() || null,
-        workflow_type: managerWizard.flow_type,
-        workflow_status: managerWizard.flow_type === 'inspection'
-          ? (managerWizard.inspection_request_mode === 'direct' ? 'inspection_requested' : 'public_inspection_open')
-          : 'published_for_quotes',
-        bid_priority: null,
-        bid_deadline_at: managerWizard.flow_type === 'direct_order'
-          ? `${managerWizard.bid_deadline_at} 23:59:00`
-          : null,
-        quote_items: managerWizard.flow_type === 'direct_order'
-          ? (managerWizard.quote_items ?? [])
-            .filter((item) => item.label.trim())
-            .map((item) => {
-              const payloadItem = { ...item }
-              delete payloadItem.id
-              return payloadItem
-            })
-          : [],
-        due_date: managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date'
-          ? managerWizard.due_date
-          : null,
-        workflow_meta: workflowMeta,
-      }
-      const requestBody = managerWizard.attachment
-        ? (() => {
-          const formData = new FormData()
-          formData.append('property_id', String(payload.property_id))
-
-          if (payload.property_object_id) {
-            formData.append('property_object_id', String(payload.property_object_id))
-          }
-
-          formData.append('property_object_ids', JSON.stringify(payload.property_object_ids))
-          formData.append('title', payload.title)
-          formData.append('service_type', payload.service_type)
-
-          if (payload.description) {
-            formData.append('description', payload.description)
-          }
-
-          formData.append('workflow_type', payload.workflow_type)
-          formData.append('workflow_status', payload.workflow_status)
-
-          if (payload.bid_deadline_at) {
-            formData.append('bid_deadline_at', payload.bid_deadline_at)
-          }
-
-          if (payload.due_date) {
-            formData.append('due_date', payload.due_date)
-          }
-
-          formData.append('workflow_meta', JSON.stringify(payload.workflow_meta))
-          formData.append('quote_items', JSON.stringify(payload.quote_items))
-          formData.append('attachment', managerWizard.attachment)
-
-          return formData
-        })()
-        : payload
-
-      const response = await api.createOrder(requestBody)
-      setOrders((current) => [response.data, ...current])
+      await persistManagerOrder(false)
       handleCloseModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -985,7 +1090,7 @@ function OrdersPage() {
   async function handleSubmit(event) {
     event.preventDefault()
 
-    if (isManagerCreateFlow) {
+    if (isManagerOrderFlow) {
       if (managerStep < 5) {
         handleManagerNextStep()
       }
@@ -1077,6 +1182,10 @@ function OrdersPage() {
 
   function handleCloseModal() {
     setEditingOrderId(null)
+    setIsCompanyRequestModalOpen(false)
+    setCompanyRequestForm(initialCompanyRequestForm)
+    setCompanyRequestSuccess('')
+    setExistingAttachmentName('')
     setForm({
       ...initialForm,
       property_id: isManager ? String(user?.property?.id ?? properties[0]?.id ?? '') : '',
@@ -1136,18 +1245,6 @@ function OrdersPage() {
       ? serviceProviders.filter((provider) => String(provider.canton || '').trim().toUpperCase() === providerCantonFilter)
       : serviceProviders
   ), [providerCantonFilter, serviceProviders])
-  const manualProviderSuggestions = useMemo(() => {
-    const search = managerWizard.manual_provider_company.trim().toLowerCase()
-
-    if (!search) {
-      return []
-    }
-
-    return serviceProviders
-      .filter((provider) => String(provider.company_name || '').trim().toLowerCase().startsWith(search))
-      .sort((firstProvider, secondProvider) => String(firstProvider.company_name || '').localeCompare(String(secondProvider.company_name || '')))
-      .slice(0, 8)
-  }, [managerWizard.manual_provider_company, serviceProviders])
 
   return (
     <PageContent
@@ -1286,6 +1383,17 @@ function OrdersPage() {
                                   <i className="ti ti-eye"></i>
                                 </Link>
 
+                                {isManager && order.status === 'draft' && String(order.requester_email || '').toLowerCase() === String(user?.email || '').toLowerCase() ? (
+                                  <button
+                                    type="button"
+                                    className="table-action-btn table-action-edit"
+                                    onClick={() => openEditModal(order)}
+                                    title={t('Entwurf bearbeiten')}
+                                  >
+                                    <i className="ti ti-pencil"></i>
+                                  </button>
+                                ) : null}
+
                                 {canDeleteOrders ? (
                                   <>
                                     {canDeleteOrders && String(order.requester_email || '').toLowerCase() === String(user?.email || '').toLowerCase() ? (
@@ -1330,14 +1438,14 @@ function OrdersPage() {
             tabIndex="-1"
             aria-hidden={!isModalOpen}
           >
-            <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable ${isManagerCreateFlow ? 'modal-xl' : 'modal-lg'}`}>
+            <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable ${isManagerOrderFlow ? 'modal-xl' : 'modal-lg'}`}>
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
                   <div>
                     <h5 className="modal-title mb-1">
-                      {editingOrderId ? t('Auftrag bearbeiten') : isManagerCreateFlow ? t('Auftrag erfassen') : t('Auftrag erstellen')}
+                      {editingOrderId ? t('Auftrag bearbeiten') : isManagerOrderFlow ? t('Auftrag erfassen') : t('Auftrag erstellen')}
                     </h5>
-                    {isManagerCreateFlow ? (
+                    {isManagerOrderFlow ? (
                       <p className="text-muted mb-0">{t(`Schritt ${managerStep} von ${MANAGER_ORDER_STEPS.length}`)}</p>
                     ) : null}
                   </div>
@@ -1346,7 +1454,7 @@ function OrdersPage() {
 
                 <form onSubmit={handleSubmit}>
                   <div className="modal-body">
-                    {isManagerCreateFlow ? (
+                    {isManagerOrderFlow ? (
                       <>
                         <div className="vergo-order-stepper mb-4">
                           {MANAGER_ORDER_STEPS.map((step) => (
@@ -1573,6 +1681,11 @@ function OrdersPage() {
                                   <label className="form-label">{t('Anhang')}</label>
                                   <input type="file" className="form-control" name="attachment" accept=".pdf,.png,.jpg,.jpeg" onChange={handleManagerWizardFileChange} />
                                   <div className="form-text">{t('Optional. Laden Sie ein PDF oder Bild bis zu 10 MB hoch.')}</div>
+                                  {managerWizard.attachment?.name || existingAttachmentName ? (
+                                    <div className="text-muted small mt-2">
+                                      {t('Aktueller Anhang')}: {managerWizard.attachment?.name || existingAttachmentName}
+                                    </div>
+                                  ) : null}
                                 </div>
                                 <div className="col-12">
                                   <div className="border rounded-3 p-3">
@@ -1772,7 +1885,7 @@ function OrdersPage() {
                                 <h6 className="fw-semibold mb-1">{t('Firmenauswahl')}</h6>
                                 <p className="text-muted small mb-0">
                                   {requiresProviderSelection
-                                    ? t('Wählen Sie passende Firmen aus der Liste oder ergänzen Sie eine manuell.')
+                                    ? t('Wählen Sie passende Firmen aus der Liste aus.')
                                     : t('Die Auswahl ist optional. Sie können den Auftrag auch ohne direkte Firmenzuordnung speichern.')}
                                 </p>
                               </div>
@@ -1812,56 +1925,24 @@ function OrdersPage() {
                             </div>
 
                             <div className="col-lg-5">
-                              <div className="mb-3">
-                                <h6 className="fw-semibold mb-1">{t('Manuelle Firma erfassen')}</h6>
-                                <p className="text-muted small mb-0">{t('Optional eine externe Firma mit Kontaktinformationen erfassen.')}</p>
-                              </div>
+                              <div className="border rounded-3 p-4 h-100">
+                                <div className="mb-3">
+                                  <h6 className="fw-semibold mb-1">{t('Firma fehlt?')}</h6>
+                                  <p className="text-muted small mb-0">
+                                    {t('Senden Sie eine Anfrage an das Vergo-Team, damit die Firma zentral angelegt werden kann.')}
+                                  </p>
+                                </div>
 
-                              <div className="row g-3">
-                                <div className="col-12">
-                                  <label className="form-label">{t('Firma')}</label>
-                                  <input className="form-control" name="manual_provider_company" value={managerWizard.manual_provider_company} onChange={handleManagerWizardChange} />
-                                  {manualProviderSuggestions.length > 0 ? (
-                                    <div className="list-group mt-2">
-                                      {manualProviderSuggestions.map((provider) => {
-                                        const isSelected = managerWizard.selected_provider_ids.includes(String(provider.id))
+                                <button type="button" className="btn btn-light-primary" onClick={openCompanyRequestModal}>
+                                  <i className="ti ti-plus me-1"></i>
+                                  {t('Firma zur Anlage anfragen')}
+                                </button>
 
-                                        return (
-                                          <button
-                                            key={provider.id}
-                                            type="button"
-                                            className="list-group-item list-group-item-action"
-                                            onClick={() => applyRegisteredProviderSuggestion(provider)}
-                                          >
-                                            <div className="d-flex align-items-start justify-content-between gap-3">
-                                              <div className="text-start">
-                                                <div className="fw-semibold">{provider.company_name}</div>
-                                                <div className="text-muted small">
-                                                  {[provider.postal_code, provider.city, provider.canton].filter(Boolean).join(' ') || '-'}
-                                                </div>
-                                              </div>
-                                              <span className={`badge ${isSelected ? 'bg-success-subtle text-success' : 'bg-light text-muted'}`}>
-                                                {isSelected ? t('Bereits ausgewählt') : t('Übernehmen')}
-                                              </span>
-                                            </div>
-                                          </button>
-                                        )
-                                      })}
-                                    </div>
-                                  ) : null}
-                                </div>
-                                <div className="col-12">
-                                  <label className="form-label">{t('Kontaktperson')}</label>
-                                  <input className="form-control" name="manual_provider_contact" value={managerWizard.manual_provider_contact} onChange={handleManagerWizardChange} />
-                                </div>
-                                <div className="col-12">
-                                  <label className="form-label">{t('E-Mail')}</label>
-                                  <input className="form-control" name="manual_provider_email" value={managerWizard.manual_provider_email} onChange={handleManagerWizardChange} />
-                                </div>
-                                <div className="col-12">
-                                  <label className="form-label">{t('Telefon')}</label>
-                                  <input className="form-control" name="manual_provider_phone" value={managerWizard.manual_provider_phone} onChange={handleManagerWizardChange} />
-                                </div>
+                                {companyRequestSuccess ? (
+                                  <div className="alert alert-success py-2 mt-3 mb-0">
+                                    {companyRequestSuccess}
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
                           </div>
@@ -1982,7 +2063,7 @@ function OrdersPage() {
                       {t('Abbrechen')}
                     </button>
 
-                    {isManagerCreateFlow ? (
+                    {isManagerOrderFlow ? (
                       <>
                         {managerStep > 1 ? (
                           <button type="button" className="btn btn-light-primary" onClick={handleManagerPreviousStep}>
@@ -1990,13 +2071,17 @@ function OrdersPage() {
                           </button>
                         ) : null}
 
+                        <button type="button" className="btn btn-light-primary" disabled={isSaving} onClick={handleSaveManagerDraft}>
+                          {isSaving ? t('Wird gespeichert...') : t('Als Entwurf speichern')}
+                        </button>
+
                         {managerStep < 5 ? (
                           <button type="button" className="btn btn-primary" onClick={handleManagerNextStep}>
                             {t('Weiter')}
                           </button>
                         ) : (
                           <button type="button" className="btn btn-primary" disabled={isSaving} onClick={handleManagerCreateSubmit}>
-                            {isSaving ? t('Wird gespeichert...') : t('Auftrag erstellen')}
+                            {isSaving ? t('Wird gespeichert...') : editingOrderId ? t('Entwurf veröffentlichen') : t('Auftrag erstellen')}
                           </button>
                         )}
                       </>
@@ -2010,7 +2095,74 @@ function OrdersPage() {
               </div>
             </div>
           </div>
+          {isCompanyRequestModalOpen ? (
+            <div
+              className="modal fade show"
+              style={{ display: 'block' }}
+              tabIndex="-1"
+              aria-hidden="false"
+            >
+              <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content rounded-1">
+                  <div className="modal-header border-bottom">
+                    <h5 className="modal-title">{t('Firma zur Anlage anfragen')}</h5>
+                    <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={closeCompanyRequestModal}></button>
+                  </div>
+
+                  <form onSubmit={handleSubmitCompanyRequest}>
+                    <div className="modal-body">
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <label className="form-label">{t('Firmenname')}</label>
+                          <input className="form-control" name="company_name" value={companyRequestForm.company_name} onChange={handleCompanyRequestChange} required />
+                        </div>
+                        <div className="col-12">
+                          <label className="form-label">{t('Kontaktperson')}</label>
+                          <input className="form-control" name="contact_name" value={companyRequestForm.contact_name} onChange={handleCompanyRequestChange} />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">{t('E-Mail')}</label>
+                          <input type="email" className="form-control" name="email" value={companyRequestForm.email} onChange={handleCompanyRequestChange} />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">{t('Telefon')}</label>
+                          <input className="form-control" name="phone" value={companyRequestForm.phone} onChange={handleCompanyRequestChange} />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">{t('Kanton')}</label>
+                          <select className="form-select" name="canton" value={companyRequestForm.canton} onChange={handleCompanyRequestChange}>
+                            <option value="">{t('Alle Kantone')}</option>
+                            {SWISS_CANTONS.map((canton) => (
+                              <option key={canton.value} value={canton.value}>{canton.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">{t('Ort')}</label>
+                          <input className="form-control" name="city" value={companyRequestForm.city} onChange={handleCompanyRequestChange} />
+                        </div>
+                        <div className="col-12">
+                          <label className="form-label">{t('Notizen')}</label>
+                          <textarea className="form-control" rows="4" name="notes" value={companyRequestForm.notes} onChange={handleCompanyRequestChange}></textarea>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="modal-footer">
+                      <button type="button" className="btn btn-light-danger text-danger" onClick={closeCompanyRequestModal}>
+                        {t('Abbrechen')}
+                      </button>
+                      <button type="submit" className="btn btn-primary" disabled={isSubmittingCompanyRequest}>
+                        {isSubmittingCompanyRequest ? t('Wird gespeichert...') : t('Anfrage senden')}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          ) : null}
           {isModalOpen ? <div className="modal-backdrop fade show"></div> : null}
+          {isCompanyRequestModalOpen ? <div className="modal-backdrop fade show"></div> : null}
         </>
       ) : null}
     </PageContent>

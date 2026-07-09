@@ -326,6 +326,21 @@ export const api = {
       method: 'DELETE',
     })
   },
+  getCompanyAdditionRequests() {
+    return request('/company-addition-requests')
+  },
+  createCompanyAdditionRequest(data) {
+    return request('/company-addition-requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  updateCompanyAdditionRequest(id, data) {
+    return request(`/company-addition-requests/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
   getPropertyManagers() {
     return request('/property-managers')
   },

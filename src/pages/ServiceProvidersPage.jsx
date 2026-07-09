@@ -51,9 +51,11 @@ const SWISS_CANTONS = [
 
 function ServiceProvidersPage() {
   const [providers, setProviders] = useState([])
+  const [companyRequests, setCompanyRequests] = useState([])
   const [form, setForm] = useState(initialForm)
   const [filters, setFilters] = useState({ search: '', status: '' })
   const [editingId, setEditingId] = useState(null)
+  const [sourceRequestId, setSourceRequestId] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -84,8 +86,12 @@ function ServiceProvidersPage() {
     setError('')
 
     try {
-      const response = await api.getServiceProviders()
-      setProviders(response.data ?? [])
+      const [providersResponse, requestsResponse] = await Promise.all([
+        api.getServiceProviders(),
+        api.getCompanyAdditionRequests(),
+      ])
+      setProviders(providersResponse.data ?? [])
+      setCompanyRequests(requestsResponse.data ?? [])
     } catch (loadError) {
       setError(loadError.message)
     } finally {
@@ -116,7 +122,26 @@ function ServiceProvidersPage() {
 
   function openCreateModal() {
     setEditingId(null)
+    setSourceRequestId(null)
     setForm(initialForm)
+    setError('')
+    setFieldErrors({})
+    setIsModalOpen(true)
+  }
+
+  function openCreateFromRequest(companyRequest) {
+    setEditingId(null)
+    setSourceRequestId(companyRequest.id)
+    setForm({
+      ...initialForm,
+      company_name: companyRequest.company_name || '',
+      contact_name: companyRequest.contact_name || '',
+      contact_email: companyRequest.email || '',
+      order_email: companyRequest.email || '',
+      phone: companyRequest.phone || '',
+      city: companyRequest.city || '',
+      canton: companyRequest.canton || '',
+    })
     setError('')
     setFieldErrors({})
     setIsModalOpen(true)
@@ -145,6 +170,7 @@ function ServiceProvidersPage() {
 
   function closeModal() {
     setEditingId(null)
+    setSourceRequestId(null)
     setForm(initialForm)
     setError('')
     setFieldErrors({})
@@ -212,6 +238,13 @@ function ServiceProvidersPage() {
       } else {
         const response = await api.createServiceProvider(payload)
         setProviders((current) => [response.data, ...current])
+
+        if (sourceRequestId) {
+          await api.updateCompanyAdditionRequest(sourceRequestId, { status: 'completed' })
+          setCompanyRequests((current) => current.map((request) => (
+            request.id === sourceRequestId ? { ...request, status: 'completed' } : request
+          )))
+        }
       }
 
       closeModal()
@@ -258,6 +291,8 @@ function ServiceProvidersPage() {
     return searchMatch && statusMatch
   })
 
+  const pendingCompanyRequests = companyRequests.filter((request) => request.status === 'pending')
+
   return (
     <PageContent
       title="Dienstleister"
@@ -269,6 +304,76 @@ function ServiceProvidersPage() {
     >
       <div className="card">
   <div className="card-body p-4">
+    {pendingCompanyRequests.length > 0 ? (
+      <div className="mb-4">
+        <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+          <div>
+            <h5 className="fw-semibold mb-1">Firmenanfragen</h5>
+            <p className="text-muted mb-0">Anfragen von Immobilienverwaltern, damit Vergo die Firma zentral anlegt.</p>
+          </div>
+          <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
+            {pendingCompanyRequests.length} offen
+          </span>
+        </div>
+
+        <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
+          <table className="table border-none text-nowrap customize-table mb-0 align-middle">
+            <thead className="text-dark fs-4">
+              <tr>
+                <th><h6 className="fs-4 fw-semibold mb-0">Firma</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">Kontakt</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">Angefragt von</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
+                <th width="160"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingCompanyRequests.map((companyRequest) => (
+                <tr key={companyRequest.id}>
+                  <td>
+                    <div className="fw-semibold">{companyRequest.company_name}</div>
+                    {companyRequest.notes ? <div className="text-muted small">{companyRequest.notes}</div> : null}
+                  </td>
+                  <td>
+                    <div>{companyRequest.contact_name || '-'}</div>
+                    <div className="text-muted small">{companyRequest.email || '-'}</div>
+                    <div className="text-muted small">{companyRequest.phone || '-'}</div>
+                  </td>
+                  <td>{[companyRequest.city, companyRequest.canton].filter(Boolean).join(' ') || '-'}</td>
+                  <td>
+                    <div>{companyRequest.property_manager?.name || '-'}</div>
+                    <div className="text-muted small">{companyRequest.property?.li_number || '-'}</div>
+                  </td>
+                  <td><span className={getStatusBadgeClass(companyRequest.status)}>{formatStatusLabel(companyRequest.status)}</span></td>
+                  <td>
+                    <div className="table-action-group">
+                      <button type="button" className="table-action-btn table-action-edit" onClick={() => openCreateFromRequest(companyRequest)} title="Dienstleister aus Anfrage erstellen">
+                        <i className="ti ti-plus"></i>
+                      </button>
+                      <button
+                        type="button"
+                        className="table-action-btn table-action-delete"
+                        onClick={async () => {
+                          await api.updateCompanyAdditionRequest(companyRequest.id, { status: 'dismissed' })
+                          setCompanyRequests((current) => current.map((request) => (
+                            request.id === companyRequest.id ? { ...request, status: 'dismissed' } : request
+                          )))
+                        }}
+                        title="Anfrage ausblenden"
+                      >
+                        <i className="ti ti-x"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ) : null}
+
     <div className="row g-3 mb-4 vergo-filter-bar vergo-filter-bar-compact">
       <div className="col-xl-5 col-lg-6 col-md-12">
         <label className="form-label">Suche</label>

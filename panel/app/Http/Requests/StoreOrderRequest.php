@@ -10,6 +10,11 @@ use Illuminate\Validation\Rule;
 
 class StoreOrderRequest extends FormRequest
 {
+    private function isDraftRequest(): bool
+    {
+        return $this->input('status') === 'draft';
+    }
+
     protected function prepareForValidation(): void
     {
         $merge = [];
@@ -40,6 +45,8 @@ class StoreOrderRequest extends FormRequest
 
     public function rules(): array
     {
+        $isDraft = $this->isDraftRequest();
+
         return [
             'property_id' => ['required', 'integer', 'exists:properties,id'],
             'property_object_id' => ['nullable', 'integer', 'exists:property_objects,id'],
@@ -47,8 +54,8 @@ class StoreOrderRequest extends FormRequest
             'property_object_ids.*' => ['integer', 'exists:property_objects,id'],
             'requester_name' => ['nullable', 'string', 'max:255'],
             'requester_email' => ['nullable', 'email', 'max:255'],
-            'title' => ['required', 'string', 'max:255'],
-            'service_type' => ['required', 'string', 'max:255', 'in:' . implode(',', config('vergo.job_types', []))],
+            'title' => [$isDraft ? 'nullable' : 'required', 'string', 'max:255'],
+            'service_type' => [$isDraft ? 'nullable' : 'required', 'string', 'max:255', Rule::in(config('vergo.job_types', []))],
             'description' => ['nullable', 'string'],
             'status' => ['nullable', Rule::in(['draft', 'open', 'in_review', 'awaiting_owner_approval', 'approved', 'completed', 'closed'])],
             'workflow_type' => ['nullable', Rule::in(['inspection', 'direct_order'])],
@@ -104,6 +111,10 @@ class StoreOrderRequest extends FormRequest
                 ->whereKey($propertyId)
                 ->whereHas('objects')
                 ->exists();
+
+            if ($this->isDraftRequest()) {
+                return;
+            }
 
             $hasPropertyObjectIds = collect($this->input('property_object_ids', []))
                 ->filter(fn ($value) => filled($value))

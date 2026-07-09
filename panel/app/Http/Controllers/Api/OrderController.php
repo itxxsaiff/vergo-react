@@ -97,6 +97,7 @@ class OrderController extends Controller
     public function store(StoreOrderRequest $request, NotificationService $notificationService): OrderResource
     {
         $actor = $request->user();
+        $isDraft = $request->input('status') === 'draft';
         $property = Property::query()->findOrFail($request->integer('property_id'));
 
         if ($actor instanceof PropertyManagerProfile) {
@@ -131,10 +132,12 @@ class OrderController extends Controller
             abort_unless($validObjectCount === $propertyObjectIds->count(), 422, 'One or more selected property objects do not belong to this property.');
         }
 
-        $workflowStatus = $this->determineWorkflowStatus(
-            $request->input('workflow_type'),
-            $request->input('workflow_meta', [])
-        );
+        $workflowStatus = $isDraft
+            ? 'draft'
+            : $this->determineWorkflowStatus(
+                $request->input('workflow_type'),
+                $request->input('workflow_meta', [])
+            );
         $selectedProviderIds = collect(data_get($request->input('workflow_meta', []), 'provider_selection.selected_provider_ids', []))
             ->map(fn ($id) => (int) $id)
             ->filter()
@@ -153,6 +156,7 @@ class OrderController extends Controller
             $selectedProviderIds,
             $attachment,
             $attachmentPath,
+            $isDraft,
             $notificationService
         ) {
             $workflowMeta = $this->normalizeWorkflowMeta(
@@ -174,7 +178,9 @@ class OrderController extends Controller
                 'title' => $request->string('title')->toString(),
                 'service_type' => $request->input('service_type'),
                 'description' => $request->input('description'),
-                'status' => in_array($workflowStatus, ['direct_award_pending_acceptance'], true) ? 'approved' : 'open',
+                'status' => $isDraft
+                    ? 'draft'
+                    : (in_array($workflowStatus, ['direct_award_pending_acceptance'], true) ? 'approved' : 'open'),
                 'workflow_type' => $request->input('workflow_type'),
                 'workflow_status' => $workflowStatus,
                 'bid_priority' => $request->input('bid_priority'),
@@ -189,7 +195,7 @@ class OrderController extends Controller
                 'requested_at' => $request->input('requested_at', now()),
             ]);
 
-            if ($selectedProviderIds->isNotEmpty()) {
+            if (! $isDraft && $selectedProviderIds->isNotEmpty()) {
                 $selectedProviders = ServiceProvider::query()
                     ->with('user')
                     ->whereIn('id', $selectedProviderIds)
@@ -201,6 +207,10 @@ class OrderController extends Controller
                 }
             }
 
+            if ($isDraft) {
+                return $order;
+            }
+
             if ($workflowStatus === 'published_for_quotes') {
                 $notificationService->sendQuoteRequestPublished($order);
             } elseif ($workflowStatus === 'public_inspection_open') {
@@ -210,7 +220,9 @@ class OrderController extends Controller
             return $order;
         });
 
-        $notificationService->sendOrderCreated($order->load('property.owners', 'property.managerProfiles'), $actor);
+        if (! $isDraft) {
+            $notificationService->sendOrderCreated($order->load('property.owners', 'property.managerProfiles'), $actor);
+        }
 
         return new OrderResource($order->load([
             'property:id,li_number,title,postal_code,city,country',
@@ -219,9 +231,10 @@ class OrderController extends Controller
         ]));
     }
 
-    public function update(UpdateOrderRequest $request, Order $order): OrderResource
+    public function update(UpdateOrderRequest $request, Order $order, NotificationService $notificationService): OrderResource
     {
         $actor = $request->user();
+        $isDraft = $request->input('status', $order->status) === 'draft';
 
         if ($actor instanceof PropertyManagerProfile) {
             abort_unless($this->canEditOrders($actor), 403, 'You are not allowed to edit orders with this login.');
@@ -229,7 +242,10 @@ class OrderController extends Controller
                 $order->property_id === $actor->property_id && $order->requester_email === $actor->email,
                 403
             );
-            abort(422, 'Published orders cannot be edited. Please delete the order and create a new one.');
+
+            if ($order->status !== 'draft' && ! $isDraft) {
+                abort(422, 'Published orders cannot be edited. Please delete the order and create a new one.');
+            }
         } else {
             abort(403, 'Admins can only review orders.');
         }
@@ -272,6 +288,12 @@ class OrderController extends Controller
             abort_unless($validObjectCount === $propertyObjectIds->count(), 422, 'One or more selected property objects do not belong to this property.');
         }
 
+        $selectedProviderIds = collect(data_get($request->input('workflow_meta', $order->workflow_meta ?? []), 'provider_selection.selected_provider_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
         $order->update([
             'property_id' => $propertyId,
             'property_object_id' => $propertyObjectId,
@@ -281,12 +303,19 @@ class OrderController extends Controller
             'title' => $request->input('title', $order->title),
             'service_type' => $request->input('service_type', $order->service_type),
             'description' => $request->input('description', $order->description),
-            'status' => $order->status,
+            'status' => $isDraft
+                ? 'draft'
+                : (in_array($request->input('workflow_status', $this->determineWorkflowStatus(
+                    $request->input('workflow_type', $order->workflow_type),
+                    $request->input('workflow_meta', $order->workflow_meta ?? [])
+                )), ['direct_award_pending_acceptance'], true) ? 'approved' : 'open'),
             'workflow_type' => $request->input('workflow_type', $order->workflow_type),
-            'workflow_status' => $request->input('workflow_status', $this->determineWorkflowStatus(
-                $request->input('workflow_type', $order->workflow_type),
-                $request->input('workflow_meta', $order->workflow_meta ?? [])
-            )),
+            'workflow_status' => $isDraft
+                ? 'draft'
+                : $request->input('workflow_status', $this->determineWorkflowStatus(
+                    $request->input('workflow_type', $order->workflow_type),
+                    $request->input('workflow_meta', $order->workflow_meta ?? [])
+                )),
             'bid_priority' => $request->input('bid_priority', $order->bid_priority),
             'due_date' => $request->input('due_date', $order->due_date),
             'bid_deadline_at' => $request->input('bid_deadline_at', $order->bid_deadline_at),
@@ -313,6 +342,28 @@ class OrderController extends Controller
                 'attachment_mime_type' => $attachment?->getMimeType(),
                 'attachment_size' => $attachment?->getSize(),
             ]);
+        }
+
+        if (! $isDraft && $order->wasChanged('status') && $order->status === 'open') {
+            if ($selectedProviderIds->isNotEmpty()) {
+                $selectedProviders = ServiceProvider::query()
+                    ->with('user')
+                    ->whereIn('id', $selectedProviderIds)
+                    ->get();
+
+                if ($order->workflow_status === 'inspection_requested') {
+                    $this->createDirectProviderInvitations($order, $selectedProviders, $order->workflow_status, $notificationService);
+                    $notificationService->sendProviderOrderEmails($order, $selectedProviders, 'assigned');
+                }
+            }
+
+            if ($order->workflow_status === 'published_for_quotes') {
+                $notificationService->sendQuoteRequestPublished($order);
+            } elseif ($order->workflow_status === 'public_inspection_open') {
+                $notificationService->sendPublicInspectionPublished($order);
+            }
+
+            $notificationService->sendOrderCreated($order->load('property.owners', 'property.managerProfiles'), $actor);
         }
 
         return new OrderResource($order->load([

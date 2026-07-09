@@ -10,6 +10,11 @@ use Illuminate\Validation\Rule;
 
 class UpdateOrderRequest extends FormRequest
 {
+    private function isDraftRequest(): bool
+    {
+        return $this->input('status') === 'draft';
+    }
+
     protected function prepareForValidation(): void
     {
         $merge = [];
@@ -40,6 +45,8 @@ class UpdateOrderRequest extends FormRequest
 
     public function rules(): array
     {
+        $isDraft = $this->isDraftRequest();
+
         return [
             'property_id' => ['sometimes', 'required', 'integer', 'exists:properties,id'],
             'property_object_id' => ['nullable', 'integer', 'exists:property_objects,id'],
@@ -47,8 +54,8 @@ class UpdateOrderRequest extends FormRequest
             'property_object_ids.*' => ['integer', 'exists:property_objects,id'],
             'requester_name' => ['nullable', 'string', 'max:255'],
             'requester_email' => ['nullable', 'email', 'max:255'],
-            'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'service_type' => ['sometimes', 'required', 'string', 'max:255', 'in:' . implode(',', config('vergo.job_types', []))],
+            'title' => ['sometimes', $isDraft ? 'nullable' : 'required', 'string', 'max:255'],
+            'service_type' => ['sometimes', $isDraft ? 'nullable' : 'required', 'string', 'max:255', Rule::in(config('vergo.job_types', []))],
             'description' => ['nullable', 'string'],
             'status' => ['nullable', Rule::in(['draft', 'open', 'in_review', 'awaiting_owner_approval', 'approved', 'completed', 'closed'])],
             'workflow_type' => ['nullable', Rule::in(['inspection', 'direct_order'])],
@@ -107,6 +114,10 @@ class UpdateOrderRequest extends FormRequest
                 ->whereKey($propertyId)
                 ->whereHas('objects')
                 ->exists();
+
+            if ($this->isDraftRequest()) {
+                return;
+            }
 
             $hasPropertyObjectIds = $this->has('property_object_ids')
                 ? collect($this->input('property_object_ids', []))

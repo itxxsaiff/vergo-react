@@ -32,6 +32,7 @@ import EmployeePropertyDetailsPage from './pages/EmployeePropertyDetailsPage'
 import EmployeePropertyDocumentsPage from './pages/EmployeePropertyDocumentsPage'
 import EmployeeUsersPage from './pages/EmployeeUsersPage'
 import ServiceProvidersPage from './pages/ServiceProvidersPage'
+import SupportTicketsPage from './pages/SupportTicketsPage'
 import EmployeesPage from './pages/EmployeesPage'
 import UserLoginPage from './pages/UserLoginPage'
 
@@ -267,6 +268,14 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['admin']}>
               <DatabaseBackupsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="support-tickets"
+          element={
+            <ProtectedRoute allowRoles={['admin', 'employee']}>
+              <SupportTicketsPage />
             </ProtectedRoute>
           }
         />

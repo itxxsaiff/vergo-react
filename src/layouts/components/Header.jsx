@@ -5,6 +5,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../lib/api'
 import { toggleSidebar } from '../../lib/sidebarLayout'
 import VergoLogo from '../../../public/VERGO.png'
+import SupportTicketButton from '../../components/SupportTicketButton'
 
 const HEADER_PLACEHOLDER_IMAGE = 'https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg'
 
@@ -111,6 +112,8 @@ function Header({ user, showSidebarToggle = true }) {
 
         <div className="collapse navbar-collapse justify-content-end" id="navbarNav">
           <ul className="navbar-nav flex-row ms-auto align-items-center justify-content-center">
+            <SupportTicketButton />
+
             <li className="nav-item dropdown">
               <button
                 type="button"

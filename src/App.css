@@ -2161,3 +2161,263 @@ body {
     padding: 0.72rem 0.95rem;
   }
 }
+
+.vergo-support-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(4px);
+}
+
+.vergo-support-modal {
+  width: min(620px, 100%);
+  max-height: min(92vh, 760px);
+  overflow: auto;
+  background: #fff;
+  border: 1px solid rgba(159, 109, 84, 0.22);
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.vergo-support-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.35rem 1.5rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.vergo-support-modal-body {
+  padding: 1.5rem;
+}
+
+.vergo-support-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.vergo-support-shell {
+  padding: 1rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.08);
+}
+
+.vergo-support-toolbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 0.85rem;
+}
+
+.vergo-support-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.vergo-support-stat-card {
+  min-height: 68px;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid rgba(159, 109, 84, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fffaf7 0%, #fff 100%);
+}
+
+.vergo-support-stat-card span {
+  display: block;
+  color: #7d8aa3;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.vergo-support-stat-card strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: #25324b;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.vergo-support-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 230px 150px;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.vergo-support-ticket-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.vergo-support-ticket-card {
+  overflow: hidden;
+  border: 1px solid rgba(159, 109, 84, 0.15);
+  border-radius: 16px;
+  background: #fff;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.vergo-support-ticket-card:hover,
+.vergo-support-ticket-card.is-expanded {
+  border-color: rgba(159, 109, 84, 0.34);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.vergo-support-ticket-summary {
+  display: grid;
+  grid-template-columns: 112px minmax(220px, 1fr) minmax(220px, 300px) 145px 108px;
+  gap: 0.8rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.78rem 0.9rem;
+  color: #25324b;
+  text-align: left;
+  border: 0;
+  background: transparent;
+}
+
+.vergo-support-ticket-id {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+}
+
+.vergo-support-ticket-main {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.vergo-support-ticket-main strong,
+.vergo-support-ticket-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vergo-support-ticket-main small,
+.vergo-support-ticket-date {
+  color: #7d8aa3;
+  font-size: 0.82rem;
+}
+
+.vergo-support-ticket-badges {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.vergo-support-ticket-date {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.vergo-support-ticket-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  color: #9f6d54;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.vergo-support-ticket-details {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.15fr);
+  gap: 0.9rem;
+  padding: 0.9rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.95);
+  background: #fffaf7;
+}
+
+.vergo-support-ticket-message {
+  padding: 0.8rem;
+  border: 1px solid rgba(159, 109, 84, 0.14);
+  border-radius: 14px;
+  background: #fff;
+  white-space: pre-wrap;
+}
+
+.vergo-support-ticket-message span {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #7d8aa3;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vergo-support-ticket-message p {
+  margin: 0;
+}
+
+.vergo-support-ticket-edit {
+  display: grid;
+  grid-template-columns: 220px minmax(260px, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.vergo-support-ticket-save {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1199px) {
+  .vergo-support-toolbar,
+  .vergo-support-ticket-details {
+    grid-template-columns: 1fr;
+  }
+
+  .vergo-support-ticket-summary {
+    grid-template-columns: 96px minmax(180px, 1fr) minmax(170px, 240px) 120px 96px;
+  }
+}
+
+@media (max-width: 767px) {
+  .vergo-support-shell {
+    padding: 0.75rem;
+  }
+
+  .vergo-support-stats,
+  .vergo-support-filters,
+  .vergo-support-ticket-edit {
+    grid-template-columns: 1fr;
+  }
+
+  .vergo-support-ticket-summary {
+    grid-template-columns: 1fr auto;
+  }
+
+  .vergo-support-ticket-id,
+  .vergo-support-ticket-main,
+  .vergo-support-ticket-badges,
+  .vergo-support-ticket-date {
+    grid-column: 1 / -1;
+  }
+
+  .vergo-support-ticket-badges,
+  .vergo-support-ticket-date {
+    justify-content: flex-start;
+    text-align: left;
+  }
+}

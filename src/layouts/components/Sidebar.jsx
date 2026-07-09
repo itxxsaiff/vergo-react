@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { closeSidebar } from '../../lib/sidebarLayout'
+import { useLanguage } from '../../context/LanguageContext'
 import VergoLogo from '../../../public/VERGO.png'
 
 function Sidebar({ navigation, user }) {
   const location = useLocation()
+  const { t } = useLanguage()
   const [openSections, setOpenSections] = useState({})
 
   const autoOpenSections = useMemo(() => {
@@ -54,7 +56,7 @@ function Sidebar({ navigation, user }) {
           <ul id="sidebarnav">
             <li className="nav-small-cap">
               <i className="ti ti-dots nav-small-cap-icon fs-4"></i>
-              <span className="hide-menu">Arbeitsplatz</span>
+              <span className="hide-menu">{t('Arbeitsplatz')}</span>
             </li>
 
             {navigation.map((item) => {
@@ -76,7 +78,7 @@ function Sidebar({ navigation, user }) {
                           <span className="d-flex">
                             <i className={item.icon}></i>
                           </span>
-                          <span className="hide-menu">{item.title}</span>
+                          <span className="hide-menu">{t(item.title)}</span>
                         </NavLink>
                       ) : (
                         <button
@@ -87,7 +89,7 @@ function Sidebar({ navigation, user }) {
                           <span className="d-flex">
                             <i className={item.icon}></i>
                           </span>
-                          <span className="hide-menu">{item.title}</span>
+                          <span className="hide-menu">{t(item.title)}</span>
                         </button>
                       )}
 
@@ -95,7 +97,7 @@ function Sidebar({ navigation, user }) {
                         type="button"
                         className="vergo-sidebar-toggle"
                         aria-expanded={isOpen}
-                        aria-label={`${item.title} Untermenü umschalten`}
+                        aria-label={`${t(item.title)} ${t('Untermenü umschalten')}`}
                         onClick={() => handleSectionToggle(item.title)}
                       />
                     </div>
@@ -115,7 +117,7 @@ function Sidebar({ navigation, user }) {
                             <div className="round-16 d-flex align-items-center justify-content-center">
                               <i className="ti ti-circle"></i>
                             </div>
-                            <span className="hide-menu">{child.title}</span>
+                            <span className="hide-menu">{t(child.title)}</span>
                           </NavLink>
                         </li>
                       ))}
@@ -134,7 +136,7 @@ function Sidebar({ navigation, user }) {
                     <span>
                       <i className={item.icon}></i>
                     </span>
-                    <span className="hide-menu">{item.title}</span>
+                    <span className="hide-menu">{t(item.title)}</span>
                   </NavLink>
                 </li>
               )

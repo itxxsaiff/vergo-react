@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\PropertyComparisonController;
 use App\Http\Controllers\Api\PropertyObjectController;
 use App\Http\Controllers\Api\ServiceProviderController;
+use App\Http\Controllers\Api\SupportTicketController;
 use App\Http\Controllers\Api\UserDirectoryController;
 use Illuminate\Support\Facades\Route;
 
@@ -98,6 +99,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/company-addition-requests', [CompanyAdditionRequestController::class, 'index']);
     Route::post('/company-addition-requests', [CompanyAdditionRequestController::class, 'store']);
     Route::put('/company-addition-requests/{companyAdditionRequest}', [CompanyAdditionRequestController::class, 'update']);
+    Route::get('/support-tickets', [SupportTicketController::class, 'index']);
+    Route::post('/support-tickets', [SupportTicketController::class, 'store']);
+    Route::put('/support-tickets/{supportTicket}', [SupportTicketController::class, 'update']);
 
     Route::get('/bids', [BidController::class, 'index']);
     Route::post('/bids', [BidController::class, 'store']);

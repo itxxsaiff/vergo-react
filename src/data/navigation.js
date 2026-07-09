@@ -28,6 +28,11 @@ export const navigationByRole = {
       icon: 'ti ti-database',
       href: '/database-backups',
     },
+    {
+      title: 'Support-Tickets',
+      icon: 'ti ti-ticket',
+      href: '/support-tickets',
+    },
   ],
   employee_admin: [
     {
@@ -52,6 +57,11 @@ export const navigationByRole = {
       children: [
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
+    },
+    {
+      title: 'Support-Tickets',
+      icon: 'ti ti-ticket',
+      href: '/support-tickets',
     },
   ],
   employee_power_user: [
@@ -79,6 +89,11 @@ export const navigationByRole = {
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
     },
+    {
+      title: 'Support-Tickets',
+      icon: 'ti ti-ticket',
+      href: '/support-tickets',
+    },
   ],
   employee: [
     {
@@ -103,6 +118,11 @@ export const navigationByRole = {
       children: [
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
+    },
+    {
+      title: 'Support-Tickets',
+      icon: 'ti ti-ticket',
+      href: '/support-tickets',
     },
   ],
   owner: [

@@ -372,6 +372,21 @@ export const api = {
       body: JSON.stringify(data),
     })
   },
+  getSupportTickets() {
+    return request('/support-tickets')
+  },
+  createSupportTicket(data) {
+    return request('/support-tickets', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  updateSupportTicket(id, data) {
+    return request(`/support-tickets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
   getPropertyManagers() {
     return request('/property-managers')
   },

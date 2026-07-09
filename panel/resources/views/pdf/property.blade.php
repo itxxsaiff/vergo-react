@@ -57,39 +57,59 @@
 
         .top-panels-table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 12px 0;
+            border-collapse: collapse;
             table-layout: fixed;
         }
 
         .top-panels-cell {
+            height: 170px;
             vertical-align: top;
+            padding: 0 6px;
         }
 
-        .li-panel,
-        .info-panel {
-            min-height: 152px;
+        .top-panel-box {
             overflow: hidden;
             background: #bb8867;
             color: #ffffff;
             border-radius: 24px;
         }
 
-        .li-panel {
-            text-align: center;
-            padding: 56px 18px;
-            font-size: 28px;
-            font-weight: 700;
+        .top-panel-table {
+            width: 100%;
+            height: 170px;
+            border-collapse: collapse;
+            table-layout: fixed;
         }
 
-        .info-panel {
-            padding: 22px 24px;
+        .li-panel-inner {
+            vertical-align: middle;
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .info-panel-table {
+            width: 100%;
+            height: 170px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .info-panel-inner {
+            vertical-align: middle;
+            padding: 0 24px;
         }
 
         .info-line {
-            margin-bottom: 14px;
+            margin-bottom: 12px;
             font-size: 13px;
             font-weight: 700;
+            line-height: 1.15;
+        }
+
+        .info-line:last-child {
+            margin-bottom: 0;
         }
 
         .section-title {
@@ -103,23 +123,35 @@
             border-radius: 8px;
         }
 
+        .object-grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .object-grid-row td {
+            width: 25%;
+            padding: 0 8px 16px;
+            vertical-align: top;
+        }
+
+        .object-grid-row td:first-child {
+            padding-left: 0;
+        }
+
+        .object-grid-row td:last-child {
+            padding-right: 0;
+        }
+
         .object-card {
             position: relative;
-            float: left;
-            width: 22.75%;
             min-height: 118px;
-            margin-right: 3%;
-            margin-bottom: 14px;
             padding: 28px 10px 12px;
             border: 1px solid #eee5de;
             border-radius: 14px;
             background: #ffffff;
             box-shadow: 0 8px 20px rgba(34, 48, 74, 0.05);
             overflow: hidden;
-        }
-
-        .object-card:nth-child(4n) {
-            margin-right: 0;
         }
 
         .object-icon-wrap {
@@ -155,19 +187,15 @@
             line-height: 1.35;
         }
 
-        .meta-row:after {
-            content: "";
-            display: table;
-            clear: both;
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
         }
 
-        .meta-col {
-            float: left;
-            width: 48%;
-        }
-
-        .meta-col:last-child {
-            float: right;
+        .meta-table td {
+            width: 50%;
+            vertical-align: top;
         }
 
         .value {
@@ -190,15 +218,27 @@
         <table class="top-panels-table">
             <tr>
                 <td class="top-panels-cell" style="width: 46%;">
-                    <div class="li-panel">{{ $property->li_number ?: '-' }}</div>
+                    <div class="top-panel-box">
+                        <table class="top-panel-table">
+                            <tr>
+                                <td class="li-panel-inner">{{ $property->li_number ?: '-' }}</td>
+                            </tr>
+                        </table>
+                    </div>
                 </td>
                 <td class="top-panels-cell" style="width: 54%;">
-                    <div class="info-panel">
-                        <div class="info-line">{{ $property->title ?: '-' }}</div>
-                        <div class="info-line">{{ $managerLabel }}</div>
-                        <div class="info-line">{{ $ownerLabel }}</div>
-                        <div class="info-line">{{ trim(($property->postal_code ?: '-') . ' ' . ($property->city ?: '-')) }}</div>
-                        <div class="info-line">{{ $usageLabel }}</div>
+                    <div class="top-panel-box">
+                        <table class="info-panel-table">
+                            <tr>
+                                <td class="info-panel-inner">
+                                    <div class="info-line">{{ $property->title ?: '-' }}</div>
+                                    <div class="info-line">{{ $managerLabel }}</div>
+                                    <div class="info-line">{{ $ownerLabel }}</div>
+                                    <div class="info-line">{{ trim(($property->postal_code ?: '-') . ' ' . ($property->city ?: '-')) }}</div>
+                                    <div class="info-line">{{ $usageLabel }}</div>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </td>
             </tr>
@@ -207,24 +247,35 @@
 
     <div class="section-title">Objekte</div>
 
-    <div class="object-grid">
-        @foreach($objectCards as $card)
-            <div class="object-card">
-                <div class="object-icon-wrap">⌂</div>
-                <div class="label">Adresse</div>
-                <div class="address">{{ $card['address'] }}</div>
-                <div class="meta-row">
-                    <div class="meta-col">
-                        <div class="label">PLZ</div>
-                        <div class="value">{{ $card['postal_code'] }}</div>
-                    </div>
-                    <div class="meta-col">
-                        <div class="label">Ort</div>
-                        <div class="value">{{ $card['city'] }}</div>
-                    </div>
-                </div>
-            </div>
+    <table class="object-grid-table">
+        @foreach(array_chunk($objectCards, 4) as $cardRow)
+            <tr class="object-grid-row">
+                @foreach($cardRow as $card)
+                    <td>
+                        <div class="object-card">
+                            <div class="object-icon-wrap">⌂</div>
+                            <div class="label">Adresse</div>
+                            <div class="address">{{ $card['address'] }}</div>
+                            <table class="meta-table">
+                                <tr>
+                                    <td>
+                                        <div class="label">PLZ</div>
+                                        <div class="value">{{ $card['postal_code'] }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="label">Ort</div>
+                                        <div class="value">{{ $card['city'] }}</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                @endforeach
+                @for($i = count($cardRow); $i < 4; $i++)
+                    <td></td>
+                @endfor
+            </tr>
         @endforeach
-    </div>
+    </table>
 </body>
 </html>

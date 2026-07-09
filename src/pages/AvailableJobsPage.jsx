@@ -57,6 +57,38 @@ function getInvoiceRecipient(order) {
   return order?.workflow_meta?.assignment?.invoice_recipient ?? null
 }
 
+function getCardDisplayStatus(order, providerBid) {
+  if (isInspectionWorkflow(order) && providerBid?.status) {
+    return providerBid.status
+  }
+
+  return order?.status
+}
+
+function getInspectionCardAction(providerBid, isQuoteRequest) {
+  const bidStatus = String(providerBid?.status || '').toLowerCase()
+
+  if (isQuoteRequest) {
+    return providerBid
+      ? { label: 'Angebot eingereicht', disabled: true, submitted: true }
+      : { label: 'Angebot abgeben', disabled: false, submitted: false }
+  }
+
+  if (bidStatus === 'inspection_confirmed') {
+    return { label: 'Besichtigung bestätigt', disabled: true, submitted: true }
+  }
+
+  if (bidStatus === 'inspection_requested') {
+    return { label: 'Besichtigung bestätigen', disabled: false, submitted: false }
+  }
+
+  if (bidStatus === 'inspection_interest') {
+    return { label: 'Besichtigung angefragt', disabled: true, submitted: true }
+  }
+
+  return { label: 'Besichtigung anfragen', disabled: false, submitted: false }
+}
+
 function AvailableJobsPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -523,11 +555,11 @@ function AvailableJobsPage() {
 
   return (
     <PageContent
-      title="Verfügbare Aufträge"
-      subtitle="Offene Aufträge, auf die Dienstleister Angebote abgeben können."
+      title={t('Verfügbare Aufträge')}
+      subtitle={t('Offene Aufträge, auf die Dienstleister Angebote abgeben können.')}
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Verfügbare Aufträge' },
+        { label: t('Verfügbare Aufträge') },
       ]}
     >
       <div className="row g-3 mb-4 vergo-filter-bar">
@@ -536,7 +568,7 @@ function AvailableJobsPage() {
             <div className="card-body">
               <div className="d-flex align-items-center justify-content-between">
                 <div>
-                  <div className="text-muted mb-1">Offene Aufträge</div>
+                  <div className="text-muted mb-1">{t('Offene Aufträge')}</div>
                   <h3 className="mb-0">{openOrdersCount}</h3>
                 </div>
                 <span className="vergo-job-stat-icon bg-light text-primary">
@@ -552,7 +584,7 @@ function AvailableJobsPage() {
             <div className="card-body">
               <div className="d-flex align-items-center justify-content-between">
                 <div>
-                  <div className="text-muted mb-1">In Prüfung</div>
+                  <div className="text-muted mb-1">{t('In Prüfung')}</div>
                   <h3 className="mb-0">{inReviewOrdersCount}</h3>
                 </div>
                 <span className="vergo-job-stat-icon bg-light text-warning">
@@ -568,7 +600,7 @@ function AvailableJobsPage() {
             <div className="card-body">
               <div className="d-flex align-items-center justify-content-between">
                 <div>
-                  <div className="text-muted mb-1">Ihre eingereichten Angebote</div>
+                  <div className="text-muted mb-1">{t('Ihre eingereichten Angebote')}</div>
                   <h3 className="mb-0">{submittedBidsCount}</h3>
                 </div>
                 <span className="vergo-job-stat-icon bg-light text-success">
@@ -593,7 +625,7 @@ function AvailableJobsPage() {
                   name="search"
                   value={filters.search}
                   onChange={handleFilterChange}
-                  placeholder="Nach Auftrag, Immobilie, Objekt oder Dienstleistungstyp suchen"
+                  placeholder={t('Nach Auftrag, Immobilie, Objekt oder Dienstleistungstyp suchen')}
                 />
               </div>
             </div>
@@ -623,13 +655,15 @@ function AvailableJobsPage() {
           </div>
 
           {error && !selectedOrder ? <div className="alert alert-danger py-2">{error}</div> : null}
-          {isLoading ? <p className="text-muted mb-0">Verfügbare Aufträge werden geladen...</p> : null}
+          {isLoading ? <p className="text-muted mb-0">{t('Verfügbare Aufträge werden geladen...')}</p> : null}
 
           {!isLoading ? (
             <div className="row g-4">
               {filteredOrders.map((order) => {
-                const isSubmitted = hasSubmittedQuote(order)
+                const providerBid = providerBidByOrderId[order.id]
                 const isQuoteRequest = isOrderQuoteRequest(order)
+                const cardDisplayStatus = getCardDisplayStatus(order, providerBid)
+                const cardAction = getInspectionCardAction(providerBid, isQuoteRequest)
 
                 return (
                   <div className="col-12" key={order.id}>
@@ -640,26 +674,26 @@ function AvailableJobsPage() {
                           <div className="vergo-job-card-main">
                             <div className="mb-3">
                               <span className="vergo-job-type-pill">
-                                {getOptionLabel(JOB_TYPE_OPTIONS, order.service_type) || 'Allgemeiner Auftrag'}
+                                {getOptionLabel(JOB_TYPE_OPTIONS, order.service_type) || t('Allgemeiner Auftrag')}
                               </span>
                             </div>
 
                             <h4 className="vergo-job-card-title mb-2">{order.title}</h4>
 
                             <p className="vergo-job-card-description mb-0">
-                              {order.description || 'Für diesen Auftrag wurde keine zusätzliche Beschreibung hinzugefügt.'}
+                              {order.description || t('Für diesen Auftrag wurde keine zusätzliche Beschreibung hinzugefügt.')}
                             </p>
 
                             <div className="mt-3 small text-muted">
                               {order.workflow_status === 'public_inspection_open'
-                                ? 'Öffentliche Besichtigungsanfrage'
-                                : `Öffentliche Offertenanfrage${order.bid_deadline_at ? ` bis ${formatDateDisplay(order.bid_deadline_at)}` : ''}`}
+                                ? t('Öffentliche Besichtigungsanfrage')
+                                : `${t('Öffentliche Offertenanfrage')}${order.bid_deadline_at ? ` ${t('bis')} ${formatDateDisplay(order.bid_deadline_at)}` : ''}`}
                             </div>
                           </div>
 
                           <div className="d-flex align-items-start gap-2">
-                            <span className={getStatusBadgeClass(order.status)}>
-                              {formatStatusLabel(order.status)}
+                            <span className={getStatusBadgeClass(cardDisplayStatus)}>
+                              {t(formatStatusLabel(cardDisplayStatus))}
                             </span>
                           </div>
                         </div>
@@ -674,7 +708,7 @@ function AvailableJobsPage() {
 
                             <div className="vergo-job-meta-item">
                               <i className="ti ti-home-2"></i>
-                              <span>{order.property_object?.name ?? 'Gesamte Immobilie / Nicht zugewiesen'}</span>
+                              <span>{order.property_object?.name ?? t('Gesamte Immobilie / Nicht zugewiesen')}</span>
                             </div>
 
                             <div className="vergo-job-meta-item">
@@ -683,14 +717,14 @@ function AvailableJobsPage() {
                             </div>
                           </div>
 
-                          {isSubmitted ? (
+                          {cardAction.submitted ? (
                             <button type="button" className="btn vergo-job-apply-btn vergo-job-apply-btn-submitted" disabled>
-                              {isQuoteRequest ? 'Angebot eingereicht' : 'Besichtigung angefragt'}
+                              {t(cardAction.label)}
                               <i className="ti ti-check ms-2"></i>
                             </button>
                           ) : (
-                            <button type="button" className="btn vergo-job-apply-btn" onClick={() => openBidModal(order)}>
-                              {isQuoteRequest ? 'Angebot abgeben' : 'Besichtigung anfragen'}
+                            <button type="button" className="btn vergo-job-apply-btn" disabled={cardAction.disabled} onClick={() => openBidModal(order)}>
+                              {t(cardAction.label)}
                               <i className="ti ti-arrow-right ms-2"></i>
                             </button>
                           )}
@@ -705,7 +739,7 @@ function AvailableJobsPage() {
               {filteredOrders.length === 0 ? (
                 <div className="col-12">
                   <div className="border rounded-3 p-5 text-center text-muted">
-                    Keine verfügbaren Aufträge gefunden.
+                    {t('Keine verfügbaren Aufträge gefunden.')}
                   </div>
                 </div>
               ) : null}
@@ -1120,7 +1154,7 @@ function AvailableJobsPage() {
                     ) : null}
                     {canSubmitCurrentOrder ? (
                       <button type="submit" className="btn btn-primary" disabled={isSaving || !isAssignedToMe}>
-                        {isSaving ? 'Wird gespeichert...' : isOrderQuoteRequest(selectedOrder) ? 'Angebot einreichen' : 'Besichtigung anfragen'}
+                        {isSaving ? t('Wird gespeichert...') : isOrderQuoteRequest(selectedOrder) ? t('Angebot einreichen') : t('Besichtigung anfragen')}
                       </button>
                     ) : null}
                   </div>

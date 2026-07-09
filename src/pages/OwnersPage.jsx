@@ -12,6 +12,7 @@ const initialForm = {
   domain_suffix: '',
   email: '',
   phone: '',
+  status: 'active',
 }
 
 function getDisplayName(owner) {
@@ -133,7 +134,7 @@ function OwnersPage() {
         domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim(),
-        status: 'active',
+        status: form.status,
       }
 
       if (editingOwnerId) {
@@ -165,6 +166,7 @@ function OwnersPage() {
       domain_suffix: owner.domain_suffix || '',
       email: owner.email || '',
       phone: owner.phone || '',
+      status: owner.status || 'active',
     })
     setError('')
     setFieldErrors({})
@@ -252,6 +254,14 @@ function OwnersPage() {
                 <div className="mb-3">
                   <label className="form-label">Domain-Endung</label>
                   <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Status</label>
+                  <select className="form-select" name="status" value={form.status} onChange={handleChange}>
+                    <option value="active">Aktiv</option>
+                    <option value="inactive">Inaktiv</option>
+                  </select>
                 </div>
 
                 <div className="alert alert-light border small">

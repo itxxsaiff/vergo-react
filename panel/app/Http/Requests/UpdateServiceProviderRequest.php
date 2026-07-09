@@ -35,7 +35,7 @@ class UpdateServiceProviderRequest extends FormRequest
             'trade_groups' => ['sometimes', 'required', 'array', 'min:1'],
             'trade_groups.*' => ['required', 'string', 'max:255'],
             'phone' => ['sometimes', 'required', 'string', 'max:50'],
-            'status' => ['sometimes', 'nullable', Rule::in(['active', 'inactive', 'pending'])],
+            'status' => ['sometimes', 'nullable', Rule::in(['active', 'inactive'])],
         ];
     }
 

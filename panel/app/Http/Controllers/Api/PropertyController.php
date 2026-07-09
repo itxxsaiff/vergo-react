@@ -62,7 +62,7 @@ class PropertyController extends Controller
         $property->load([
             'owners:id,name,email',
             'assignedManagerProfile:id,name,email,domain_suffix',
-            'objects:id,name,address,postal_code,city',
+            'objects:id,property_id,name,address,postal_code,city',
         ]);
 
         $pdf = Pdf::loadView('pdf.property', [

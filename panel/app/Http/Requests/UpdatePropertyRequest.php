@@ -33,7 +33,7 @@ class UpdatePropertyRequest extends FormRequest
             'apartment_count' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'commercial_area' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'status' => ['sometimes', 'nullable', Rule::in(['draft', 'active', 'archived'])],
+            'status' => ['sometimes', 'nullable', Rule::in(['active', 'inactive'])],
             'created_by' => ['sometimes', 'nullable', 'exists:users,id'],
             'owner_id' => ['sometimes', 'nullable', 'exists:users,id'],
             'manager_domains' => ['sometimes', 'nullable', 'array'],

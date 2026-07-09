@@ -135,6 +135,7 @@ function ProviderDashboardPage() {
 
   const publicOrders = useMemo(() => orders.filter((order) => (
     ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'].includes(order.workflow_status)
+    && !bidByOrderId[order.id]
     && bidByOrderId[order.id]?.workflow_meta?.source !== 'manager_direct_selection'
   )), [orders, bidByOrderId])
 

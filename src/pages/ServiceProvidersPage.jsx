@@ -291,7 +291,6 @@ function ServiceProvidersPage() {
           <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
             <option value="">All Status</option>
             <option value="active">Aktiv</option>
-            <option value="pending">Ausstehend</option>
             <option value="inactive">Inaktiv</option>
           </select>
         </div>
@@ -434,7 +433,6 @@ function ServiceProvidersPage() {
               <label className="form-label">Status</label>
               <select className="form-select" name="status" value={form.status} onChange={handleChange}>
                 <option value="active">Aktiv</option>
-                <option value="pending">Ausstehend</option>
                 <option value="inactive">Inaktiv</option>
               </select>
             </div>

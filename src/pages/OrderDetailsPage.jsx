@@ -226,7 +226,7 @@ function OrderDetailsPage() {
                       <p className="text-muted mb-0">{order.description || t('Keine Beschreibung hinzugefügt.')}</p>
                     </div>
                     <span className={getStatusBadgeClass(order.status)}>
-                      {formatStatusLabel(order.status)}
+                      {t(formatStatusLabel(order.status))}
                     </span>
                   </div>
 
@@ -329,7 +329,7 @@ function OrderDetailsPage() {
                                 <div className="text-muted small">{bid.assigned_provider_email || bid.service_provider?.contact_email || '-'}</div>
                               </div>
                               <span className={getStatusBadgeClass(bid.status)}>
-                                {formatStatusLabel(bid.status)}
+                                {t(formatStatusLabel(bid.status))}
                               </span>
                             </div>
                             <div className="vergo-inspection-detail-subvalue">
@@ -413,7 +413,7 @@ function OrderDetailsPage() {
                 <div className="mb-3">
                   <strong>Status:</strong>{' '}
                   <span className={getStatusBadgeClass(order.status)}>
-                    {formatStatusLabel(order.status)}
+                    {t(formatStatusLabel(order.status))}
                   </span>
                 </div>
 
@@ -755,7 +755,7 @@ function OrderDetailsPage() {
 
                             <td>
                               <span className={getStatusBadgeClass(bid.status)}>
-                                {formatStatusLabel(bid.status)}
+                                {t(formatStatusLabel(bid.status))}
                               </span>
                             </td>
 

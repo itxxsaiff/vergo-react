@@ -17,6 +17,7 @@ const initialForm = {
   lot_area: '',
   apartment_count: '',
   commercial_area: '',
+  status: 'active',
 }
 
 const requiredFields = ['title', 'postal_code', 'city', 'usage', 'lot_area']
@@ -42,7 +43,7 @@ function PropertiesPage() {
   const [owners, setOwners] = useState([])
   const [propertyManagers, setPropertyManagers] = useState([])
   const [form, setForm] = useState(initialForm)
-  const [filters, setFilters] = useState({ search: '', usage: '' })
+  const [filters, setFilters] = useState({ search: '', usage: '', status: '' })
   const [editingProperty, setEditingProperty] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -101,6 +102,7 @@ function PropertiesPage() {
         property.li_number,
         property.title,
         property.postal_code,
+        property.status,
       ]
         .filter(Boolean)
         .join(' ')
@@ -108,10 +110,11 @@ function PropertiesPage() {
 
       const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
       const usageMatch = !filters.usage || property.usage === filters.usage
+      const statusMatch = !filters.status || String(property.status || '').toLowerCase() === filters.status.toLowerCase()
 
-      return searchMatch && usageMatch
+      return searchMatch && usageMatch && statusMatch
     })
-  }, [filters.search, filters.usage, properties])
+  }, [filters.search, filters.status, filters.usage, properties])
 
   function handleChange(event) {
     const { name, value } = event.target
@@ -170,6 +173,7 @@ function PropertiesPage() {
       lot_area: property.lot_area ?? '',
       apartment_count: property.apartment_count ?? '',
       commercial_area: property.commercial_area ?? '',
+      status: property.status || 'active',
     })
     setError('')
     setFieldErrors({})
@@ -240,7 +244,7 @@ function PropertiesPage() {
         apartment_count: form.usage === 'commercial' ? null : Number(form.apartment_count),
         commercial_area: form.usage === 'residential' ? null : Number(form.commercial_area),
         size: form.lot_area ? Number(form.lot_area) : null,
-        status: 'active',
+        status: form.status,
       }
 
       if (isInternalUser) {
@@ -338,12 +342,20 @@ function PropertiesPage() {
               </select>
             </div>
 
-            <div className="col-xl-4 col-md-6">
+            <div className="col-xl-2 col-md-6">
+              <select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                <option value="">Status auswählen</option>
+                <option value="active">Aktiv</option>
+                <option value="inactive">Inaktiv</option>
+              </select>
+            </div>
+
+            <div className="col-xl-2 col-md-6">
               <div className="d-flex justify-content-lg-end gap-2 flex-nowrap vergo-action-buttons">
                 <button
                   type="button"
                   className="btn btn-light-primary text-nowrap"
-                  onClick={() => setFilters({ search: '', usage: '' })}
+                  onClick={() => setFilters({ search: '', usage: '', status: '' })}
                 >
                   <i className="ti ti-refresh me-1"></i>
                   Zurücksetzen
@@ -377,6 +389,7 @@ function PropertiesPage() {
                     <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Anzahl</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Eigentümerschaft</h6></th>
+                    <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
                     <th width="170"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
                   </tr>
                 </thead>
@@ -393,6 +406,11 @@ function PropertiesPage() {
                       <td>{property.city || '-'}</td>
                       <td>{property.objects_count ?? 0}</td>
                       <td>{getOwnerCompanyLabel(property)}</td>
+                      <td>
+                        <span className={property.status === 'inactive' ? 'badge bg-light-danger text-danger fw-semibold fs-2 rounded-3 py-2 px-3' : 'badge bg-light-success text-success fw-semibold fs-2 rounded-3 py-2 px-3'}>
+                          {property.status === 'inactive' ? 'Inaktiv' : 'Aktiv'}
+                        </span>
+                      </td>
                       <td>
                         <div className="table-action-group">
                           <Link
@@ -542,6 +560,16 @@ function PropertiesPage() {
                           </div>
                         </div>
                       ) : null}
+
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Status</label>
+                          <select className="form-select" name="status" value={form.status} onChange={handleChange}>
+                            <option value="active">Aktiv</option>
+                            <option value="inactive">Inaktiv</option>
+                          </select>
+                        </div>
+                      </div>
 
                       <div className={isInternalUser ? 'col-md-3' : 'col-md-6'}>
                         <div className="mb-3">

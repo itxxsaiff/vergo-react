@@ -41,7 +41,7 @@ class StorePropertyRequest extends FormRequest
             'apartment_count' => ['nullable', 'integer', 'min:0'],
             'commercial_area' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
-            'status' => ['nullable', Rule::in(['draft', 'active', 'archived'])],
+            'status' => ['nullable', Rule::in(['active', 'inactive'])],
             'created_by' => ['nullable', 'exists:users,id'],
             'owner_id' => ['nullable', 'exists:users,id'],
             'manager_domains' => ['nullable', 'array'],

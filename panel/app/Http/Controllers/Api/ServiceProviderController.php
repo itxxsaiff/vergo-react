@@ -45,7 +45,7 @@ class ServiceProviderController extends Controller
                 'email' => $providerPayload['order_email'],
                 'password' => bin2hex(random_bytes(16)),
                 'domain_suffix' => $providerPayload['domain_suffix'],
-                'status' => $status === 'pending' ? 'inactive' : $status,
+                'status' => $status,
                 'phone' => $providerPayload['phone'],
             ]);
 
@@ -80,7 +80,7 @@ class ServiceProviderController extends Controller
                     'email' => $providerPayload['order_email'],
                     'password' => bin2hex(random_bytes(16)),
                     'domain_suffix' => $providerPayload['domain_suffix'],
-                    'status' => $request->input('status', $serviceProvider->status) === 'pending' ? 'inactive' : $request->input('status', $serviceProvider->status),
+                    'status' => $request->input('status', $serviceProvider->status),
                     'phone' => $providerPayload['phone'],
                 ]);
 
@@ -90,7 +90,7 @@ class ServiceProviderController extends Controller
                     'name' => $providerPayload['contact_name'] ?: $providerPayload['company_name'],
                     'email' => $providerPayload['order_email'],
                     'domain_suffix' => $providerPayload['domain_suffix'],
-                    'status' => $request->input('status', $serviceProvider->status) === 'pending' ? 'inactive' : $request->input('status', $serviceProvider->status),
+                    'status' => $request->input('status', $serviceProvider->status),
                     'phone' => $providerPayload['phone'],
                 ];
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\BidController;
 use App\Http\Controllers\Api\CronController;
 use App\Http\Controllers\Api\CompanyAdditionRequestController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\NotificationController;
@@ -46,6 +47,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
     Route::get('/dashboard/overview', DashboardController::class);
+    Route::get('/database-backups', [DatabaseBackupController::class, 'index']);
+    Route::post('/database-backups', [DatabaseBackupController::class, 'store']);
+    Route::post('/database-backups/upload', [DatabaseBackupController::class, 'upload']);
+    Route::get('/database-backups/{fileName}/download', [DatabaseBackupController::class, 'download']);
+    Route::post('/database-backups/{fileName}/restore', [DatabaseBackupController::class, 'restore']);
+    Route::delete('/database-backups/{fileName}', [DatabaseBackupController::class, 'destroy']);
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
 

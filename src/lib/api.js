@@ -77,6 +77,13 @@ async function download(path, fallbackFileName = 'document') {
   window.URL.revokeObjectURL(objectUrl)
 }
 
+async function upload(path, formData) {
+  return request(path, {
+    method: 'POST',
+    body: formData,
+  })
+}
+
 async function openPdfInNewTab(path) {
   const headers = {}
 
@@ -159,6 +166,30 @@ export const api = {
   },
   getDashboardOverview() {
     return request('/dashboard/overview')
+  },
+  getDatabaseBackups() {
+    return request('/database-backups')
+  },
+  createDatabaseBackup() {
+    return request('/database-backups', {
+      method: 'POST',
+    })
+  },
+  uploadDatabaseBackup(formData) {
+    return upload('/database-backups/upload', formData)
+  },
+  downloadDatabaseBackup(fileName) {
+    return download(`/database-backups/${encodeURIComponent(fileName)}/download`, fileName)
+  },
+  restoreDatabaseBackup(fileName) {
+    return request(`/database-backups/${encodeURIComponent(fileName)}/restore`, {
+      method: 'POST',
+    })
+  },
+  deleteDatabaseBackup(fileName) {
+    return request(`/database-backups/${encodeURIComponent(fileName)}`, {
+      method: 'DELETE',
+    })
   },
   getNotifications() {
     return request('/notifications')

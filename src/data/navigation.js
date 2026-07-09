@@ -23,6 +23,11 @@ export const navigationByRole = {
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
     },
+    {
+      title: 'Datenbank-Backups',
+      icon: 'ti ti-database',
+      href: '/database-backups',
+    },
   ],
   employee_admin: [
     {

@@ -12,6 +12,7 @@ import { navigationByRole } from './data/navigation'
 import { useSkoteLayout } from './hooks/useSkoteLayout'
 import AdminLayout from './layouts/AdminLayout'
 import DashboardPage from './pages/DashboardPage'
+import DatabaseBackupsPage from './pages/DatabaseBackupsPage'
 import EmailOtpLoginPage from './pages/EmailOtpLoginPage'
 import LoginPage from './pages/LoginPage'
 import TypePage from './pages/TypePage'
@@ -258,6 +259,14 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['admin']}>
               <AllowedDomainsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="database-backups"
+          element={
+            <ProtectedRoute allowRoles={['admin']}>
+              <DatabaseBackupsPage />
             </ProtectedRoute>
           }
         />

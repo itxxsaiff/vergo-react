@@ -17,6 +17,7 @@ class OrderComparisonController extends Controller
     public function __invoke(Request $request, Order $order, BidComparisonService $comparisonService): JsonResponse
     {
         $this->authorizeOrderAccess($request->user(), $order);
+        $this->abortIfBiddingStillOpen($order);
 
         $order->load(['property.owners', 'bids.serviceProvider']);
 
@@ -60,6 +61,7 @@ class OrderComparisonController extends Controller
     public function comparePrice(Request $request, Order $order, PriceRecommendationService $priceRecommendationService): JsonResponse
     {
         $this->authorizeOrderAccess($request->user(), $order);
+        $this->abortIfBiddingStillOpen($order);
 
         $order->load([
             'property.owners',
@@ -111,5 +113,16 @@ class OrderComparisonController extends Controller
         }
 
         abort(403);
+    }
+
+    private function abortIfBiddingStillOpen(Order $order): void
+    {
+        if (
+            in_array($order->workflow_status, ['published_for_quotes', 'inspection_signup_closed'], true)
+            && $order->bid_deadline_at
+            && now()->lte($order->bid_deadline_at)
+        ) {
+            abort(422, 'Bid comparison is available only after the submission deadline has passed.');
+        }
     }
 }

@@ -271,7 +271,7 @@ class PriceRecommendationService
                 return [
                     'result_id' => $result->id,
                     'amount' => round((float) $amount, 2),
-                    'currency' => data_get($comparisonData, 'currency', 'EUR'),
+                    'currency' => data_get($comparisonData, 'currency', 'CHF'),
                     'service_category' => $resultServiceCategory ?: null,
                     'service_interval' => $resultInterval ?: null,
                     'document_type' => $result->document?->type,

@@ -104,6 +104,23 @@ function getDateOffsetValue(offsetDays) {
 }
 
 const MIN_BID_DEADLINE_DATE = getDateOffsetValue(2)
+const TOMORROW_DATE = getDateOffsetValue(1)
+
+function getQuoteDeadlineWarning(value) {
+  if (!value) {
+    return ''
+  }
+
+  if (isWeekendDate(value)) {
+    return 'Bitte wählen Sie für die Angebotsfrist keinen Samstag oder Sonntag.'
+  }
+
+  if (value === TOMORROW_DATE) {
+    return 'Die Angebotsfrist ist möglicherweise zu kurz. Wir empfehlen, die Frist zu verlängern.'
+  }
+
+  return ''
+}
 
 const MANAGER_ORDER_STEPS = [
   { id: 1, label: 'Liegenschaft', helper: 'Objekte wählen', icon: 'ti ti-building-estate' },
@@ -136,6 +153,7 @@ function getInitialManagerWizard(propertyId = '') {
     onsite_phone: '',
     onsite_email: '',
     inspection_request_mode: '',
+    public_provider_limit: '3',
     completion_mode: 'fixed_date',
     due_date: '',
     attachment: null,
@@ -143,6 +161,7 @@ function getInitialManagerWizard(propertyId = '') {
     cost_estimate_range: '',
     bid_priority: '',
     bid_deadline_at: '',
+    quote_item_source: 'manager',
     invoice_recipient_type: 'manager_profile',
     invoice_delivery_method: 'email',
     invoice_email: '',
@@ -171,6 +190,10 @@ function getOrderObjectLabel(order) {
   }
 
   return order?.property_object?.name || '-'
+}
+
+function getQuoteServiceOptions(serviceType) {
+  return TRADE_ACTIVITY_OPTIONS_BY_GROUP[serviceType] ?? []
 }
 
 function serializeManagerWizardDraft(wizard, currentStep, providerCantonFilter) {
@@ -251,12 +274,16 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
           email: wizard.onsite_email || null,
         },
         request_mode: wizard.inspection_request_mode || null,
+        public_provider_limit: wizard.inspection_request_mode === 'public'
+          ? Math.max(1, Number(wizard.public_provider_limit || 3))
+          : null,
       }
       : null,
     assignment: wizard.flow_type === 'direct_order'
       ? {
         completion_mode: wizard.completion_mode,
         award_mode: 'request_quotes',
+        quote_item_source: wizard.quote_item_source || 'manager',
         cost_estimate_range: null,
         bid_priority: null,
         bid_deadline_at: wizard.bid_deadline_at || null,
@@ -445,6 +472,7 @@ function OrdersPage() {
       ...(name === 'flow_type'
         ? {
           inspection_request_mode: '',
+          public_provider_limit: '3',
           inspection_date_1: '',
           inspection_time_1: '',
           inspection_quote_due_date_1: '',
@@ -457,6 +485,7 @@ function OrdersPage() {
           cost_estimate_range: '',
           bid_priority: '',
           bid_deadline_at: '',
+          quote_item_source: 'manager',
           invoice_recipient_type: 'manager_profile',
           invoice_delivery_method: 'email',
           invoice_email: '',
@@ -479,6 +508,16 @@ function OrdersPage() {
       ...(name === 'award_mode' && value === 'request_quotes'
         ? {
           selected_provider_ids: [],
+          quote_items: seedQuoteItemsForTrade(current.service_type),
+        }
+        : {}),
+      ...(name === 'quote_item_source' && value === 'provider'
+        ? {
+          quote_items: [],
+        }
+        : {}),
+      ...(name === 'quote_item_source' && value === 'manager' && (current.quote_items ?? []).length === 0
+        ? {
           quote_items: seedQuoteItemsForTrade(current.service_type),
         }
         : {}),
@@ -537,11 +576,12 @@ function OrdersPage() {
   }
 
   function seedQuoteItemsForTrade(serviceType) {
+    const services = getQuoteServiceOptions(serviceType)
     const baseItems = [{
-      label: getOptionLabel(JOB_TYPE_OPTIONS, serviceType),
+      label: services[0] || getOptionLabel(JOB_TYPE_OPTIONS, serviceType),
       unit: 'Stück',
       quantity: 1,
-      code: serviceType || '',
+      code: services[0] || serviceType || '',
       source: 'catalog',
     }]
 
@@ -577,7 +617,7 @@ function OrdersPage() {
           id: `custom-${Date.now()}`,
           label: '',
           code: '',
-          unit: '',
+          unit: 'Stück',
           quantity: 1,
           source: 'custom',
           is_custom: true,
@@ -899,29 +939,34 @@ function OrdersPage() {
         return false
       }
 
+      if (
+        managerWizard.flow_type === 'inspection'
+        && managerWizard.inspection_request_mode === 'public'
+        && Number(managerWizard.public_provider_limit || 0) < 1
+      ) {
+        setError(t('Bitte geben Sie an, wie viele Dienstleister sich maximal anmelden dürfen.'))
+        return false
+      }
+
       if (managerWizard.flow_type === 'direct_order') {
         if (!managerWizard.bid_deadline_at) {
           setError(t('Bitte geben Sie eine Angebotsfrist an.'))
           return false
         }
 
-        if (managerWizard.bid_deadline_at < MIN_BID_DEADLINE_DATE) {
-          setError(t('Bitte wählen Sie eine Angebotsfrist frühestens ab zwei Tagen ab heute.'))
+        if (managerWizard.bid_deadline_at <= TODAY_DATE) {
+          setError(t('Bitte wählen Sie eine Angebotsfrist nach heute.'))
+          return false
+        }
+
+        if (isWeekendDate(managerWizard.bid_deadline_at)) {
+          setError(t('Bitte wählen Sie für die Angebotsfrist keinen Samstag oder Sonntag.'))
           return false
         }
       }
     }
 
     if (step === 5) {
-      if (managerWizard.flow_type === 'direct_order') {
-        const validQuoteItems = (managerWizard.quote_items ?? []).filter((item) => item.label.trim())
-
-        if (validQuoteItems.length === 0) {
-          setError(t('Bitte erfassen Sie mindestens eine Leistungsposition für die öffentliche Ausschreibung.'))
-          return false
-        }
-      }
-
       const requiresProviderSelection = (
         (managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct')
       )
@@ -975,7 +1020,7 @@ function OrdersPage() {
       bid_deadline_at: managerWizard.flow_type === 'direct_order' && managerWizard.bid_deadline_at
         ? `${managerWizard.bid_deadline_at} 23:59:00`
         : null,
-      quote_items: managerWizard.flow_type === 'direct_order'
+      quote_items: managerWizard.flow_type === 'direct_order' && managerWizard.quote_item_source !== 'provider'
         ? (managerWizard.quote_items ?? [])
           .filter((item) => item.label.trim())
           .map((item) => {
@@ -1245,6 +1290,10 @@ function OrdersPage() {
       ? serviceProviders.filter((provider) => String(provider.canton || '').trim().toUpperCase() === providerCantonFilter)
       : serviceProviders
   ), [providerCantonFilter, serviceProviders])
+  const managerQuoteServiceOptions = getQuoteServiceOptions(managerWizard.service_type)
+  const quoteDeadlineWarning = managerWizard.flow_type === 'direct_order'
+    ? getQuoteDeadlineWarning(managerWizard.bid_deadline_at)
+    : ''
 
   return (
     <PageContent
@@ -1332,7 +1381,7 @@ function OrdersPage() {
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Objekt')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Typ')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Anfragender')}</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Fälligkeitsdatum')}</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Fälligkeitsdatum (spätestens bis)')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Status')}</h6></th>
                         {showActionColumn ? <th width="170"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th> : null}
                       </tr>
@@ -1673,7 +1722,7 @@ function OrdersPage() {
                                 </div>
                                 {managerWizard.completion_mode === 'fixed_date' ? (
                                   <div className="col-md-6">
-                                    <label className="form-label">{t('Fälligkeitsdatum')}</label>
+                                    <label className="form-label">{t('Fälligkeitsdatum (spätestens bis)')}</label>
                                     <input type="date" className="form-control" name="due_date" value={managerWizard.due_date} min={TODAY_DATE} onChange={handleManagerWizardChange} />
                                   </div>
                                 ) : null}
@@ -1793,6 +1842,22 @@ function OrdersPage() {
                                     <div className="text-muted small">{t('Anfrage öffentlich ausschreiben und Anmeldungen sammeln.')}</div>
                                   </button>
                                 </div>
+                                {managerWizard.inspection_request_mode === 'public' ? (
+                                  <div className="col-md-6">
+                                    <label className="form-label">{t('Maximale Anzahl Dienstleister')}</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      className="form-control"
+                                      name="public_provider_limit"
+                                      value={managerWizard.public_provider_limit}
+                                      onChange={handleManagerWizardChange}
+                                    />
+                                    <div className="form-text">
+                                      {t('So viele Dienstleister dürfen sich für die öffentliche Besichtigung anmelden.')}
+                                    </div>
+                                  </div>
+                                ) : null}
                               </>
                             ) : null}
 
@@ -1810,32 +1875,84 @@ function OrdersPage() {
                                 </div>
                                 <div className="col-md-6">
                                   <label className="form-label">{t('Angebotsfrist')}</label>
-                                  <input type="date" className="form-control" name="bid_deadline_at" value={managerWizard.bid_deadline_at} min={MIN_BID_DEADLINE_DATE} onChange={handleManagerWizardChange} />
+                                  <input type="date" className="form-control" name="bid_deadline_at" value={managerWizard.bid_deadline_at} min={TOMORROW_DATE} onChange={handleManagerWizardChange} />
+                                  {quoteDeadlineWarning ? (
+                                    <div className={`form-text ${isWeekendDate(managerWizard.bid_deadline_at) ? 'text-danger' : 'text-warning'}`}>
+                                      {t(quoteDeadlineWarning)}
+                                    </div>
+                                  ) : (
+                                    <div className="form-text">{t('Angebote können bis 23:59 Uhr am gewählten Tag eingereicht werden.')}</div>
+                                  )}
                                 </div>
                                 <div className="col-12">
+                                  <div className="row g-3 mb-3">
+                                    <div className="col-md-6">
+                                      <button
+                                        type="button"
+                                        className={`vergo-order-choice-card h-100 text-start${managerWizard.quote_item_source !== 'provider' ? ' is-selected' : ''}`}
+                                        onClick={() => handleManagerWizardChange({ target: { name: 'quote_item_source', value: 'manager' } })}
+                                      >
+                                        <div className="fw-semibold mb-2">{t('Positionen selbst erfassen')}</div>
+                                        <div className="text-muted small">{t('Sie erfassen die Leistungen direkt in diesem Schritt.')}</div>
+                                      </button>
+                                    </div>
+                                    <div className="col-md-6">
+                                      <button
+                                        type="button"
+                                        className={`vergo-order-choice-card h-100 text-start${managerWizard.quote_item_source === 'provider' ? ' is-selected' : ''}`}
+                                        onClick={() => handleManagerWizardChange({ target: { name: 'quote_item_source', value: 'provider' } })}
+                                      >
+                                        <div className="fw-semibold mb-2">{t('Positionen vom Dienstleister erfassen lassen')}</div>
+                                        <div className="text-muted small">{t('Der Dienstleister erstellt nach der Besichtigung die erste Positionsliste.')}</div>
+                                      </button>
+                                    </div>
+                                  </div>
+
                                   <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
                                     <div>
                                       <h6 className="fw-semibold mb-1">{t('Leistungspositionen')}</h6>
                                       <p className="text-muted small mb-0">{t('Diese Positionen werden öffentlich ausgeschrieben. Anbieter sehen die Arbeit, aber nicht die Preise anderer Firmen.')}</p>
                                     </div>
-                                    <button type="button" className="btn btn-light-primary btn-sm" onClick={addQuoteItem}>
+                                    {managerWizard.quote_item_source !== 'provider' ? (
+                                      <button type="button" className="btn btn-light-primary btn-sm" onClick={addQuoteItem}>
                                       <i className="ti ti-plus me-1"></i>
                                       {t('Position hinzufügen')}
-                                    </button>
+                                      </button>
+                                    ) : null}
                                   </div>
 
+                                  {managerWizard.quote_item_source === 'provider' ? (
+                                    <div className="alert alert-light-primary border mb-0">
+                                      {t('Die Positionsliste wird vom Dienstleister nach der Besichtigung erstellt.')}
+                                    </div>
+                                  ) : (
                                   <div className="row g-3">
-                                    {(managerWizard.quote_items ?? []).map((item) => (
+                                    <datalist id="manager-quote-service-options">
+                                      {managerQuoteServiceOptions.map((option) => (
+                                        <option key={option} value={option} />
+                                      ))}
+                                      <option value={t('Service hinzufügen')} />
+                                    </datalist>
+                                    {(managerWizard.quote_items ?? []).map((item, index) => (
                                       <div className="col-12" key={item.id}>
                                         <div className="border rounded-3 p-3">
                                           <div className="row g-3 align-items-end">
+                                            <div className="col-lg-2">
+                                              <label className="form-label">{t('Position')}</label>
+                                              <input className="form-control" value={`${t('Position')} ${index + 1}`} readOnly />
+                                            </div>
                                             <div className="col-lg-5">
-                                              <label className="form-label">{t('Leistung / Position')}</label>
+                                              <label className="form-label">{t('Leistung')}</label>
                                               <input
                                                 className="form-control"
+                                                list="manager-quote-service-options"
                                                 value={item.label}
-                                                onChange={(event) => updateQuoteItem(item.id, 'label', event.target.value)}
-                                                placeholder={t('z. B. Steckdose austauschen')}
+                                                onChange={(event) => {
+                                                  const nextValue = event.target.value === t('Service hinzufügen') ? '' : event.target.value
+                                                  updateQuoteItem(item.id, 'label', nextValue)
+                                                  updateQuoteItem(item.id, 'code', nextValue)
+                                                }}
+                                                placeholder={t('Leistung auswählen oder eingeben')}
                                               />
                                             </div>
                                             <div className="col-lg-2">
@@ -1858,10 +1975,6 @@ function OrdersPage() {
                                                 onChange={(event) => updateQuoteItem(item.id, 'quantity', event.target.value)}
                                               />
                                             </div>
-                                            <div className="col-lg-2">
-                                              <label className="form-label">{t('Typ')}</label>
-                                              <input className="form-control" value={item.is_custom ? t('Andere') : t('Katalog')} readOnly />
-                                            </div>
                                             <div className="col-lg-1">
                                               <button type="button" className="btn btn-light-danger text-danger w-100" onClick={() => removeQuoteItem(item.id)}>
                                                 <i className="ti ti-trash"></i>
@@ -1872,6 +1985,7 @@ function OrdersPage() {
                                       </div>
                                     ))}
                                   </div>
+                                  )}
                                 </div>
                               </>
                             ) : null}
@@ -2034,7 +2148,7 @@ function OrdersPage() {
 
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label className="form-label">{t('Fälligkeitsdatum')}</label>
+                            <label className="form-label">{t('Fälligkeitsdatum (spätestens bis)')}</label>
                             <input type="date" className="form-control" name="due_date" value={form.due_date} min={TODAY_DATE} onChange={handleChange} />
                           </div>
                         </div>

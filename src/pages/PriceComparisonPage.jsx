@@ -249,7 +249,7 @@ function PriceComparisonPage() {
                         <div className="col-md-3">
                           <div className="border rounded p-3 h-100">
                             <div className="text-muted fs-2">Durchschnitt</div>
-                            <div className="fw-semibold">{comparison.comparison_data?.average_amount ?? '-'} EUR</div>
+                            <div className="fw-semibold">{comparison.comparison_data?.average_amount ?? '-'} CHF</div>
                           </div>
                         </div>
                         <div className="col-md-3">

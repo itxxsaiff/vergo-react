@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\PropertyManagerProfile;
 use App\Models\Property;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -138,10 +139,16 @@ class StoreOrderRequest extends FormRequest
 
             $workflowType = $this->input('workflow_type');
             $bidDeadlineAt = $this->input('bid_deadline_at');
-            $minimumBidDeadline = now()->addDays(2)->startOfDay()->toDateString();
+            if ($workflowType === 'direct_order' && $bidDeadlineAt) {
+                $deadlineDate = Carbon::parse($bidDeadlineAt);
 
-            if ($workflowType === 'direct_order' && $bidDeadlineAt && substr((string) $bidDeadlineAt, 0, 10) < $minimumBidDeadline) {
-                $validator->errors()->add('bid_deadline_at', 'Please select a bid deadline at least two days from today.');
+                if ($deadlineDate->toDateString() <= now()->toDateString()) {
+                    $validator->errors()->add('bid_deadline_at', 'Please select a bid deadline after today.');
+                }
+
+                if ($deadlineDate->isWeekend()) {
+                    $validator->errors()->add('bid_deadline_at', 'Please do not select Saturday or Sunday as the bid deadline.');
+                }
             }
 
             $invoiceRecipientType = data_get($this->input('workflow_meta', []), 'assignment.invoice_recipient.recipient_type');

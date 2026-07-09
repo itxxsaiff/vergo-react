@@ -9,6 +9,7 @@ use App\Models\Property;
 use App\Models\PropertyManagerProfile;
 use App\Models\ServiceProvider;
 use App\Models\User;
+use App\Mail\InspectionAppointmentConfirmedMail;
 use App\Mail\ProviderOrderNoticeMail;
 use App\Notifications\SystemNotification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -203,6 +204,28 @@ class NotificationService
             type: 'primary',
             actionUrl: '/bids',
         ));
+    }
+
+    public function sendInspectionAppointmentConfirmed(Bid $bid): void
+    {
+        $bid->loadMissing(['order.property', 'order.propertyObject', 'serviceProvider']);
+
+        $onsiteEmail = data_get($bid->order?->workflow_meta ?? [], 'inspection.onsite_contact.email');
+
+        if (! $onsiteEmail) {
+            return;
+        }
+
+        try {
+            Mail::mailer('orders')->to($onsiteEmail)->send(new InspectionAppointmentConfirmedMail($bid));
+        } catch (\Throwable $exception) {
+            Log::error('Vergo inspection appointment confirmation email failed', [
+                'order_id' => $bid->order_id,
+                'bid_id' => $bid->id,
+                'onsite_email' => $onsiteEmail,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     public function sendDocumentAnalysisFinished(Document $document, string $status): void

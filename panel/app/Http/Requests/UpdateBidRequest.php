@@ -46,4 +46,13 @@ class UpdateBidRequest extends FormRequest
             'status.in' => 'Please select a valid bid status.',
         ];
     }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($this->filled('estimated_start_date') && ! $this->filled('estimated_completion_date')) {
+                $validator->errors()->add('estimated_completion_date', 'Please enter an estimated completion date.');
+            }
+        });
+    }
 }

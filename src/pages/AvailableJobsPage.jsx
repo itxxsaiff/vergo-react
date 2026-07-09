@@ -10,7 +10,7 @@ import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
 const initialBidForm = {
   amount: '',
-  currency: 'EUR',
+  currency: 'CHF',
   estimated_start_date: '',
   estimated_completion_date: '',
   notes: '',
@@ -75,7 +75,7 @@ function getInspectionCardAction(providerBid, isQuoteRequest) {
   }
 
   if (bidStatus === 'inspection_confirmed') {
-    return { label: 'Besichtigung bestätigt', disabled: true, submitted: true }
+    return { label: 'Offerte erstellen', disabled: false, submitted: false }
   }
 
   if (bidStatus === 'inspection_requested') {
@@ -86,7 +86,7 @@ function getInspectionCardAction(providerBid, isQuoteRequest) {
     return { label: 'Besichtigung angefragt', disabled: true, submitted: true }
   }
 
-  return { label: 'Besichtigung anfragen', disabled: false, submitted: false }
+  return { label: 'Besichtigung bestätigen', disabled: false, submitted: false }
 }
 
 function AvailableJobsPage() {
@@ -192,7 +192,7 @@ function AvailableJobsPage() {
     return {
       ...initialBidForm,
       amount: draft?.amount ?? providerBid?.amount ?? '',
-      currency: draft?.currency ?? providerBid?.currency ?? 'EUR',
+      currency: 'CHF',
       estimated_start_date: draft?.estimated_start_date ?? providerBid?.estimated_start_date ?? '',
       estimated_completion_date: draft?.estimated_completion_date ?? providerBid?.estimated_completion_date ?? '',
       notes: draft?.notes ?? providerBid?.notes ?? '',
@@ -301,11 +301,31 @@ function AvailableJobsPage() {
       return
     }
 
+    const selectedSlot = selectedInspectionSlots[Number(bidForm.selected_inspection_slot)]
+
+    if (status === 'inspection_confirmed' && !selectedSlot) {
+      setError(t('Bitte wählen Sie einen Besichtigungstermin aus.'))
+      return
+    }
+
     setIsSaving(true)
     setError('')
 
     try {
-      const response = await api.updateBid(providerBid.id, { status })
+      const payload = status === 'inspection_confirmed'
+        ? {
+          status,
+          workflow_meta: {
+            selected_slot_index: Number(bidForm.selected_inspection_slot),
+            selected_slot: {
+              date: selectedSlot.date || '',
+              time: selectedSlot.time || '',
+              quote_due_date: selectedSlot.quote_due_date || '',
+            },
+          },
+        }
+        : { status }
+      const response = await api.updateBid(providerBid.id, payload)
       const updatedBid = response.data
       setSubmittedBids((current) => current.map((bid) => (bid.id === updatedBid.id ? updatedBid : bid)))
     } catch (actionError) {
@@ -332,7 +352,7 @@ function AvailableJobsPage() {
     }
     const payload = new FormData()
     payload.append('order_id', selectedOrder.id)
-    payload.append('currency', bidForm.currency || 'EUR')
+    payload.append('currency', 'CHF')
 
     if (isQuoteRequest) {
       const quoteLineItems = (bidForm.line_items ?? []).filter((item) => (
@@ -397,13 +417,24 @@ function AvailableJobsPage() {
         return
       }
 
-      if (!bidForm.estimated_completion_date) {
-        setError('Bitte geben Sie an, wann Sie die Arbeit ausführen können.')
-        setIsSaving(false)
-        return
-      }
     } else if (!isInspectionSignup && !bidForm.amount) {
       setError(t('Gebotsbetrag erforderlich.'))
+      setIsSaving(false)
+      return
+    }
+
+    if (bidForm.estimated_start_date && !bidForm.estimated_completion_date) {
+      setError(t('Bitte geben Sie ein voraussichtliches Fertigstellungsdatum ein.'))
+      setIsSaving(false)
+      return
+    }
+
+    if (
+      bidForm.estimated_start_date
+      && bidForm.estimated_completion_date
+      && bidForm.estimated_completion_date < bidForm.estimated_start_date
+    ) {
+      setError(t('Das voraussichtliche Fertigstellungsdatum darf nicht vor dem Startdatum liegen.'))
       setIsSaving(false)
       return
     }
@@ -482,7 +513,7 @@ function AvailableJobsPage() {
         const response = await api.saveBidDraft(activeProviderBid.id, {
           draft_payload: {
             amount: bidForm.amount,
-            currency: bidForm.currency,
+            currency: 'CHF',
             estimated_start_date: bidForm.estimated_start_date,
             estimated_completion_date: bidForm.estimated_completion_date,
             notes: bidForm.notes,
@@ -511,7 +542,7 @@ function AvailableJobsPage() {
       const response = await api.saveBidDraft(activeProviderBid.id, {
         draft_payload: {
           amount: bidForm.amount,
-          currency: bidForm.currency,
+          currency: 'CHF',
           estimated_start_date: bidForm.estimated_start_date,
           estimated_completion_date: bidForm.estimated_completion_date,
           notes: bidForm.notes,
@@ -535,6 +566,10 @@ function AvailableJobsPage() {
       || (
         order.workflow_status === 'inspection_signup_closed'
         && ['inspection_interest', 'inspection_confirmed'].includes(providerBid?.status)
+      )
+      || (
+        order.workflow_type === 'inspection'
+        && providerBid?.status === 'inspection_confirmed'
       )
   }
 
@@ -581,6 +616,17 @@ function AvailableJobsPage() {
     selectedOnsiteContact.first_name,
     selectedOnsiteContact.last_name,
   ].filter(Boolean).join(' ')
+  const canChooseInspectionSlot = selectedOrderIsInspection && (
+    selectedOrder?.workflow_status === 'public_inspection_open'
+    || ['inspection_requested', 'inspection_interest'].includes(activeProviderBid?.status)
+  )
+  const canAssignWithinCompany = Boolean(activeProviderBid?.id)
+    && !isAssignedToMe
+    && ['inspection_requested', 'working', 'awarded_pending_acceptance'].includes(activeProviderBid?.status)
+  const canAssignNewQuoteJob = Boolean(selectedOrder)
+    && !selectedOrderIsInspection
+    && !activeProviderBid
+    && selectedOrder.workflow_status === 'published_for_quotes'
 
   return (
     <PageContent
@@ -846,7 +892,7 @@ function AvailableJobsPage() {
                           </div>
                         </div>
 
-                        {selectedOrder.workflow_status === 'public_inspection_open' ? (
+                        {canChooseInspectionSlot ? (
                           <div className="border rounded-3 p-3 mb-3">
                             <label className="form-label">{t('Besichtigungstermin auswählen')}</label>
                             <select className="form-select" name="selected_inspection_slot" value={bidForm.selected_inspection_slot} onChange={handleBidChange}>
@@ -904,9 +950,9 @@ function AvailableJobsPage() {
                         </button>
                       ) : null}
                     </div>
-                    {selectedOrderIsInspection && activeProviderBid?.status === 'inspection_requested' ? (
+                    {canAssignWithinCompany || canAssignNewQuoteJob ? (
                       <div className="border rounded-3 p-3 mb-3">
-                        <div className="fw-semibold mb-2">{t('Wer übernimmt die Besichtigung?')}</div>
+                        <div className="fw-semibold mb-2">{selectedOrderIsInspection ? t('Wer übernimmt die Besichtigung?') : t('Wer übernimmt den Auftrag?')}</div>
                         <div className="d-flex flex-wrap gap-3 mb-3">
                           <label className="form-check">
                             <input
@@ -1126,12 +1172,7 @@ function AvailableJobsPage() {
 
                         <div className="col-md-6 mb-3">
                           <label className="form-label">Währung</label>
-                          <select className="form-select" name="currency" value={bidForm.currency} onChange={handleBidChange}>
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
-                            <option value="GBP">GBP</option>
-                            <option value="AED">AED</option>
-                          </select>
+                          <input className="form-control" value="CHF" readOnly />
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="form-label">Voraussichtliches Startdatum</label>
@@ -1139,7 +1180,7 @@ function AvailableJobsPage() {
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="form-label">Voraussichtliches Fertigstellungsdatum</label>
-                          <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} onChange={handleBidChange} />
+                          <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || undefined} onChange={handleBidChange} />
                         </div>
                         <div className="col-12 mb-0">
                           <label className="form-label">Notizen</label>
@@ -1188,7 +1229,7 @@ function AvailableJobsPage() {
                     ) : null}
                     {canSubmitCurrentOrder ? (
                       <button type="submit" className="btn btn-primary" disabled={isSaving || !isAssignedToMe}>
-                        {isSaving ? t('Wird gespeichert...') : isOrderQuoteRequest(selectedOrder) ? t('Angebot einreichen') : t('Besichtigung anfragen')}
+                        {isSaving ? t('Wird gespeichert...') : isOrderQuoteRequest(selectedOrder) ? t('Angebot einreichen') : t('Besichtigung bestätigen')}
                       </button>
                     ) : null}
                   </div>

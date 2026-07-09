@@ -60,6 +60,10 @@ class StoreBidRequest extends FormRequest
                 return;
             }
 
+            if ($this->filled('estimated_start_date') && ! $this->filled('estimated_completion_date')) {
+                $validator->errors()->add('estimated_completion_date', 'Please enter an estimated completion date.');
+            }
+
             if (! $lineItems->isNotEmpty() && ! $this->filled('amount')) {
                 $validator->errors()->add('amount', 'Bid amount is required when no line items are provided.');
             }

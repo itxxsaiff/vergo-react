@@ -597,7 +597,7 @@ class OrderController extends Controller
                 ],
                 [
                     'amount' => null,
-                    'currency' => 'EUR',
+                    'currency' => 'CHF',
                     'status' => $workflowStatus === 'inspection_requested' ? 'inspection_requested' : 'awarded_pending_acceptance',
                     'workflow_meta' => [
                         'source' => 'manager_direct_selection',

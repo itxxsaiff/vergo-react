@@ -189,6 +189,7 @@ function OrderDetailsPage() {
   const recommendedBidId = rankings[0]?.bid_id ?? null
   const isQuoteWorkflow = order?.workflow_meta?.assignment?.award_mode === 'request_quotes' || ['published_for_quotes', 'awarded', 'quotes_rejected'].includes(order?.workflow_status)
   const bidDeadlinePassed = !order?.bid_deadline_at || new Date(order.bid_deadline_at) <= new Date()
+  const shouldHideBidPrices = isQuoteWorkflow && !bidDeadlinePassed
   const firstPendingRankIndex = rankedBids.findIndex((bid) => !['rejected', 'approved', 'accepted', 'completed'].includes(bid.status))
   const visibleRankLimit = firstPendingRankIndex === -1 ? rankedBids.length : firstPendingRankIndex + 1
   const visibleRankedBids = user?.role === 'manager' && isQuoteWorkflow && bidDeadlinePassed
@@ -403,7 +404,7 @@ function OrderDetailsPage() {
                 </div>
 
                 <div className="mb-2">
-                  <strong>Fälligkeitsdatum:</strong> {formatDateDisplay(order.due_date)}
+                  <strong>{t('Fälligkeitsdatum (spätestens bis)')}:</strong> {formatDateDisplay(order.due_date)}
                 </div>
 
                 <div className="mb-2">
@@ -418,23 +419,27 @@ function OrderDetailsPage() {
                 </div>
 
                 <div className="d-flex gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleCompare}
-                    disabled={isComparing}
-                  >
-                    {isComparing ? 'Wird verglichen...' : 'Angebote vergleichen'}
-                  </button>
+                  {!shouldHideBidPrices ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handleCompare}
+                        disabled={isComparing}
+                      >
+                        {isComparing ? 'Wird verglichen...' : 'Angebote vergleichen'}
+                      </button>
 
-                  <button
-                    type="button"
-                    className="btn btn-success"
-                    onClick={handleComparePrice}
-                    disabled={isComparingPrice}
-                  >
-                    {isComparingPrice ? 'Preise werden verglichen...' : 'Preise vergleichen'}
-                  </button>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={handleComparePrice}
+                        disabled={isComparingPrice}
+                      >
+                        {isComparingPrice ? 'Preise werden verglichen...' : 'Preise vergleichen'}
+                      </button>
+                    </>
+                  ) : null}
 
                   <Link className="btn btn-light-primary" to="/documents">
                     Dokumente anzeigen
@@ -540,7 +545,7 @@ function OrderDetailsPage() {
               <div className="card-body">
                 <h5 className="fw-semibold mb-3">Preisempfehlung</h5>
 
-                {priceRecommendation ? (
+                {priceRecommendation && !shouldHideBidPrices ? (
                   <>
                     <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
                       <span className="text-muted">Aktuelles Signal</span>
@@ -550,11 +555,11 @@ function OrderDetailsPage() {
                     </div>
 
                     <div className="mb-2">
-                      <strong>Benchmark:</strong> {priceRecommendation.comparison_data?.benchmark_amount ?? '-'} {priceRecommendation.comparison_data?.recommended_bid_currency ?? 'EUR'}
+                      <strong>Benchmark:</strong> {priceRecommendation.comparison_data?.benchmark_amount ?? '-'} {priceRecommendation.comparison_data?.recommended_bid_currency ?? 'CHF'}
                     </div>
 
                     <div className="mb-2">
-                      <strong>Bestes Angebot:</strong> {priceRecommendation.comparison_data?.recommended_bid_amount ?? '-'} {priceRecommendation.comparison_data?.recommended_bid_currency ?? 'EUR'}
+                      <strong>Bestes Angebot:</strong> {priceRecommendation.comparison_data?.recommended_bid_amount ?? '-'} {priceRecommendation.comparison_data?.recommended_bid_currency ?? 'CHF'}
                     </div>
 
                     <div className="mb-2">
@@ -601,7 +606,7 @@ function OrderDetailsPage() {
                   </div>
                 ) : null}
 
-                {priceRecommendation ? (
+                {priceRecommendation && !shouldHideBidPrices ? (
                   <div
                     className={`alert ${priceRecommendation.comparison_data?.pricing_signal === 'too_high'
                         ? 'alert-light-danger'
@@ -623,7 +628,7 @@ function OrderDetailsPage() {
                   </div>
                 ) : null}
 
-                {(priceRecommendation?.comparison_data?.benchmark_sources ?? []).length > 0 ? (
+                {!shouldHideBidPrices && (priceRecommendation?.comparison_data?.benchmark_sources ?? []).length > 0 ? (
                   <div className="table-responsive rounded-2 mb-4">
                     <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                       <thead className="text-dark fs-4">
@@ -648,7 +653,7 @@ function OrderDetailsPage() {
                   </div>
                 ) : null}
 
-                {comparison ? (
+                {comparison && !shouldHideBidPrices ? (
                   <>
                     <div className="alert alert-light-primary border mb-4">
                       <div className="fw-semibold mb-1">Neueste Zusammenfassung</div>
@@ -659,7 +664,7 @@ function OrderDetailsPage() {
                       <div className="col-md-3">
                         <div className="border rounded p-3 h-100">
                           <div className="text-muted fs-2">Durchschnitt</div>
-                          <div className="fw-semibold">{comparison.comparison_data?.average_amount ?? '-'} EUR</div>
+                          <div className="fw-semibold">{comparison.comparison_data?.average_amount ?? '-'} CHF</div>
                         </div>
                       </div>
 
@@ -685,13 +690,32 @@ function OrderDetailsPage() {
                       </div>
                     </div>
                   </>
-                ) : (
+                ) : !shouldHideBidPrices ? (
                   <div className="text-muted mb-4">
                     Noch kein Vergleich durchgeführt. Klicken Sie auf <strong>Angebote vergleichen</strong>, um die erste Zusammenfassung zu erstellen.
                   </div>
-                )}
+                ) : null}
 
-                {user?.role === 'manager' && isQuoteWorkflow && !bidDeadlinePassed ? null : (
+                {shouldHideBidPrices ? (
+                  <div className="row g-3 mb-4">
+                    {(order.bids ?? []).map((bid, index) => (
+                      <div className="col-md-4 col-lg-3" key={bid.id}>
+                        <div className="border rounded-3 p-4 text-center h-100 bg-light">
+                          <div className="fw-semibold fs-5">{t('Angebot')} {index + 1}</div>
+                        </div>
+                      </div>
+                    ))}
+                    {(order.bids ?? []).length === 0 ? (
+                      <div className="col-12">
+                        <div className="border rounded-3 p-4 text-muted">
+                          {t('Noch keine Angebote eingegangen.')}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {shouldHideBidPrices ? null : (
                 <div className="table-responsive rounded-2 mb-0">
                   <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                     <thead className="text-dark fs-4">

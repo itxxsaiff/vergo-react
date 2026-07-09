@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\PropertyManagerProfile;
 use App\Models\User;
 use App\Services\NotificationService;
+use Illuminate\Support\Arr;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -55,15 +56,20 @@ class BidController extends Controller
         abort_unless($serviceProvider, 403);
 
         $order = Order::query()->findOrFail($request->integer('order_id'));
-        abort_unless(
-            in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'], true),
-            422,
-            'This workflow is not open for provider submissions.'
-        );
         $existingBid = Bid::query()
             ->where('order_id', $order->id)
             ->where('service_provider_id', $serviceProvider->id)
             ->first();
+        $isConfirmedInspectionBid = $existingBid
+            && $order->workflow_type === 'inspection'
+            && $existingBid->status === 'inspection_confirmed';
+
+        abort_unless(
+            in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes'], true)
+            || $isConfirmedInspectionBid,
+            422,
+            'This workflow is not open for provider submissions.'
+        );
         $providerLoginEmail = $this->providerLoginEmail($request);
 
         abort_unless(
@@ -75,10 +81,11 @@ class BidController extends Controller
         $attachment = $request->file('attachment');
         $attachmentPath = $attachment?->store('vergo-bid-attachments');
         $lineItems = collect($request->input('line_items', []))->values()->all();
-        $currency = $request->string('currency')->toString() ?: 'EUR';
+        $currency = 'CHF';
 
         $isQuoteSubmission = $order->workflow_status === 'published_for_quotes'
-            || ($order->workflow_status === 'inspection_signup_closed' && $existingBid);
+            || ($order->workflow_status === 'inspection_signup_closed' && $existingBid)
+            || $isConfirmedInspectionBid;
         $isInspectionSignup = $order->workflow_status === 'public_inspection_open';
 
         if ($isQuoteSubmission) {
@@ -105,9 +112,14 @@ class BidController extends Controller
             );
         }
 
-        $amount = $this->resolveBidAmount($lineItems, $request->input('amount'));
-        $status = $isQuoteSubmission ? 'submitted' : 'inspection_interest';
         $workflowMeta = $request->input('workflow_meta', []);
+
+        if ($isInspectionSignup) {
+            $this->validateSelectedInspectionSlot($order, $workflowMeta);
+        }
+
+        $amount = $this->resolveBidAmount($lineItems, $request->input('amount'));
+        $status = $isQuoteSubmission ? 'submitted' : ($isInspectionSignup ? 'inspection_confirmed' : 'inspection_interest');
 
         if ($isQuoteSubmission) {
             abort_unless($amount !== null && $amount > 0, 422, 'Please enter a valid bid amount.');
@@ -143,12 +155,12 @@ class BidController extends Controller
             'submitted_at' => now(),
         ];
 
-        $bid = $existingBid && $isQuoteSubmission
+        $bid = $existingBid && ($isQuoteSubmission || $isInspectionSignup)
             ? tap($existingBid)->update($bidPayload)
             : Bid::query()->create($bidPayload);
 
         if ($isQuoteSubmission) {
-            $this->publishQuoteItemsFromBid($order, $lineItems);
+            $this->publishQuoteItemsFromBid($order, $lineItems, $existingBid);
 
             $notificationService->sendBidSubmitted(
                 $order->load('property.owners', 'property.managerProfiles'),
@@ -162,10 +174,16 @@ class BidController extends Controller
                 ->where('order_id', $order->id)
                 ->whereIn('status', ['inspection_interest', 'inspection_confirmed'])
                 ->count();
+            $signupLimit = $this->inspectionSignupLimit($order);
 
-            if ($count >= 3) {
+            if ($count >= $signupLimit) {
                 $order->update(['workflow_status' => 'inspection_signup_closed']);
             }
+
+            $notificationService->sendInspectionAppointmentConfirmed(
+                $bid->fresh()->load(['order.property', 'order.propertyObject', 'serviceProvider'])
+            );
+            $this->syncOrderStatus($order->fresh());
         }
 
         return new BidResource($bid->load([
@@ -210,11 +228,25 @@ class BidController extends Controller
         abort_unless($bid || $isVisiblePublicOrder, 403, 'This order is not available for your company.');
 
         if (! $bid) {
+            if (in_array($order->workflow_status, ['public_inspection_open', 'inspection_signup_closed'], true)) {
+                $confirmedOrInterestedCount = Bid::query()
+                    ->where('order_id', $order->id)
+                    ->whereIn('status', ['inspection_interest', 'inspection_confirmed'])
+                    ->count();
+
+                abort_unless(
+                    $order->workflow_status === 'public_inspection_open'
+                    && $confirmedOrInterestedCount < $this->inspectionSignupLimit($order),
+                    422,
+                    'This inspection request has already reached the signup limit.'
+                );
+            }
+
             $bid = Bid::query()->create([
                 'order_id' => $order->id,
                 'service_provider_id' => $serviceProvider->id,
                 'amount' => null,
-                'currency' => 'EUR',
+                'currency' => 'CHF',
                 'status' => 'working',
                 'workflow_meta' => [
                     'source' => 'provider_self_assignment',
@@ -294,6 +326,8 @@ class BidController extends Controller
 
             if ($status === 'inspection_confirmed') {
                 abort_unless(in_array($bid->status, ['inspection_requested', 'inspection_interest'], true), 422);
+                $order = $bid->order()->firstOrFail();
+                $this->validateSelectedInspectionSlot($order, $request->input('workflow_meta', []));
             }
 
             if ($status === 'accepted') {
@@ -308,15 +342,24 @@ class BidController extends Controller
                 abort_unless(in_array($bid->status, ['inspection_requested', 'awarded_pending_acceptance'], true), 422);
             }
 
+            $nextWorkflowMeta = [
+                ...($bid->workflow_meta ?? []),
+                ...($request->input('workflow_meta', [])),
+                'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
+                'provider_last_action_at' => now()->toDateTimeString(),
+            ];
+
             $bid->update([
                 'status' => $status,
                 'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
-                'workflow_meta' => [
-                    ...($bid->workflow_meta ?? []),
-                    'assigned_provider_email' => $bid->assigned_provider_email ?: $this->providerLoginEmail($request),
-                    'provider_last_action_at' => now()->toDateTimeString(),
-                ],
+                'workflow_meta' => $nextWorkflowMeta,
             ]);
+
+            if ($status === 'inspection_confirmed') {
+                $notificationService->sendInspectionAppointmentConfirmed(
+                    $bid->fresh()->load(['order.property', 'order.propertyObject', 'serviceProvider'])
+                );
+            }
         } elseif ($actor instanceof PropertyManagerProfile) {
             abort_unless($bid->order()->where('property_id', $actor->property_id)->exists(), 403);
 
@@ -466,6 +509,14 @@ class BidController extends Controller
             $shortlistedBidExists = $order->bids()->where('status', 'shortlisted')->exists();
             $completedBidExists = $order->bids()->where('status', 'completed')->exists();
             $acceptedBidExists = $order->bids()->where('status', 'accepted')->exists();
+            $inspectionConfirmedExists = $order->workflow_type === 'inspection'
+                && $order->bids()->where('status', 'inspection_confirmed')->exists();
+            $inspectionBidCount = $order->workflow_type === 'inspection'
+                ? $order->bids()->whereIn('status', ['inspection_requested', 'inspection_interest', 'inspection_confirmed', 'rejected'])->count()
+                : 0;
+            $inspectionRejectedCount = $order->workflow_type === 'inspection'
+                ? $order->bids()->where('status', 'rejected')->count()
+                : 0;
 
             if ($completedBidExists) {
                 $order->update([
@@ -498,10 +549,40 @@ class BidController extends Controller
                 return;
             }
 
+            if ($inspectionConfirmedExists) {
+                $order->update([
+                    'status' => 'inspection_confirmed',
+                ]);
+                return;
+            }
+
+            if ($inspectionBidCount > 0 && $inspectionBidCount === $inspectionRejectedCount) {
+                $order->update([
+                    'status' => 'inspection_rejected',
+                ]);
+                return;
+            }
+
             $order->update([
                 'status' => $shortlistedBidExists ? 'awaiting_owner_approval' : ($hasBids ? 'in_review' : 'open'),
             ]);
         });
+    }
+
+    private function validateSelectedInspectionSlot(Order $order, array $workflowMeta): void
+    {
+        $slots = data_get($order->workflow_meta ?? [], 'inspection.preferred_slots', []);
+        $selectedSlotIndex = data_get($workflowMeta, 'selected_slot_index');
+
+        abort_unless($selectedSlotIndex !== null && $selectedSlotIndex !== '', 422, 'Please select an inspection appointment.');
+        abort_unless(Arr::exists($slots, (int) $selectedSlotIndex), 422, 'Please select a valid inspection appointment.');
+    }
+
+    private function inspectionSignupLimit(Order $order): int
+    {
+        $limit = (int) data_get($order->workflow_meta ?? [], 'inspection.public_provider_limit', 3);
+
+        return max(1, $limit);
     }
 
     private function resolveBidAmount(array $lineItems, mixed $fallbackAmount): ?float
@@ -526,7 +607,7 @@ class BidController extends Controller
         return strtolower((string) $request->user()?->email);
     }
 
-    private function publishQuoteItemsFromBid(Order $order, array $lineItems): void
+    private function publishQuoteItemsFromBid(Order $order, array $lineItems, ?Bid $bid = null): void
     {
         if (! empty($order->quote_items)) {
             return;
@@ -545,10 +626,20 @@ class BidController extends Controller
             ->all();
 
         if (! empty($quoteItems)) {
-            $order->update([
+            $selectedSlotIndex = data_get($bid?->workflow_meta ?? [], 'selected_slot_index');
+            $selectedSlot = data_get($order->workflow_meta ?? [], "inspection.preferred_slots.{$selectedSlotIndex}", []);
+            $quoteDueDate = data_get($selectedSlot, 'quote_due_date');
+
+            $updates = [
                 'quote_items' => $quoteItems,
                 'workflow_status' => 'published_for_quotes',
-            ]);
+            ];
+
+            if (! $order->bid_deadline_at && $quoteDueDate) {
+                $updates['bid_deadline_at'] = "{$quoteDueDate} 23:59:00";
+            }
+
+            $order->update($updates);
         }
     }
 

@@ -132,12 +132,12 @@ function PropertyDetailsPage() {
                         {formatStatusLabel(propertyPriceRecommendation.comparison_data?.pricing_signal)}
                       </span>
                     </div>
-                    <div className="mb-2"><strong>Benchmark:</strong> {propertyPriceRecommendation.comparison_data?.benchmark_amount ?? '-'} {propertyPriceRecommendation.comparison_data?.lowest_bid_currency ?? 'EUR'}</div>
-                    <div className="mb-2"><strong>Niedrigstes Gebot:</strong> {propertyPriceRecommendation.comparison_data?.lowest_bid_amount ?? '-'} {propertyPriceRecommendation.comparison_data?.lowest_bid_currency ?? 'EUR'}</div>
+                    <div className="mb-2"><strong>Benchmark:</strong> {propertyPriceRecommendation.comparison_data?.benchmark_amount ?? '-'} {propertyPriceRecommendation.comparison_data?.lowest_bid_currency ?? 'CHF'}</div>
+                    <div className="mb-2"><strong>Niedrigstes Gebot:</strong> {propertyPriceRecommendation.comparison_data?.lowest_bid_amount ?? '-'} {propertyPriceRecommendation.comparison_data?.lowest_bid_currency ?? 'CHF'}</div>
                     <div className="mb-2"><strong>Varianz:</strong> {propertyPriceRecommendation.comparison_data?.variance_percentage ?? '-'}%</div>
                     <div className="mb-2"><strong>Service:</strong> {getOptionLabel(JOB_TYPE_OPTIONS, propertyPriceRecommendation.comparison_data?.service_category) || propertyPriceRecommendation.comparison_data?.service_category || '-'}</div>
                     <div className="mb-2"><strong>Intervall:</strong> {propertyPriceRecommendation.comparison_data?.service_interval || '-'}</div>
-                    <div className="mb-2"><strong>Ersparnis:</strong> {propertyPriceRecommendation.comparison_data?.estimated_savings ?? '-'} {propertyPriceRecommendation.comparison_data?.lowest_bid_currency ?? 'EUR'}</div>
+                    <div className="mb-2"><strong>Ersparnis:</strong> {propertyPriceRecommendation.comparison_data?.estimated_savings ?? '-'} {propertyPriceRecommendation.comparison_data?.lowest_bid_currency ?? 'CHF'}</div>
                     <div className="mb-0"><strong>Quellen:</strong> {propertyPriceRecommendation.comparison_data?.benchmark_source_count ?? 0} analysierte Dokumente</div>
                   </>
                 ) : (

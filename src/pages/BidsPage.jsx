@@ -7,7 +7,7 @@ import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
 const initialForm = {
   amount: '',
-  currency: 'EUR',
+  currency: 'CHF',
   estimated_start_date: '',
   estimated_completion_date: '',
   notes: '',
@@ -74,7 +74,7 @@ function BidsPage() {
     setEditingBid(bid)
     setForm({
       amount: bid.amount || '',
-      currency: bid.currency || 'EUR',
+      currency: 'CHF',
       estimated_start_date: bid.estimated_start_date || '',
       estimated_completion_date: bid.estimated_completion_date || '',
       notes: bid.notes || '',
@@ -109,7 +109,7 @@ function BidsPage() {
     try {
       const payload = {
         amount: Number(form.amount),
-        currency: form.currency.trim() || 'EUR',
+        currency: 'CHF',
         estimated_start_date: form.estimated_start_date || null,
         estimated_completion_date: form.estimated_completion_date || null,
         notes: form.notes || null,
@@ -379,12 +379,7 @@ function BidsPage() {
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Währung</label>
-                        <select className="form-select" name="currency" value={form.currency} onChange={handleChange}>
-                          <option value="EUR">EUR</option>
-                          <option value="USD">USD</option>
-                          <option value="GBP">GBP</option>
-                          <option value="AED">AED</option>
-                        </select>
+                        <input className="form-control" value="CHF" readOnly />
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Geplantes Startdatum</label>

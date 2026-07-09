@@ -39,7 +39,7 @@ export function getStatusBadgeClass(status) {
     return 'badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 
-  if (['cancel', 'cancelled', 'inactive', 'rejected', 'failed', 'too_high'].includes(normalizedStatus)) {
+  if (['cancel', 'cancelled', 'inactive', 'rejected', 'inspection_rejected', 'failed', 'too_high'].includes(normalizedStatus)) {
     return 'badge bg-light-danger text-danger fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 

@@ -240,9 +240,13 @@ class PropertyController extends Controller
 
     private function getPdfLogoDataUri(): string
     {
-        $logoPath = public_path('VERGO.png');
+        $logoPath = collect([
+            public_path('VERGO.png'),
+            base_path('../public/VERGO.png'),
+            base_path('../../public/VERGO.png'),
+        ])->first(fn (string $path) => file_exists($path));
 
-        if (!file_exists($logoPath)) {
+        if (! $logoPath) {
             return '';
         }
 

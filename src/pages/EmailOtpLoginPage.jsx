@@ -8,7 +8,6 @@ import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib
 
 const initialForm = {
   email: '',
-  li_number: '',
   customer_number: '',
   code: '',
 }
@@ -24,7 +23,6 @@ function EmailOtpLoginPage() {
   const backgroundStyle = useImmersiveAuthBackgroundStyle()
   const [form, setForm] = useState(() => ({
     ...initialForm,
-    li_number: searchParams.get('li_number') ?? '',
     customer_number: customerNumberFromLink,
     email: searchParams.get('email') ?? '',
   }))
@@ -55,7 +53,7 @@ function EmailOtpLoginPage() {
       ...current,
         [name]: name === 'code'
         ? value.replace(/\D/g, '').slice(0, 6)
-        : name === 'li_number' || name === 'customer_number'
+        : name === 'customer_number'
           ? value.slice(0, 20)
           : value,
     }))
@@ -67,17 +65,14 @@ function EmailOtpLoginPage() {
 
     try {
       const normalizedEmail = form.email.trim().toLowerCase()
-      const normalizedLiNumber = form.li_number.trim()
       const response = await requestUserOtp({
         email: normalizedEmail,
-        li_number: normalizedLiNumber || undefined,
         customer_number: form.customer_number.trim() || undefined,
       })
 
       setForm((current) => ({
         ...current,
         email: response.data?.email ?? normalizedEmail,
-        li_number: response.data?.li_number ?? normalizedLiNumber,
         customer_number: response.data?.customer_number ?? current.customer_number,
         code: '',
       }))
@@ -104,7 +99,6 @@ function EmailOtpLoginPage() {
     try {
       const loggedInUser = await verifyUserOtp({
         email: form.email.trim().toLowerCase(),
-        li_number: form.li_number.trim() || undefined,
         customer_number: form.customer_number.trim() || undefined,
         code: form.code,
       })
@@ -121,7 +115,6 @@ function EmailOtpLoginPage() {
     setStep('email')
     setForm((current) => ({
       ...current,
-      li_number: '',
       customer_number: '',
       code: '',
     }))
@@ -132,7 +125,7 @@ function EmailOtpLoginPage() {
   const contentByStep = {
     email: {
       title: 'Eigentümer- und Dienstleisteranmeldung',
-      subtitle: 'Geben Sie Ihre Kundennummer und E-Mail-Adresse ein. Eigentümer können optional zusätzlich eine LI-Nummer angeben.',
+      subtitle: 'Geben Sie Ihre Kundennummer und E-Mail-Adresse ein.',
     },
     otp: {
       title: 'Code eingeben',
@@ -151,17 +144,6 @@ function EmailOtpLoginPage() {
     >
       {step === 'email' ? (
         <form onSubmit={handleRequestOtp}>
-          <div className="mb-3">
-            <label className="form-label">{t('LI-Nummer (optional)')}</label>
-            <input
-              className="form-control"
-              name="li_number"
-              value={form.li_number}
-              onChange={handleChange}
-              placeholder="Li-10001"
-            />
-          </div>
-
           <div className="mb-3">
             <label className="form-label">{t('Kundennummer')}</label>
             <input
@@ -207,18 +189,6 @@ function EmailOtpLoginPage() {
 
       {step === 'otp' ? (
         <form onSubmit={handleVerifyOtp}>
-          {form.li_number ? (
-            <div className="mb-3">
-              <label className="form-label">{t('LI-Nummer')}</label>
-              <input
-                className="form-control"
-                name="li_number"
-                value={form.li_number}
-                readOnly
-              />
-            </div>
-          ) : null}
-
           {form.customer_number ? (
             <div className="mb-3">
               <label className="form-label">{t('Kundennummer')}</label>

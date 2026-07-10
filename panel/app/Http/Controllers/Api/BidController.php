@@ -309,7 +309,7 @@ class BidController extends Controller
         ]));
     }
 
-    public function update(UpdateBidRequest $request, Bid $bid): BidResource
+    public function update(UpdateBidRequest $request, Bid $bid, NotificationService $notificationService): BidResource
     {
         $actor = $request->user();
 

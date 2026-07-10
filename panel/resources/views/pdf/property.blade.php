@@ -5,7 +5,7 @@
     <title>{{ $property->li_number ?: 'Liegenschaft' }}</title>
     <style>
         @page {
-            margin: 16mm 12mm 16mm;
+            margin: 14mm 13mm 15mm;
             size: A4 portrait;
         }
 
@@ -16,266 +16,332 @@
         body {
             margin: 0;
             font-family: DejaVu Sans, sans-serif;
-            color: #22304a;
-            font-size: 12px;
+            color: #1f2a44;
+            font-size: 11px;
+            background: #ffffff;
         }
 
-        .page-title {
+        .header {
             width: 100%;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8edf4;
         }
 
-        .page-title-left {
+        .header-left {
             float: left;
-            width: 55%;
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: 0.05em;
+            width: 58%;
         }
 
-        .page-title-right {
+        .header-right {
             float: right;
-            width: 35%;
+            width: 38%;
             text-align: right;
         }
 
-        .page-title:after,
-        .object-grid:after {
+        .header:after,
+        .hero:after {
             content: "";
             display: table;
             clear: both;
         }
 
+        .eyebrow {
+            margin-bottom: 5px;
+            color: #9f6d54;
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .document-title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .logo-shell {
+            display: inline-block;
+            padding: 8px 13px 6px;
+            border-radius: 12px;
+            background: #9f6d54;
+        }
+
         .logo {
-            max-width: 180px;
-            max-height: 52px;
+            max-width: 130px;
+            max-height: 32px;
         }
 
-        .top-panels {
-            margin-bottom: 20px;
+        .hero {
+            margin-bottom: 18px;
+            padding: 16px 18px;
+            border: 1px solid #e6eaf0;
+            border-left: 5px solid #9f6d54;
+            border-radius: 16px;
+            background: #fbfcfe;
         }
 
-        .top-panels-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
+        .hero-li {
+            float: left;
+            width: 38%;
+            padding-top: 8px;
         }
 
-        .top-panels-cell {
-            height: 170px;
-            vertical-align: top;
-            padding: 0 6px;
-        }
-
-        .top-panel-box {
-            overflow: hidden;
-            background: #bb8867;
-            color: #ffffff;
-            border-radius: 24px;
-        }
-
-        .top-panel-table {
-            width: 100%;
-            height: 170px;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .li-panel-inner {
-            vertical-align: middle;
-            text-align: center;
-            font-size: 28px;
-            font-weight: 700;
-            line-height: 1.1;
-        }
-
-        .info-panel-table {
-            width: 100%;
-            height: 170px;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .info-panel-inner {
-            vertical-align: middle;
-            padding: 0 24px;
-        }
-
-        .info-line {
-            margin-bottom: 12px;
-            font-size: 13px;
-            font-weight: 700;
-            line-height: 1.15;
-        }
-
-        .info-line:last-child {
-            margin-bottom: 0;
-        }
-
-        .section-title {
-            margin-bottom: 16px;
-            padding: 4px 12px;
-            text-align: center;
-            font-size: 13px;
-            font-weight: 700;
-            color: #8f604b;
-            border: 1px solid #bb8867;
-            border-radius: 8px;
-        }
-
-        .object-grid-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .object-grid-row td {
-            width: 25%;
-            padding: 0 8px 16px;
-            vertical-align: top;
-        }
-
-        .object-grid-row td:first-child {
-            padding-left: 0;
-        }
-
-        .object-grid-row td:last-child {
-            padding-right: 0;
-        }
-
-        .object-card {
-            position: relative;
-            min-height: 118px;
-            padding: 28px 10px 12px;
-            border: 1px solid #eee5de;
-            border-radius: 14px;
-            background: #ffffff;
-            box-shadow: 0 8px 20px rgba(34, 48, 74, 0.05);
-            overflow: hidden;
-        }
-
-        .object-icon-wrap {
-            position: absolute;
-            top: -13px;
-            left: 50%;
-            width: 26px;
-            height: 26px;
-            margin-left: -13px;
-            border-radius: 50%;
-            border: 1px solid rgba(187, 136, 103, 0.18);
-            background: #fff8f3;
-            text-align: center;
-            line-height: 24px;
-            color: #bb8867;
-            font-size: 12px;
-        }
-
-        .label {
-            margin-bottom: 4px;
-            font-size: 7px;
+        .li-label {
+            margin-bottom: 8px;
+            color: #8a94a8;
+            font-size: 8px;
             font-weight: 700;
             letter-spacing: 0.16em;
             text-transform: uppercase;
-            color: #8a93a8;
         }
 
-        .address {
-            min-height: 30px;
-            margin-bottom: 12px;
-            font-size: 11px;
+        .li-number {
+            color: #1f2a44;
+            font-size: 34px;
             font-weight: 700;
-            line-height: 1.35;
+            line-height: 1;
         }
 
-        .meta-table {
+        .hero-info {
+            float: right;
+            width: 58%;
+        }
+
+        .info-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
         }
 
-        .meta-table td {
+        .info-table td {
             width: 50%;
+            padding: 0 0 12px 16px;
             vertical-align: top;
         }
 
-        .value {
+        .info-label {
+            margin-bottom: 4px;
+            color: #8a94a8;
+            font-size: 7px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            color: #1f2a44;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        .section-head {
+            width: 100%;
+            margin: 18px 0 10px;
+        }
+
+        .section-title {
+            float: left;
+            width: 50%;
+            color: #1f2a44;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .section-meta {
+            float: right;
+            width: 45%;
+            color: #8a94a8;
+            text-align: right;
+            font-size: 10px;
+        }
+
+        .section-head:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        .objects-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+
+        .object-row td {
+            padding: 11px 12px;
+            vertical-align: middle;
+            border-top: 1px solid #e8edf4;
+            border-bottom: 1px solid #e8edf4;
+            background: #ffffff;
+        }
+
+        .object-row td:first-child {
+            width: 46px;
+            border-left: 1px solid #e8edf4;
+            border-radius: 12px 0 0 12px;
+        }
+
+        .object-row td:last-child {
+            border-right: 1px solid #e8edf4;
+            border-radius: 0 12px 12px 0;
+        }
+
+        .object-index {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f3ebe6;
+            color: #9f6d54;
+            font-size: 10px;
+            font-weight: 700;
+            overflow: hidden;
+        }
+
+        .object-index-table {
+            width: 24px;
+            height: 24px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .object-index-table td {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            text-align: center;
+            vertical-align: middle;
+            line-height: 1;
+        }
+
+        .object-address {
+            color: #1f2a44;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .object-muted {
+            margin-top: 3px;
+            color: #8a94a8;
+            font-size: 9px;
+        }
+
+        .object-data-label {
+            color: #8a94a8;
+            font-size: 7px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .object-data-value {
+            margin-top: 3px;
+            color: #1f2a44;
             font-size: 11px;
             font-weight: 700;
+        }
+
+        .footer-note {
+            margin-top: 18px;
+            padding-top: 8px;
+            border-top: 1px solid #e8edf4;
+            color: #9aa4b7;
+            font-size: 8px;
+            text-align: right;
         }
     </style>
 </head>
 <body>
-    <div class="page-title">
-        <div class="page-title-left">LIEGENSCHAFTSINFORMATIONEN</div>
-        <div class="page-title-right">
+    <div class="header">
+        <div class="header-left">
+            <div class="eyebrow">Vergo Property Sheet</div>
+            <div class="document-title">Liegenschaftsinformationen</div>
+        </div>
+        <div class="header-right">
             @if($logoDataUri)
-                <img class="logo" src="{{ $logoDataUri }}" alt="Vergo">
+                <span class="logo-shell"><img class="logo" src="{{ $logoDataUri }}" alt="Vergo"></span>
             @endif
         </div>
     </div>
 
-    <div class="top-panels">
-        <table class="top-panels-table">
-            <tr>
-                <td class="top-panels-cell" style="width: 46%;">
-                    <div class="top-panel-box">
-                        <table class="top-panel-table">
-                            <tr>
-                                <td class="li-panel-inner">{{ $property->li_number ?: '-' }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </td>
-                <td class="top-panels-cell" style="width: 54%;">
-                    <div class="top-panel-box">
-                        <table class="info-panel-table">
-                            <tr>
-                                <td class="info-panel-inner">
-                                    <div class="info-line">{{ $property->title ?: '-' }}</div>
-                                    <div class="info-line">{{ $managerLabel }}</div>
-                                    <div class="info-line">{{ $ownerLabel }}</div>
-                                    <div class="info-line">{{ trim(($property->postal_code ?: '-') . ' ' . ($property->city ?: '-')) }}</div>
-                                    <div class="info-line">{{ $usageLabel }}</div>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                </td>
-            </tr>
-        </table>
+    <div class="hero">
+        <div class="hero-li">
+            <div class="li-label">LI-Nummer</div>
+            <div class="li-number">{{ $property->li_number ?: '-' }}</div>
+        </div>
+        <div class="hero-info">
+            <table class="info-table">
+                <tr>
+                    <td>
+                        <div class="info-label">Bezeichnung</div>
+                        <div class="info-value">{{ $property->title ?: '-' }}</div>
+                    </td>
+                    <td>
+                        <div class="info-label">Nutzung</div>
+                        <div class="info-value">{{ $usageLabel }}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="info-label">Bewirtschaftung</div>
+                        <div class="info-value">{{ $managerLabel }}</div>
+                    </td>
+                    <td>
+                        <div class="info-label">Eigentümer</div>
+                        <div class="info-value">{{ $ownerLabel }}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="info-label">PLZ / Ort</div>
+                        <div class="info-value">{{ trim(($property->postal_code ?: '-') . ' ' . ($property->city ?: '-')) }}</div>
+                    </td>
+                    <td>
+                        <div class="info-label">Objekte</div>
+                        <div class="info-value">{{ count($objectCards) }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
 
-    <div class="section-title">Objekte</div>
+    <div class="section-head">
+        <div class="section-title">Objekte</div>
+        <div class="section-meta">Adresse, PLZ und Ort</div>
+    </div>
 
-    <table class="object-grid-table">
-        @foreach(array_chunk($objectCards, 4) as $cardRow)
-            <tr class="object-grid-row">
-                @foreach($cardRow as $card)
-                    <td>
-                        <div class="object-card">
-                            <div class="object-icon-wrap">⌂</div>
-                            <div class="label">Adresse</div>
-                            <div class="address">{{ $card['address'] }}</div>
-                            <table class="meta-table">
-                                <tr>
-                                    <td>
-                                        <div class="label">PLZ</div>
-                                        <div class="value">{{ $card['postal_code'] }}</div>
-                                    </td>
-                                    <td>
-                                        <div class="label">Ort</div>
-                                        <div class="value">{{ $card['city'] }}</div>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </td>
-                @endforeach
-                @for($i = count($cardRow); $i < 4; $i++)
-                    <td></td>
-                @endfor
+    <table class="objects-table">
+        @foreach($objectCards as $index => $card)
+            <tr class="object-row">
+                <td>
+                    <div class="object-index">
+                        <table class="object-index-table">
+                            <tr><td>{{ $index + 1 }}</td></tr>
+                        </table>
+                    </div>
+                </td>
+                <td style="width: 52%;">
+                    <div class="object-address">{{ $card['address'] }}</div>
+                    <div class="object-muted">Objektadresse</div>
+                </td>
+                <td style="width: 20%;">
+                    <div class="object-data-label">PLZ</div>
+                    <div class="object-data-value">{{ $card['postal_code'] }}</div>
+                </td>
+                <td style="width: 28%;">
+                    <div class="object-data-label">Ort</div>
+                    <div class="object-data-value">{{ $card['city'] }}</div>
+                </td>
             </tr>
         @endforeach
     </table>
+
+    <div class="footer-note">
+        Automatisch generiert durch Vergo
+    </div>
 </body>
 </html>

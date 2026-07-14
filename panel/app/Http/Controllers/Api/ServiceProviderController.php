@@ -135,6 +135,7 @@ class ServiceProviderController extends Controller
             'domain_suffix' => ltrim(strtolower($request->string('domain_suffix')->trim()->toString()), '@'),
             'trade_groups' => array_values($request->input('trade_groups', [])),
             'phone' => $request->string('phone')->trim()->toString(),
+            'is_vat_subject' => $request->boolean('is_vat_subject'),
         ];
     }
 }

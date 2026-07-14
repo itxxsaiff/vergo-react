@@ -24,6 +24,7 @@ class ServiceProviderResource extends JsonResource
             'domain_suffix' => $this->domain_suffix,
             'trade_groups' => $this->trade_groups ?? [],
             'phone' => $this->phone,
+            'is_vat_subject' => (bool) $this->is_vat_subject,
             'rating' => $this->getAverageRatingValue(),
             'completed_jobs_count' => $this->getCompletedJobsCountValue(),
             'status' => $this->status === 'pending' ? 'inactive' : $this->status,

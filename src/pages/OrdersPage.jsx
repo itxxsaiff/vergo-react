@@ -153,6 +153,7 @@ function getInitialManagerWizard(propertyId = '') {
     onsite_phone: '',
     onsite_email: '',
     inspection_request_mode: '',
+    inspection_provider_limit: '3',
     public_provider_limit: '3',
     completion_mode: 'fixed_date',
     due_date: '',
@@ -274,8 +275,9 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
           email: wizard.onsite_email || null,
         },
         request_mode: wizard.inspection_request_mode || null,
+        provider_limit: Math.min(10, Math.max(1, Number(wizard.inspection_provider_limit || wizard.public_provider_limit || 3))),
         public_provider_limit: wizard.inspection_request_mode === 'public'
-          ? Math.max(1, Number(wizard.public_provider_limit || 3))
+          ? Math.min(10, Math.max(1, Number(wizard.public_provider_limit || wizard.inspection_provider_limit || 3)))
           : null,
       }
       : null,
@@ -320,7 +322,9 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
       }
       : null,
     provider_selection: {
-      selected_provider_ids: wizard.selected_provider_ids
+      selected_provider_ids: wizard.flow_type === 'direct_order'
+        ? []
+        : wizard.selected_provider_ids
         .filter((id) => id !== null && id !== undefined && id !== '')
         .map((id) => Number(id)),
       manual_provider: null,
@@ -472,6 +476,7 @@ function OrdersPage() {
       ...(name === 'flow_type'
         ? {
           inspection_request_mode: '',
+          inspection_provider_limit: '3',
           public_provider_limit: '3',
           inspection_date_1: '',
           inspection_time_1: '',
@@ -498,6 +503,12 @@ function OrdersPage() {
           invoice_city: '',
           quote_items: [],
           selected_provider_ids: [],
+        }
+        : {}),
+      ...(name === 'inspection_provider_limit'
+        ? {
+          selected_provider_ids: current.selected_provider_ids.slice(0, Math.min(10, Math.max(1, Number(value || 1)))),
+          public_provider_limit: value,
         }
         : {}),
       ...(name === 'inspection_request_mode' && value === 'public'
@@ -669,7 +680,12 @@ function OrdersPage() {
         ...current,
         selected_provider_ids: exists
           ? current.selected_provider_ids.filter((id) => id !== normalizedProviderId)
-          : [...current.selected_provider_ids, normalizedProviderId],
+          : [...current.selected_provider_ids, normalizedProviderId].slice(
+            0,
+            current.flow_type === 'inspection' && current.inspection_request_mode === 'direct'
+              ? Math.min(10, Math.max(1, Number(current.inspection_provider_limit || 1)))
+              : undefined,
+          ),
       }
     })
   }
@@ -939,10 +955,23 @@ function OrdersPage() {
         return false
       }
 
+      if (managerWizard.flow_type === 'inspection') {
+        const providerLimit = Number(managerWizard.inspection_provider_limit || managerWizard.public_provider_limit || 0)
+
+        if (providerLimit < 1 || providerLimit > 10) {
+          setError(t('Bitte wählen Sie eine Anzahl Dienstleister zwischen 1 und 10.'))
+          return false
+        }
+      }
+
+      if (managerWizard.flow_type === 'direct_order' && managerWizard.selected_provider_ids.length > 0) {
+        setManagerWizard((current) => ({ ...current, selected_provider_ids: [] }))
+      }
+
       if (
         managerWizard.flow_type === 'inspection'
         && managerWizard.inspection_request_mode === 'public'
-        && Number(managerWizard.public_provider_limit || 0) < 1
+        && Number(managerWizard.public_provider_limit || managerWizard.inspection_provider_limit || 0) < 1
       ) {
         setError(t('Bitte geben Sie an, wie viele Dienstleister sich maximal anmelden dürfen.'))
         return false
@@ -967,14 +996,13 @@ function OrdersPage() {
     }
 
     if (step === 5) {
-      const requiresProviderSelection = (
-        (managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct')
-      )
+      const requiresProviderSelection = managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct'
+      const requiredProviderCount = Math.min(10, Math.max(1, Number(managerWizard.inspection_provider_limit || 1)))
 
       const normalizedSelectedProviderIds = (managerWizard.selected_provider_ids ?? []).filter(Boolean)
 
-      if (requiresProviderSelection && normalizedSelectedProviderIds.length === 0) {
-        setError(t('Bitte wählen Sie mindestens eine Firma aus der Liste aus.'))
+      if (requiresProviderSelection && normalizedSelectedProviderIds.length !== requiredProviderCount) {
+        setError(t(`Bitte wählen Sie genau ${requiredProviderCount} Firmen aus der Liste aus.`))
         return false
       }
     }
@@ -1282,9 +1310,7 @@ function OrdersPage() {
     return searchMatch && statusMatch
   })
 
-  const requiresProviderSelection = (
-    managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct'
-  )
+  const requiresProviderSelection = managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct'
   const visibleServiceProviders = useMemo(() => (
     providerCantonFilter
       ? serviceProviders.filter((provider) => String(provider.canton || '').trim().toUpperCase() === providerCantonFilter)
@@ -1842,19 +1868,27 @@ function OrdersPage() {
                                     <div className="text-muted small">{t('Anfrage öffentlich ausschreiben und Anmeldungen sammeln.')}</div>
                                   </button>
                                 </div>
-                                {managerWizard.inspection_request_mode === 'public' ? (
+                                {managerWizard.inspection_request_mode ? (
                                   <div className="col-md-6">
-                                    <label className="form-label">{t('Maximale Anzahl Dienstleister')}</label>
-                                    <input
-                                      type="number"
-                                      min="1"
+                                    <label className="form-label">
+                                      {managerWizard.inspection_request_mode === 'direct'
+                                        ? t('Anzahl einzuladender Dienstleister')
+                                        : t('Maximale Anzahl Dienstleister')}
+                                    </label>
+                                    <select
                                       className="form-control"
-                                      name="public_provider_limit"
-                                      value={managerWizard.public_provider_limit}
+                                      name="inspection_provider_limit"
+                                      value={managerWizard.inspection_provider_limit}
                                       onChange={handleManagerWizardChange}
-                                    />
+                                    >
+                                      {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => (
+                                        <option key={count} value={count}>{count}</option>
+                                      ))}
+                                    </select>
                                     <div className="form-text">
-                                      {t('So viele Dienstleister dürfen sich für die öffentliche Besichtigung anmelden.')}
+                                      {managerWizard.inspection_request_mode === 'direct'
+                                        ? t('Sie müssen im nächsten Schritt genau diese Anzahl Firmen auswählen.')
+                                        : t('So viele Dienstleister dürfen sich für die öffentliche Besichtigung anmelden.')}
                                     </div>
                                   </div>
                                 ) : null}
@@ -1994,12 +2028,23 @@ function OrdersPage() {
 
                         {managerStep === 5 ? (
                           <div className="row g-4">
+                            {managerWizard.flow_type === 'direct_order' ? (
+                              <div className="col-12">
+                                <div className="alert alert-light-primary border mb-0">
+                                  <div className="fw-semibold mb-1">{t('Öffentliche Offertenanfrage')}</div>
+                                  <div className="small">
+                                    {t('Dieser Auftrag wird öffentlich ausgeschrieben. Es kann keine einzelne Firma ausgewählt werden; alle passenden Dienstleister können ein Angebot einreichen.')}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
                             <div className="col-lg-7">
                               <div className="mb-3">
                                 <h6 className="fw-semibold mb-1">{t('Firmenauswahl')}</h6>
                                 <p className="text-muted small mb-0">
                                   {requiresProviderSelection
-                                    ? t('Wählen Sie passende Firmen aus der Liste aus.')
+                                    ? `${t('Wählen Sie passende Firmen aus der Liste aus.')} ${managerWizard.selected_provider_ids.length}/${managerWizard.inspection_provider_limit}`
                                     : t('Die Auswahl ist optional. Sie können den Auftrag auch ohne direkte Firmenzuordnung speichern.')}
                                 </p>
                               </div>
@@ -2059,6 +2104,8 @@ function OrdersPage() {
                                 ) : null}
                               </div>
                             </div>
+                              </>
+                            )}
                           </div>
                         ) : null}
                       </>

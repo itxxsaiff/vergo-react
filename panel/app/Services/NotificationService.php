@@ -100,12 +100,7 @@ class NotificationService
                 continue;
             }
 
-            $loginUrl = sprintf(
-                '%s/email-otp-login?customer_number=%s&email=%s&force_otp=1',
-                $frontendBase,
-                urlencode($this->formatProviderCustomerNumber($provider->id)),
-                urlencode($provider->order_email)
-            );
+            $loginUrl = $this->providerLoginUrl($frontendBase, $provider->id, $provider->order_email);
 
             try {
                 Mail::mailer('orders')->to($provider->order_email)->send(new ProviderOrderNoticeMail(
@@ -145,12 +140,7 @@ class NotificationService
     {
         $order->loadMissing('property');
         $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
-        $loginUrl = sprintf(
-            '%s/email-otp-login?customer_number=%s&email=%s&force_otp=1',
-            $frontendBase,
-            urlencode($this->formatProviderCustomerNumber($provider->id)),
-            urlencode($email)
-        );
+        $loginUrl = $this->providerLoginUrl($frontendBase, $provider->id, $email);
 
         Mail::mailer('orders')->to($email)->send(new ProviderOrderNoticeMail(
             order: $order,
@@ -162,7 +152,7 @@ class NotificationService
 
     public function sendQuoteRequestPublished(Order $order): void
     {
-        $providers = $this->providersForTrade($order->service_type);
+        $providers = $this->activeProviders();
         $recipients = $this->providerRecipients($providers);
 
         Notification::send($recipients, new SystemNotification(
@@ -203,6 +193,42 @@ class NotificationService
             message: $message,
             type: 'primary',
             actionUrl: '/bids',
+        ));
+    }
+
+    public function sendProviderResponse(Bid $bid, string $status): void
+    {
+        $bid->loadMissing(['order.property.owners', 'order.property.managerProfiles', 'serviceProvider']);
+
+        $order = $bid->order;
+
+        if (! $order) {
+            return;
+        }
+
+        $providerName = $bid->serviceProvider?->company_name
+            ?: $bid->serviceProvider?->contact_name
+            ?: $bid->assigned_provider_email
+            ?: 'Ein Dienstleister';
+
+        $isConfirmed = in_array($status, ['inspection_confirmed', 'accepted'], true);
+        $title = $isConfirmed ? 'Provider Response Confirmed' : 'Provider Response Declined';
+        $message = match ($status) {
+            'inspection_confirmed' => sprintf('%s has confirmed the viewing for "%s".', $providerName, $order->title),
+            'accepted' => sprintf('%s has accepted the order "%s".', $providerName, $order->title),
+            'rejected' => sprintf('%s has declined "%s".', $providerName, $order->title),
+            default => sprintf('%s responded to "%s".', $providerName, $order->title),
+        };
+
+        $recipients = $this->basePropertyRecipients($order->property)
+            ->merge($this->adminRecipients())
+            ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
+
+        Notification::send($recipients, new SystemNotification(
+            title: $title,
+            message: $message,
+            type: $isConfirmed ? 'success' : 'danger',
+            actionUrl: "/orders/{$order->id}",
         ));
     }
 
@@ -281,6 +307,15 @@ class NotificationService
             ->filter();
     }
 
+    private function providerLoginUrl(string $frontendBase, int $providerId, string $email): string
+    {
+        return $frontendBase.'/email-otp-login?'.http_build_query([
+            'customer_number' => $this->formatProviderCustomerNumber($providerId),
+            'email' => $email,
+            'force_otp' => '1',
+        ], '', '&', PHP_QUERY_RFC3986);
+    }
+
     private function providersForTrade(?string $trade): Collection
     {
         $providers = ServiceProvider::query()
@@ -308,6 +343,14 @@ class NotificationService
         ]);
 
         return $filteredProviders;
+    }
+
+    private function activeProviders(): Collection
+    {
+        return ServiceProvider::query()
+            ->where('status', 'active')
+            ->with('user')
+            ->get();
     }
 
     private function formatProviderCustomerNumber(int $id): string

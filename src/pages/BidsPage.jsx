@@ -378,10 +378,6 @@ function BidsPage() {
                         <input className="form-control" name="amount" value={form.amount} onChange={handleChange} />
                       </div>
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Währung</label>
-                        <input className="form-control" value="CHF" readOnly />
-                      </div>
-                      <div className="col-md-6 mb-3">
                         <label className="form-label">Geplantes Startdatum</label>
                         <input type="date" className="form-control" name="estimated_start_date" value={form.estimated_start_date} onChange={handleChange} />
                       </div>

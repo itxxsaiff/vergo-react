@@ -149,4 +149,9 @@ return [
         'name' => env('MAIL_ORDERS_FROM_NAME', env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel'))),
     ],
 
+    'support_to' => [
+        'address' => env('MAIL_SUPPORT_TO_ADDRESS', 'info@vergo.ch'),
+        'name' => env('MAIL_SUPPORT_TO_NAME', 'Vergo'),
+    ],
+
 ];

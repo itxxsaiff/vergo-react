@@ -11,11 +11,24 @@ export function formatStatusLabel(status) {
 export function getStatusBadgeClass(status) {
   const normalizedStatus = String(status || '').toLowerCase()
 
-  if (['active', 'approved', 'ready', 'paid', 'analyzed', 'fair'].includes(normalizedStatus)) {
+  if (['active', 'approved', 'ready', 'paid', 'analyzed', 'fair', 'inspection_confirmed', 'accepted'].includes(normalizedStatus)) {
     return 'badge bg-light-success text-success fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 
-  if (['pending', 'processing', 'draft', 'review', 'offline', 'queued', 'too_low', 'unknown'].includes(normalizedStatus)) {
+  if ([
+    'pending',
+    'processing',
+    'draft',
+    'review',
+    'offline',
+    'queued',
+    'too_low',
+    'unknown',
+    'inspection_requested',
+    'inspection_interest',
+    'awarded_pending_acceptance',
+    'working',
+  ].includes(normalizedStatus)) {
     return 'badge bg-light-warning text-warning fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 
@@ -25,12 +38,6 @@ export function getStatusBadgeClass(status) {
     'in_review',
     'open',
     'awaiting_owner_approval',
-    'working',
-    'inspection_requested',
-    'inspection_interest',
-    'inspection_confirmed',
-    'awarded_pending_acceptance',
-    'accepted',
   ].includes(normalizedStatus)) {
     return 'badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-2 px-3'
   }

@@ -29,6 +29,7 @@ class UpdateBidRequest extends FormRequest
             'estimated_completion_date' => ['nullable', 'date', 'after_or_equal:estimated_start_date'],
             'notes' => ['nullable', 'string'],
             'workflow_meta' => ['nullable', 'array'],
+            'workflow_meta.vat_included' => ['nullable', 'boolean'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
             'status' => ['sometimes', 'nullable', Rule::in(['submitted', 'shortlisted', 'rejected', 'approved', 'accepted', 'completed', 'inspection_confirmed'])],
             'rejection_reason' => ['nullable', 'string'],

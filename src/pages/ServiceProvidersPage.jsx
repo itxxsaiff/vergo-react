@@ -17,6 +17,7 @@ const initialForm = {
   domain_suffix: '',
   trade_groups: [],
   phone: '',
+  is_vat_subject: false,
   status: 'active',
 }
 
@@ -100,11 +101,13 @@ function ServiceProvidersPage() {
   }
 
   function handleChange(event) {
-    const { name, value, selectedOptions } = event.target
+    const { name, value, selectedOptions, checked, type } = event.target
     setForm((current) => ({
       ...current,
       [name]: name === 'trade_groups'
         ? Array.from(selectedOptions, (option) => option.value)
+        : type === 'checkbox'
+          ? checked
         : value,
     }))
     setFieldErrors((current) => {
@@ -161,6 +164,7 @@ function ServiceProvidersPage() {
       domain_suffix: provider.domain_suffix || '',
       trade_groups: provider.trade_groups || [],
       phone: provider.phone || '',
+      is_vat_subject: Boolean(provider.is_vat_subject),
       status: provider.status || 'active',
     })
     setError('')
@@ -230,6 +234,7 @@ function ServiceProvidersPage() {
         domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         trade_groups: form.trade_groups,
         phone: form.phone.trim(),
+        is_vat_subject: Boolean(form.is_vat_subject),
       }
 
       if (editingId) {
@@ -540,6 +545,22 @@ function ServiceProvidersPage() {
                 <option value="active">Aktiv</option>
                 <option value="inactive">Inaktiv</option>
               </select>
+            </div>
+            <div className="col-md-6 mb-3 d-flex align-items-end">
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="provider-vat-subject"
+                  name="is_vat_subject"
+                  checked={Boolean(form.is_vat_subject)}
+                  onChange={handleChange}
+                />
+                <label className="form-check-label fw-semibold" htmlFor="provider-vat-subject">
+                  MwSt.-pflichtig
+                </label>
+                <div className="form-text">Dienstleister kann bei Angeboten Preise inkl./exkl. MwSt. markieren.</div>
+              </div>
             </div>
             <div className="col-md-6 mb-0">
               <label className="form-label">Domain-Endung</label>

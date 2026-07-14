@@ -733,6 +733,8 @@ class AuthController extends Controller
 
     private function transformUserActor(User $user, ?string $providerLoginEmail = null): array
     {
+        $user->loadMissing('serviceProvider');
+
         $role = $user->role?->name ?? 'user';
         $accessLevel = $user->access_level ?: 'admin';
         $navigationRole = $role === 'employee'
@@ -752,6 +754,11 @@ class AuthController extends Controller
             'navigation_role' => $navigationRole,
             'status' => $user->status,
             'home_path' => $homePath,
+            'service_provider' => $user->serviceProvider ? [
+                'id' => $user->serviceProvider->id,
+                'company_name' => $user->serviceProvider->company_name,
+                'is_vat_subject' => (bool) $user->serviceProvider->is_vat_subject,
+            ] : null,
         ];
     }
 

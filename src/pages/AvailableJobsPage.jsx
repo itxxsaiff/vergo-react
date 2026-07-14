@@ -16,10 +16,12 @@ const initialBidForm = {
   notes: '',
   attachment: null,
   selected_inspection_slot: '',
+  vat_included: false,
   line_items: [],
 }
 
 const emptyLineItem = {
+  id: '',
   label: '',
   code: '',
   unit: 'Stück',
@@ -68,14 +70,16 @@ function getCardDisplayStatus(order, providerBid) {
 function getInspectionCardAction(providerBid, isQuoteRequest) {
   const bidStatus = String(providerBid?.status || '').toLowerCase()
 
-  if (isQuoteRequest) {
-    return providerBid
-      ? { label: 'Angebot eingereicht', disabled: true, submitted: true }
-      : { label: 'Angebot abgeben', disabled: false, submitted: false }
-  }
-
   if (bidStatus === 'inspection_confirmed') {
     return { label: 'Offerte erstellen', disabled: false, submitted: false }
+  }
+
+  if (['submitted', 'shortlisted', 'approved', 'accepted', 'completed'].includes(bidStatus)) {
+    return { label: 'Angebot eingereicht', disabled: true, submitted: true }
+  }
+
+  if (isQuoteRequest) {
+    return { label: 'Angebot abgeben', disabled: false, submitted: false }
   }
 
   if (bidStatus === 'inspection_requested') {
@@ -108,6 +112,7 @@ function AvailableJobsPage() {
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState('')
   const [error, setError] = useState('')
   const [hasOpenedInitialOrder, setHasOpenedInitialOrder] = useState(false)
+  const providerIsVatSubject = Boolean(user?.service_provider?.is_vat_subject)
 
   useEffect(() => {
     loadOrders()
@@ -169,8 +174,11 @@ function AvailableJobsPage() {
   }
 
   function handleBidChange(event) {
-    const { name, value, files } = event.target
-    setBidForm((current) => ({ ...current, [name]: files ? files[0] : value }))
+    const { name, value, files, type, checked } = event.target
+    setBidForm((current) => ({
+      ...current,
+      [name]: files ? files[0] : type === 'checkbox' ? checked : value,
+    }))
   }
 
   function handleLineItemChange(index, field, value) {
@@ -197,8 +205,10 @@ function AvailableJobsPage() {
       estimated_completion_date: draft?.estimated_completion_date ?? providerBid?.estimated_completion_date ?? '',
       notes: draft?.notes ?? providerBid?.notes ?? '',
       selected_inspection_slot: draft?.selected_inspection_slot ?? providerBid?.workflow_meta?.selected_slot_index ?? '',
-      line_items: quoteItems.map((item) => ({
+      vat_included: Boolean(draft?.vat_included ?? providerBid?.workflow_meta?.vat_included),
+      line_items: quoteItems.map((item, index) => ({
         ...item,
+        id: item.id || `${providerBid?.id || order.id || 'new'}-${index}`,
         unit_price: draft ? item.unit_price : '',
       })),
     }
@@ -207,7 +217,7 @@ function AvailableJobsPage() {
   function addLineItem() {
     setBidForm((current) => ({
       ...current,
-      line_items: [...(current.line_items ?? []), { ...emptyLineItem }],
+      line_items: [...(current.line_items ?? []), { ...emptyLineItem, id: `custom-${Date.now()}` }],
     }))
   }
 
@@ -373,6 +383,10 @@ function AvailableJobsPage() {
       if (acknowledgeBenchmarkWarning) {
         payload.append('workflow_meta[benchmark_warning_acknowledged]', '1')
       }
+
+      if (providerIsVatSubject) {
+        payload.append('workflow_meta[vat_included]', bidForm.vat_included ? '1' : '0')
+      }
     } else if (!isInspectionSignup) {
       payload.append('amount', Number(bidForm.amount))
     }
@@ -500,7 +514,7 @@ function AvailableJobsPage() {
   const activeAssignedProviderEmail = getAssignedProviderEmail(activeProviderBid)
   const isAssignedToMe = Boolean(activeAssignedProviderEmail) && activeAssignedProviderEmail === providerLoginEmail
   const canSubmitCurrentOrder = selectedOrder
-    ? selectedOrder.workflow_status === 'public_inspection_open' || (!isInspectionWorkflow(selectedOrder) && isOrderQuoteRequest(selectedOrder))
+    ? selectedOrder.workflow_status === 'public_inspection_open' || isOrderQuoteRequest(selectedOrder)
     : false
 
   useEffect(() => {
@@ -514,6 +528,7 @@ function AvailableJobsPage() {
           draft_payload: {
             amount: bidForm.amount,
             currency: 'CHF',
+            vat_included: bidForm.vat_included,
             estimated_start_date: bidForm.estimated_start_date,
             estimated_completion_date: bidForm.estimated_completion_date,
             notes: bidForm.notes,
@@ -543,6 +558,7 @@ function AvailableJobsPage() {
         draft_payload: {
           amount: bidForm.amount,
           currency: 'CHF',
+          vat_included: bidForm.vat_included,
           estimated_start_date: bidForm.estimated_start_date,
           estimated_completion_date: bidForm.estimated_completion_date,
           notes: bidForm.notes,
@@ -574,7 +590,7 @@ function AvailableJobsPage() {
   }
 
   function hasSubmittedQuote(order) {
-    return ['submitted', 'shortlisted', 'approved', 'accepted', 'completed', 'rejected'].includes(providerBidByOrderId[order.id]?.status)
+    return ['submitted', 'shortlisted', 'approved', 'accepted', 'completed'].includes(providerBidByOrderId[order.id]?.status)
   }
 
   const filteredOrders = orders.filter((order) => {
@@ -1082,7 +1098,7 @@ function AvailableJobsPage() {
                             <label className="form-label">Positionen und Preise</label>
                             <div className="border rounded-3">
                               {(bidForm.line_items ?? []).map((item, index) => (
-                                <div key={`${item.label}-${index}`} className="p-3 border-bottom">
+                                <div key={item.id || index} className="p-3 border-bottom">
                                   <div className="row g-3 align-items-end">
                                     <div className="col-md-5">
                                       {(selectedOrder.quote_items ?? []).length > 0 ? (
@@ -1162,6 +1178,24 @@ function AvailableJobsPage() {
                                 <span className="fw-semibold">{getQuoteBidTotal().toFixed(2)} {bidForm.currency}</span>
                               </div>
                             </div>
+                            {providerIsVatSubject ? (
+                              <div className="form-check mt-3">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id="bid-vat-included"
+                                  name="vat_included"
+                                  checked={Boolean(bidForm.vat_included)}
+                                  onChange={handleBidChange}
+                                />
+                                <label className="form-check-label fw-semibold" htmlFor="bid-vat-included">
+                                  Preise inkl. MwSt.
+                                </label>
+                                <div className="form-text">
+                                  Nicht aktiviert bedeutet: Preise exkl. MwSt. Diese Einstellung gilt für alle Positionen.
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
                         ) : (
                           <div className="col-md-6 mb-3">
@@ -1170,10 +1204,6 @@ function AvailableJobsPage() {
                           </div>
                         )}
 
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label">Währung</label>
-                          <input className="form-control" value="CHF" readOnly />
-                        </div>
                         <div className="col-md-6 mb-3">
                           <label className="form-label">Voraussichtliches Startdatum</label>
                           <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} onChange={handleBidChange} />

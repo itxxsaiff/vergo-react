@@ -88,7 +88,7 @@ class BidController extends Controller
             || $isConfirmedInspectionBid;
         $isInspectionSignup = $order->workflow_status === 'public_inspection_open';
 
-        if ($isQuoteSubmission) {
+        if ($isQuoteSubmission && ! $isConfirmedInspectionBid) {
             abort_unless(
                 ! $order->bid_deadline_at || now()->lte($order->bid_deadline_at),
                 422,
@@ -182,6 +182,10 @@ class BidController extends Controller
 
             $notificationService->sendInspectionAppointmentConfirmed(
                 $bid->fresh()->load(['order.property', 'order.propertyObject', 'serviceProvider'])
+            );
+            $notificationService->sendProviderResponse(
+                $bid->fresh()->load(['order.property.owners', 'order.property.managerProfiles', 'serviceProvider']),
+                'inspection_confirmed'
             );
             $this->syncOrderStatus($order->fresh());
         }
@@ -358,6 +362,13 @@ class BidController extends Controller
             if ($status === 'inspection_confirmed') {
                 $notificationService->sendInspectionAppointmentConfirmed(
                     $bid->fresh()->load(['order.property', 'order.propertyObject', 'serviceProvider'])
+                );
+            }
+
+            if (in_array($status, ['inspection_confirmed', 'accepted', 'rejected'], true)) {
+                $notificationService->sendProviderResponse(
+                    $bid->fresh()->load(['order.property.owners', 'order.property.managerProfiles', 'serviceProvider']),
+                    $status
                 );
             }
         } elseif ($actor instanceof PropertyManagerProfile) {

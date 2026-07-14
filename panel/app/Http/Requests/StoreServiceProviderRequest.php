@@ -32,6 +32,7 @@ class StoreServiceProviderRequest extends FormRequest
             'trade_groups' => ['required', 'array', 'min:1'],
             'trade_groups.*' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
+            'is_vat_subject' => ['nullable', 'boolean'],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
         ];
     }

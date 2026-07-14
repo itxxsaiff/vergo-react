@@ -43,12 +43,16 @@ class OrderController extends Controller
             $query->where(function ($providerQuery) use ($serviceProvider, $supportedServiceTypes) {
                 $providerQuery
                     ->where(function ($publicQuery) use ($supportedServiceTypes) {
-                        $publicQuery
-                            ->whereIn('workflow_status', ['public_inspection_open', 'inspection_signup_closed', 'published_for_quotes']);
+                        $publicQuery->where(function ($visibilityQuery) use ($supportedServiceTypes) {
+                            $visibilityQuery->where('workflow_status', 'published_for_quotes')
+                                ->orWhere(function ($inspectionQuery) use ($supportedServiceTypes) {
+                                    $inspectionQuery->whereIn('workflow_status', ['public_inspection_open', 'inspection_signup_closed']);
 
-                        if (! empty($supportedServiceTypes)) {
-                            $publicQuery->whereIn('service_type', $supportedServiceTypes);
-                        }
+                                    if (! empty($supportedServiceTypes)) {
+                                        $inspectionQuery->whereIn('service_type', $supportedServiceTypes);
+                                    }
+                                });
+                        });
                     })
                     ->orWhereHas('bids', function ($bidQuery) use ($serviceProvider) {
                         $bidQuery
@@ -138,11 +142,21 @@ class OrderController extends Controller
                 $request->input('workflow_type'),
                 $request->input('workflow_meta', [])
             );
-        $selectedProviderIds = collect(data_get($request->input('workflow_meta', []), 'provider_selection.selected_provider_ids', []))
+        $workflowType = $request->input('workflow_type');
+        $workflowMetaInput = $request->input('workflow_meta', []);
+        $selectedProviderIds = collect($workflowType === 'inspection'
+            ? data_get($workflowMetaInput, 'provider_selection.selected_provider_ids', [])
+            : [])
             ->map(fn ($id) => (int) $id)
             ->filter()
             ->unique()
             ->values();
+        $inspectionProviderLimit = (int) data_get($workflowMetaInput, 'inspection.provider_limit', data_get($workflowMetaInput, 'inspection.public_provider_limit', 0));
+
+        if (! $isDraft && $workflowStatus === 'inspection_requested') {
+            abort_unless($inspectionProviderLimit >= 1 && $inspectionProviderLimit <= 10, 422, 'Please choose between 1 and 10 service providers.');
+            abort_unless($selectedProviderIds->count() === $inspectionProviderLimit, 422, 'Selected provider count must match the chosen inspection provider count.');
+        }
         $attachment = $request->file('attachment');
         $attachmentPath = $attachment?->store('vergo-order-attachments');
 
@@ -288,7 +302,11 @@ class OrderController extends Controller
             abort_unless($validObjectCount === $propertyObjectIds->count(), 422, 'One or more selected property objects do not belong to this property.');
         }
 
-        $selectedProviderIds = collect(data_get($request->input('workflow_meta', $order->workflow_meta ?? []), 'provider_selection.selected_provider_ids', []))
+        $workflowType = $request->input('workflow_type', $order->workflow_type);
+        $workflowMetaInput = $request->input('workflow_meta', $order->workflow_meta ?? []);
+        $selectedProviderIds = collect($workflowType === 'inspection'
+            ? data_get($workflowMetaInput, 'provider_selection.selected_provider_ids', [])
+            : [])
             ->map(fn ($id) => (int) $id)
             ->filter()
             ->unique()

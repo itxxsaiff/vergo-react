@@ -55,6 +55,7 @@ class ServiceProvider extends Model
         'domain_suffix',
         'trade_groups',
         'phone',
+        'is_vat_subject',
         'rating',
         'completed_jobs_count',
         'status',
@@ -66,6 +67,7 @@ class ServiceProvider extends Model
             'rating' => 'decimal:2',
             'completed_jobs_count' => 'integer',
             'trade_groups' => 'array',
+            'is_vat_subject' => 'boolean',
         ];
     }
 

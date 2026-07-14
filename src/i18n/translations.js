@@ -389,6 +389,8 @@ export const translations = {
     'Inspection Interest': 'Besichtigungsinteresse',
     'Inspection Confirmed': 'Besichtigung bestätigt',
     'Awarded Pending Acceptance': 'Zuschlag wartet auf Annahme',
+    'Provider Response Confirmed': 'Antwort des Dienstleisters bestätigt',
+    'Provider Response Declined': 'Antwort des Dienstleisters abgelehnt',
     Accepted: 'Akzeptiert',
     Completed: 'Abgeschlossen',
     Archived: 'Archiviert',
@@ -861,6 +863,8 @@ export const translations = {
     'Inspection Interest': 'Inspection Interest',
     'Inspection Confirmed': 'Inspection Confirmed',
     'Awarded Pending Acceptance': 'Awarded Pending Acceptance',
+    'Provider Response Confirmed': 'Provider Response Confirmed',
+    'Provider Response Declined': 'Provider Response Declined',
     Accepted: 'Accepted',
     Completed: 'Completed',
     Archived: 'Archived',
@@ -1341,6 +1345,8 @@ export const translations = {
     'Inspection Interest': 'Interesse per il sopralluogo',
     'Inspection Confirmed': 'Sopralluogo confermato',
     'Awarded Pending Acceptance': 'Assegnato in attesa di accettazione',
+    'Provider Response Confirmed': 'Risposta del fornitore confermata',
+    'Provider Response Declined': 'Risposta del fornitore rifiutata',
     Accepted: 'Accettato',
     Completed: 'Completato',
     Archived: 'Archiviato',
@@ -1820,6 +1826,8 @@ export const translations = {
     'Inspection Interest': 'Intérêt pour la visite',
     'Inspection Confirmed': 'Visite confirmée',
     'Awarded Pending Acceptance': 'Attribué en attente d’acceptation',
+    'Provider Response Confirmed': 'Réponse du prestataire confirmée',
+    'Provider Response Declined': 'Réponse du prestataire refusée',
     Accepted: 'Accepté',
     Completed: 'Terminé',
     Archived: 'Archivé',
@@ -3078,6 +3086,11 @@ Object.assign(supplementalTranslations.en, {
   Anzeigen: 'Show',
   Ausblenden: 'Hide',
   Anfrage: 'Request',
+  'Anzahl einzuladender Dienstleister': 'Number of service providers to invite',
+  'Sie müssen im nächsten Schritt genau diese Anzahl Firmen auswählen.': 'In the next step you must select exactly this number of companies.',
+  'Bitte wählen Sie eine Anzahl Dienstleister zwischen 1 und 10.': 'Please choose a number of service providers between 1 and 10.',
+  'Öffentliche Offertenanfrage': 'Public quote request',
+  'Dieser Auftrag wird öffentlich ausgeschrieben. Es kann keine einzelne Firma ausgewählt werden; alle passenden Dienstleister können ein Angebot einreichen.': 'This job is published publicly. No individual company can be selected; all suitable service providers can submit a bid.',
 })
 
 Object.assign(supplementalTranslations.it, {
@@ -3124,6 +3137,11 @@ Object.assign(supplementalTranslations.it, {
   Anzeigen: 'Mostra',
   Ausblenden: 'Nascondi',
   Anfrage: 'Richiesta',
+  'Anzahl einzuladender Dienstleister': 'Numero di fornitori da invitare',
+  'Sie müssen im nächsten Schritt genau diese Anzahl Firmen auswählen.': 'Nel passaggio successivo devi selezionare esattamente questo numero di aziende.',
+  'Bitte wählen Sie eine Anzahl Dienstleister zwischen 1 und 10.': 'Seleziona un numero di fornitori tra 1 e 10.',
+  'Öffentliche Offertenanfrage': 'Richiesta di offerta pubblica',
+  'Dieser Auftrag wird öffentlich ausgeschrieben. Es kann keine einzelne Firma ausgewählt werden; alle passenden Dienstleister können ein Angebot einreichen.': 'Questo incarico viene pubblicato pubblicamente. Non è possibile selezionare una singola azienda; tutti i fornitori idonei possono inviare un’offerta.',
 })
 
 Object.assign(supplementalTranslations.fr, {
@@ -3170,9 +3188,62 @@ Object.assign(supplementalTranslations.fr, {
   Anzeigen: 'Afficher',
   Ausblenden: 'Masquer',
   Anfrage: 'Demande',
+  'Anzahl einzuladender Dienstleister': 'Nombre de prestataires à inviter',
+  'Sie müssen im nächsten Schritt genau diese Anzahl Firmen auswählen.': 'À l’étape suivante, vous devez sélectionner exactement ce nombre d’entreprises.',
+  'Bitte wählen Sie eine Anzahl Dienstleister zwischen 1 und 10.': 'Veuillez choisir un nombre de prestataires entre 1 et 10.',
+  'Öffentliche Offertenanfrage': 'Demande d’offre publique',
+  'Dieser Auftrag wird öffentlich ausgeschrieben. Es kann keine einzelne Firma ausgewählt werden; alle passenden Dienstleister können ein Angebot einreichen.': 'Ce mandat est publié publiquement. Aucune entreprise individuelle ne peut être sélectionnée ; tous les prestataires appropriés peuvent soumettre une offre.',
 })
 
 const patternTranslations = [
+  {
+    pattern: /^Bitte wählen Sie genau (\d+) Firmen aus der Liste aus\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `Bitte wählen Sie genau ${match[1]} Firmen aus der Liste aus.`,
+        en: `Please select exactly ${match[1]} companies from the list.`,
+        it: `Seleziona esattamente ${match[1]} aziende dall’elenco.`,
+        fr: `Veuillez sélectionner exactement ${match[1]} entreprises dans la liste.`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^(.+) has confirmed the viewing for "(.+)"\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `${match[1]} hat die Besichtigung für "${match[2]}" bestätigt.`,
+        en: `${match[1]} has confirmed the viewing for "${match[2]}".`,
+        it: `${match[1]} ha confermato il sopralluogo per "${match[2]}".`,
+        fr: `${match[1]} a confirmé la visite pour "${match[2]}".`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^(.+) has accepted the order "(.+)"\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `${match[1]} hat den Auftrag "${match[2]}" angenommen.`,
+        en: `${match[1]} has accepted the order "${match[2]}".`,
+        it: `${match[1]} ha accettato l’ordine "${match[2]}".`,
+        fr: `${match[1]} a accepté la commande "${match[2]}".`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
+  {
+    pattern: /^(.+) has declined "(.+)"\.$/,
+    translate: (match, lang) => {
+      const templates = {
+        de: `${match[1]} hat "${match[2]}" abgelehnt.`,
+        en: `${match[1]} has declined "${match[2]}".`,
+        it: `${match[1]} ha rifiutato "${match[2]}".`,
+        fr: `${match[1]} a refusé "${match[2]}".`,
+      }
+      return templates[lang] ?? match[0]
+    },
+  },
   {
     pattern: /^(.+) submitted support ticket (SUP-\d+)\.$/,
     translate: (match, lang) => {

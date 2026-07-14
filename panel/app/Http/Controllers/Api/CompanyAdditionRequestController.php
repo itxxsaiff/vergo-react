@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Notifications\SystemNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 
 class CompanyAdditionRequestController extends Controller
@@ -101,6 +103,8 @@ class CompanyAdditionRequestController extends Controller
             actionUrl: '/service-providers',
         ));
 
+        $this->sendInternalCompanyRequestEmail($companyRequest->load(['propertyManagerProfile', 'property']));
+
         return response()->json([
             'message' => 'Company addition request submitted successfully.',
             'data' => [
@@ -124,6 +128,10 @@ class CompanyAdditionRequestController extends Controller
             'status' => $validated['status'],
         ]);
 
+        if (in_array($validated['status'], ['completed', 'dismissed'], true)) {
+            $this->sendCompanyRequestProcessedEmail($companyAdditionRequest->load(['propertyManagerProfile', 'property']));
+        }
+
         return response()->json([
             'message' => 'Company addition request updated successfully.',
             'data' => [
@@ -131,5 +139,77 @@ class CompanyAdditionRequestController extends Controller
                 'status' => $companyAdditionRequest->status,
             ],
         ]);
+    }
+
+    private function sendInternalCompanyRequestEmail(CompanyAdditionRequest $companyRequest): void
+    {
+        $recipient = config('mail.support_to.address', 'info@vergo.ch');
+
+        if (! $recipient) {
+            return;
+        }
+
+        $manager = $companyRequest->propertyManagerProfile;
+        $property = $companyRequest->property;
+
+        try {
+            Mail::mailer('orders')->html(
+                view('emails.company-addition-requested', [
+                    'companyRequest' => $companyRequest,
+                    'manager' => $manager,
+                    'property' => $property,
+                ])->render(),
+                function ($message) use ($recipient, $manager, $companyRequest) {
+                    $message
+                        ->from(config('mail.orders_from.address'), config('mail.orders_from.name'))
+                        ->to($recipient, config('mail.support_to.name', 'Vergo'))
+                        ->subject(sprintf(
+                            'Neue Firmenanfrage von %s',
+                            $manager?->name ?: $manager?->email ?: 'einem Immobilienverwalter'
+                        ));
+
+                    if ($manager?->email) {
+                        $message->replyTo($manager->email, $manager->name ?: null);
+                    }
+                }
+            );
+        } catch (\Throwable $exception) {
+            Log::error('Vergo company addition internal email failed', [
+                'company_addition_request_id' => $companyRequest->id,
+                'company_name' => $companyRequest->company_name,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function sendCompanyRequestProcessedEmail(CompanyAdditionRequest $companyRequest): void
+    {
+        $manager = $companyRequest->propertyManagerProfile;
+
+        if (! $manager?->email) {
+            return;
+        }
+
+        try {
+            Mail::mailer('orders')->html(
+                view('emails.company-addition-processed', [
+                    'companyRequest' => $companyRequest,
+                    'manager' => $manager,
+                    'property' => $companyRequest->property,
+                ])->render(),
+                function ($message) use ($manager, $companyRequest) {
+                    $message
+                        ->from(config('mail.orders_from.address'), config('mail.orders_from.name'))
+                        ->to($manager->email, $manager->name ?: null)
+                        ->subject(sprintf('Ihre Firmenanfrage "%s" wurde bearbeitet', $companyRequest->company_name));
+                }
+            );
+        } catch (\Throwable $exception) {
+            Log::error('Vergo company addition processed email failed', [
+                'company_addition_request_id' => $companyRequest->id,
+                'manager_email' => $manager->email,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }

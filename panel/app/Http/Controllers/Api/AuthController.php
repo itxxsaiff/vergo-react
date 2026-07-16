@@ -298,10 +298,10 @@ class AuthController extends Controller
         if (! $manager) {
             $manager = PropertyManagerProfile::query()->updateOrCreate(
                 [
-                    'property_id' => $property->id,
-                    'email' => $email,
+                    'email' => strtolower($email),
                 ],
                 [
+                    'property_id' => $property->id,
                     'last_login_at' => now(),
                 ],
             );
@@ -411,15 +411,21 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $manager = PropertyManagerProfile::query()->updateOrCreate(
-            [
+        // Reuse the existing profile for this email (the manager's real identity)
+        // instead of creating a fresh row per property they sign in through.
+        $manager = PropertyManagerProfile::query()
+            ->whereRaw('LOWER(email) = ?', [strtolower($email)])
+            ->first();
+
+        if ($manager) {
+            $manager->update(['last_login_at' => now()]);
+        } else {
+            $manager = PropertyManagerProfile::query()->create([
                 'property_id' => $property->id,
-                'email' => $email,
-            ],
-            [
+                'email' => strtolower($email),
                 'last_login_at' => now(),
-            ],
-        );
+            ]);
+        }
 
         $loginCode->update([
             'consumed_at' => now(),
@@ -704,21 +710,35 @@ class AuthController extends Controller
             return null;
         }
 
-        return PropertyManagerProfile::query()->firstOrCreate(
-            [
-                'property_id' => $property->id,
-                'email' => $email,
-            ],
-            [
-                'name' => $assignedManager->name,
-                'phone' => $assignedManager->phone,
-                'address' => $assignedManager->address,
-                'postal_code' => $assignedManager->postal_code,
-                'city' => $assignedManager->city,
-                'canton' => $assignedManager->canton,
-                'domain_suffix' => $assignedManager->domain_suffix,
-            ],
-        );
+        // The email is the manager's real identity. If this is the exact email of the
+        // profile already assigned to the property, log that profile in directly rather
+        // than spawning a per-property duplicate.
+        if ($assignedEmail === $email) {
+            return $assignedManager;
+        }
+
+        // A colleague on the same allowed domain: reuse an existing profile with this
+        // email anywhere in the system before creating a new one, so we never store the
+        // same manager twice.
+        $existing = PropertyManagerProfile::query()
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return PropertyManagerProfile::query()->create([
+            'property_id' => $property->id,
+            'email' => $email,
+            'name' => $assignedManager->name,
+            'phone' => $assignedManager->phone,
+            'address' => $assignedManager->address,
+            'postal_code' => $assignedManager->postal_code,
+            'city' => $assignedManager->city,
+            'canton' => $assignedManager->canton,
+            'domain_suffix' => $assignedManager->domain_suffix,
+        ]);
     }
 
     private function formatOwnerCustomerNumber(int $id): string

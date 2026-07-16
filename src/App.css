@@ -1844,6 +1844,26 @@ body {
   letter-spacing: 0.01em;
 }
 
+.vergo-order-type-badge {
+  align-self: flex-start;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vergo-order-type-badge.is-inspection {
+  color: #1f6b53;
+  background: #d9f2e6;
+}
+
+.vergo-order-type-badge.is-job {
+  color: #8f604b;
+  background: #f3e2d8;
+}
+
 .vergo-breadcrumb {
   font-size: 1rem;
   font-weight: 600;

@@ -179,6 +179,17 @@ function getOrderCity(order) {
   return order?.property_object?.city || order?.property?.city || '-'
 }
 
+function isInspectionOrder(order) {
+  return order?.workflow_type === 'inspection'
+    || order?.workflow_meta?.flow_type === 'inspection'
+    || (order?.workflow_meta?.inspection?.preferred_slots ?? []).length > 0
+    || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
+}
+
+function getOrderFlowTypeLabel(order) {
+  return isInspectionOrder(order) ? 'Besichtigung' : 'Auftrag'
+}
+
 function getDocumentContext(document) {
   if (document?.property?.li_number || document?.property?.title) {
     return [document.property?.li_number, document.property?.title].filter(Boolean).join(' - ')
@@ -394,8 +405,17 @@ function DashboardPage({ role }) {
                             {activeOrderPreview.map((order) => (
                               <div className="col-lg-4 col-sm-6" key={order.id}>
                                 <Link to={`/orders/${order.id}`} className="vergo-manager-order-card">
+                                  <span className={`vergo-order-type-badge ${isInspectionOrder(order) ? 'is-inspection' : 'is-job'}`}>
+                                    {t(getOrderFlowTypeLabel(order))}
+                                  </span>
                                   <div className="vergo-manager-order-card-label">{t('Gewerk')}</div>
                                   <div className="vergo-manager-order-card-value">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
+                                  {order.title ? (
+                                    <div className="vergo-manager-order-card-meta">
+                                      <span>{t('Titel')}</span>
+                                      <strong>{order.title}</strong>
+                                    </div>
+                                  ) : null}
                                   <div className="vergo-manager-order-card-meta">
                                     <span>{t('Adresse')}</span>
                                     <strong>{getOrderAddress(order)}</strong>

@@ -421,7 +421,13 @@ function DashboardPage({ role }) {
                                   <strong>+{formatCount(remainingActiveOrders)}</strong>
                                 </Link>
                               </div>
-                            ) : null}
+                            ) : (
+                              <div className="col-lg-4 col-sm-6">
+                                <Link to="/orders" className="vergo-manager-order-card vergo-manager-order-card-more vergo-manager-order-card-overview">
+                                  <strong>{t('Auftragsübersicht')}</strong>
+                                </Link>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="vergo-dashboard-chart-empty">

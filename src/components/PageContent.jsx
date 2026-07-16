@@ -6,9 +6,9 @@ function PageContent({ title, subtitle, actions = null, children, breadcrumbs = 
   return (
     <div className="mb-3">
       {shouldRenderHeader ? (
-        <div className="row align-items-center pb-2 px-2 px-lg-3">
+        <div className="row align-items-center pt-3 pb-2 px-2 px-lg-3">
           <div className="col-12">
-            <ol className="breadcrumb justify-content-end mb-0">
+            <ol className="breadcrumb justify-content-end mb-0 vergo-breadcrumb">
               {breadcrumbs.map((crumb, index) => {
                 const isLast = index === breadcrumbs.length - 1
                 const crumbLabel = typeof crumb === 'string' ? crumb : crumb.label

@@ -1875,9 +1875,9 @@ body {
 
 .vergo-inspection-section {
   padding: 1rem;
-  border: 1px solid #d7b8a6;
+  border: 1px solid #e2c3b2;
   border-radius: 20px;
-  background: linear-gradient(180deg, #b37a5f 0%, #9a6a53 100%);
+  background: linear-gradient(180deg, #c99a82 0%, #b7876d 100%);
   box-shadow: 0 14px 28px rgba(159, 109, 84, 0.16);
 }
 
@@ -1950,6 +1950,32 @@ body {
 
 .vergo-inspection-detail-card {
   padding: 0.9rem 0.95rem;
+}
+
+.vergo-inspection-detail-card.is-accepted-slot {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(180deg, #7fa877 0%, #6d9a66 100%);
+  box-shadow: 0 8px 20px rgba(74, 116, 66, 0.28);
+}
+
+.vergo-quote-cta-card {
+  border: 1px solid #e2c3b2;
+  background: linear-gradient(180deg, #c99a82 0%, #b7876d 100%);
+  color: #fffaf7;
+}
+
+.vergo-quote-cta-card .card-body {
+  color: #fffaf7;
+}
+
+.vergo-quote-cta-label {
+  color: rgba(255, 247, 241, 0.82);
+  letter-spacing: 0.06em;
+}
+
+.vergo-quote-cta-card .btn-light {
+  color: #8f604b;
+  font-weight: 700;
 }
 
 .vergo-inspection-detail-subvalue,

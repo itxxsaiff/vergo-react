@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -33,10 +33,37 @@ function isInspectionOrder(order) {
     || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
 }
 
+// Which inspection slot was accepted, so it can be highlighted green.
+// Uses the confirmed provider's selected slot; if only one option exists and the
+// inspection is confirmed, that single option is treated as accepted.
+function getAcceptedSlotIndex(order, slots) {
+  const confirmedStatuses = ['inspection_confirmed', 'accepted', 'approved', 'completed']
+  const confirmedBid = (order?.bids ?? []).find((bid) => confirmedStatuses.includes(bid.status))
+
+  if (!confirmedBid) {
+    return null
+  }
+
+  const rawIndex = Number(confirmedBid.workflow_meta?.selected_slot_index)
+
+  if (Number.isInteger(rawIndex) && rawIndex >= 0 && rawIndex < (slots?.length ?? 0)) {
+    return rawIndex
+  }
+
+  return (slots?.length ?? 0) > 0 ? 0 : null
+}
+
+// A provider has submitted a priced offer after the inspection.
+function getSubmittedQuoteBid(order) {
+  return (order?.bids ?? []).find((bid) => ['submitted', 'shortlisted', 'approved', 'accepted', 'completed'].includes(bid.status)) ?? null
+}
+
 function OrderDetailsPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
   const { orderId } = useParams()
+  const navigate = useNavigate()
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
   const [order, setOrder] = useState(null)
   const [comparison, setComparison] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -198,6 +225,10 @@ function OrderDetailsPage() {
   const inspectionSlots = getInspectionSlots(order)
   const onsiteContact = getOnsiteContact(order)
   const isInspectionDetails = isInspectionOrder(order)
+  const acceptedSlotIndex = getAcceptedSlotIndex(order, inspectionSlots)
+  const submittedQuoteBid = getSubmittedQuoteBid(order)
+  const quoteServices = order?.quote_items ?? []
+  const hasQuoteToGenerate = Boolean(submittedQuoteBid) && quoteServices.length > 0
 
   return (
     <PageContent
@@ -222,8 +253,9 @@ function OrderDetailsPage() {
                 <div className="card-body">
                   <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
                     <div>
-                      <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Betreff')}</div>
-                      <h4 className="fw-semibold mb-1">{order.title || '-'}</h4>
+                      <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Aktivität')}</div>
+                      <h4 className="fw-semibold mb-2">{order.title || '-'}</h4>
+                      <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Auftragstext')}</div>
                       <p className="text-muted mb-0">{order.description || t('Keine Beschreibung hinzugefügt.')}</p>
                     </div>
                     <span className={getStatusBadgeClass(order.status)}>
@@ -263,7 +295,7 @@ function OrderDetailsPage() {
                       <div className="row g-3">
                         {inspectionSlots.map((slot, index) => (
                           <div className="col-md-6" key={`${slot.date}-${slot.time}-${index}`}>
-                            <div className="vergo-inspection-detail-card h-100">
+                            <div className={`vergo-inspection-detail-card h-100${index === acceptedSlotIndex ? ' is-accepted-slot' : ''}`}>
                               <div className="vergo-inspection-detail-label">{t('Option')} {index + 1}</div>
                               <div className="vergo-inspection-detail-value">{formatDateDisplay(slot.date)}</div>
                               <div className="vergo-inspection-detail-subvalue">{formatTimeDisplay(slot.time)}</div>
@@ -373,6 +405,18 @@ function OrderDetailsPage() {
                   </div>
                 </div>
               </div>
+
+              {hasQuoteToGenerate ? (
+                <div className="card vergo-quote-cta-card">
+                  <div className="card-body">
+                    <div className="text-uppercase small fw-bold vergo-quote-cta-label mb-2">{t('Offerte nach Besichtigung')}</div>
+                    <p className="mb-3">{t('Der Dienstleister hat nach der Besichtigung eine Offerte erstellt. Sie können die Leistungen ansehen und daraus einen Auftrag generieren.')}</p>
+                    <button type="button" className="btn btn-light fw-semibold" onClick={() => setIsQuoteModalOpen(true)}>
+                      {t('Offerte ansehen')}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -911,6 +955,53 @@ function OrderDetailsPage() {
           </div>
         </div>
         )
+      ) : null}
+
+      {isQuoteModalOpen ? (
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" style={{ background: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{t('Offerte des Dienstleisters')}</h5>
+                <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={() => setIsQuoteModalOpen(false)} />
+              </div>
+              <div className="modal-body">
+                <p className="text-muted">{t('Vom Dienstleister nach der Besichtigung erfasste Leistungen. Die Preise werden erst nach Ablauf der Angebotsfrist sichtbar.')}</p>
+                <div className="table-responsive">
+                  <table className="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>{t('Leistung')}</th>
+                        <th>{t('Einheit')}</th>
+                        <th className="text-end">{t('Menge')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quoteServices.map((item, index) => (
+                        <tr key={item.code || item.label || index}>
+                          <td>
+                            <div className="fw-semibold">{item.label || '-'}</div>
+                            {item.code ? <div className="text-muted small">{item.code}</div> : null}
+                          </td>
+                          <td>{item.unit || '-'}</td>
+                          <td className="text-end">{item.quantity ?? '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setIsQuoteModalOpen(false)}>
+                  {t('Schließen')}
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => navigate(`/orders?generate-from=${order.id}`)}>
+                  {t('Auftrag generieren')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
     </PageContent>
   )

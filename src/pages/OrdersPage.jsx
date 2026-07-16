@@ -355,6 +355,9 @@ function OrdersPage() {
   })
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingOrderId, setEditingOrderId] = useState(null)
+  // When true, the wizard was launched from an inspection quote ("Auftrag generieren"):
+  // Gewerk is fixed, the provider's line items are locked, and only the bid deadline is entered.
+  const [generateLock, setGenerateLock] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
@@ -427,6 +430,81 @@ function OrdersPage() {
     nextParams.delete('open')
     setSearchParams(nextParams, { replace: true })
   }, [canCreateOrders, isLoading, isModalOpen, searchParams, setSearchParams, properties.length, user?.property?.id])
+
+  useEffect(() => {
+    const generateFromId = searchParams.get('generate-from')
+
+    if (!generateFromId || !canCreateOrders || isModalOpen || isLoading) {
+      return
+    }
+
+    let cancelled = false
+
+    async function startGenerateFromInspection() {
+      try {
+        const response = await api.getOrder(generateFromId)
+        const source = response?.data
+
+        if (cancelled || !source) {
+          return
+        }
+
+        const resolvedPropertyId = String(source.property_id ?? user?.property?.id ?? properties[0]?.id ?? '')
+        const baseWizard = getInitialManagerWizard(resolvedPropertyId)
+        const objectIds = (Array.isArray(source.property_object_ids) && source.property_object_ids.length > 0
+          ? source.property_object_ids
+          : (source.property_object_id ? [source.property_object_id] : [])).map(Number)
+        const quoteItems = (source.quote_items ?? []).map((item, index) => ({
+          id: `gen-${index}`,
+          label: item.label ?? '',
+          code: item.code ?? '',
+          unit: item.unit ?? 'Stück',
+          quantity: item.quantity ?? 1,
+          source: 'provider',
+          is_custom: item.is_custom ?? true,
+        }))
+
+        setEditingOrderId(null)
+        setError('')
+        setCompanyRequestSuccess('')
+        setExistingAttachmentName('')
+        setForm({ ...initialForm, property_id: resolvedPropertyId })
+        setManagerWizard({
+          ...baseWizard,
+          property_id: resolvedPropertyId,
+          selected_object_ids: objectIds,
+          flow_type: 'direct_order',
+          service_type: source.service_type ?? '',
+          title: source.title ?? '',
+          description: source.description ?? '',
+          completion_mode: 'asap',
+          award_mode: 'request_quotes',
+          quote_item_source: 'manager',
+          quote_items: quoteItems,
+        })
+        setManagerStep(3)
+        setGenerateLock(true)
+        setProviderCantonFilter('')
+        setIsModalOpen(true)
+      } catch (generateError) {
+        if (!cancelled) {
+          setError(t(generateError.message))
+        }
+      } finally {
+        if (!cancelled) {
+          const nextParams = new URLSearchParams(searchParams)
+          nextParams.delete('generate-from')
+          setSearchParams(nextParams, { replace: true })
+        }
+      }
+    }
+
+    startGenerateFromInspection()
+
+    return () => {
+      cancelled = true
+    }
+  }, [canCreateOrders, isLoading, isModalOpen, searchParams, setSearchParams, properties, user, t])
 
   useEffect(() => {
     if (isModalOpen) {
@@ -749,6 +827,7 @@ function OrdersPage() {
     })
     setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
     setManagerStep(1)
+    setGenerateLock(false)
     setProviderCantonFilter('')
     setIsModalOpen(true)
   }
@@ -833,6 +912,7 @@ function OrdersPage() {
       due_date: order.due_date ?? '',
     })
     hydrateManagerWizardFromDraft(order)
+    setGenerateLock(false)
     setIsModalOpen(true)
   }
 
@@ -1016,7 +1096,8 @@ function OrdersPage() {
       return
     }
 
-    setManagerStep((current) => Math.min(current + 1, 5))
+    // In generate-from-inspection mode the flow ends at step 4 (enter deadline → post).
+    setManagerStep((current) => Math.min(current + 1, generateLock ? 4 : 5))
   }
 
   function handleManagerPreviousStep() {
@@ -1139,6 +1220,15 @@ function OrdersPage() {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  async function handleManagerGenerateSubmit() {
+    // Validate the deadline (step 4) before posting the generated order.
+    if (!validateManagerStep(4)) {
+      return
+    }
+
+    await handleManagerCreateSubmit()
   }
 
   async function handleManagerCreateSubmit() {
@@ -1265,6 +1355,7 @@ function OrdersPage() {
     })
     setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
     setManagerStep(1)
+    setGenerateLock(false)
     setProviderCantonFilter('')
     setError('')
     setIsModalOpen(false)
@@ -1621,24 +1712,30 @@ function OrdersPage() {
                           <div className="row g-3">
                             <div className="col-md-6">
                               <label className="form-label">{t('Gewerk')}</label>
-                              <select
-                                className="form-select"
-                                name="service_type"
-                                value={managerWizard.service_type}
-                                onChange={(event) => handleManagerServiceTypeChange(event.target.value)}
-                              >
-                                <option value="">{t('Gewerk auswählen')}</option>
-                                {JOB_TYPE_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>{t(option.label)}</option>
-                                ))}
-                              </select>
+                              {generateLock ? (
+                                <div className="form-control bg-light text-muted d-flex align-items-center" style={{ pointerEvents: 'none' }}>
+                                  {getOptionLabel(JOB_TYPE_OPTIONS, managerWizard.service_type)}
+                                </div>
+                              ) : (
+                                <select
+                                  className="form-select"
+                                  name="service_type"
+                                  value={managerWizard.service_type}
+                                  onChange={(event) => handleManagerServiceTypeChange(event.target.value)}
+                                >
+                                  <option value="">{t('Gewerk auswählen')}</option>
+                                  {JOB_TYPE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{t(option.label)}</option>
+                                  ))}
+                                </select>
+                              )}
                             </div>
                             <div className="col-md-6">
-                              <label className="form-label">{t('Kurzbeschreibung')}</label>
+                              <label className="form-label">{t('Aktivität')}</label>
                               <input className="form-control" name="title" value={managerWizard.title} onChange={handleManagerWizardChange} placeholder={t('z. B. Parkett ersetzen')} />
                             </div>
                             <div className="col-12">
-                              <label className="form-label">{t('Detaillierte Beschreibung')}</label>
+                              <label className="form-label">{t('Auftragstext')}</label>
                               <textarea className="form-control" rows="4" name="description" value={managerWizard.description} onChange={handleManagerWizardChange}></textarea>
                             </div>
 
@@ -1919,35 +2016,41 @@ function OrdersPage() {
                                   )}
                                 </div>
                                 <div className="col-12">
-                                  <div className="row g-3 mb-3">
-                                    <div className="col-md-6">
-                                      <button
-                                        type="button"
-                                        className={`vergo-order-choice-card h-100 text-start${managerWizard.quote_item_source !== 'provider' ? ' is-selected' : ''}`}
-                                        onClick={() => handleManagerWizardChange({ target: { name: 'quote_item_source', value: 'manager' } })}
-                                      >
-                                        <div className="fw-semibold mb-2">{t('Positionen selbst erfassen')}</div>
-                                        <div className="text-muted small">{t('Sie erfassen die Leistungen direkt in diesem Schritt.')}</div>
-                                      </button>
+                                  {!generateLock ? (
+                                    <div className="row g-3 mb-3">
+                                      <div className="col-md-6">
+                                        <button
+                                          type="button"
+                                          className={`vergo-order-choice-card h-100 text-start${managerWizard.quote_item_source !== 'provider' ? ' is-selected' : ''}`}
+                                          onClick={() => handleManagerWizardChange({ target: { name: 'quote_item_source', value: 'manager' } })}
+                                        >
+                                          <div className="fw-semibold mb-2">{t('Positionen selbst erfassen')}</div>
+                                          <div className="text-muted small">{t('Sie erfassen die Leistungen direkt in diesem Schritt.')}</div>
+                                        </button>
+                                      </div>
+                                      <div className="col-md-6">
+                                        <button
+                                          type="button"
+                                          className={`vergo-order-choice-card h-100 text-start${managerWizard.quote_item_source === 'provider' ? ' is-selected' : ''}`}
+                                          onClick={() => handleManagerWizardChange({ target: { name: 'quote_item_source', value: 'provider' } })}
+                                        >
+                                          <div className="fw-semibold mb-2">{t('Positionen vom Dienstleister erfassen lassen')}</div>
+                                          <div className="text-muted small">{t('Der Dienstleister erstellt nach der Besichtigung die erste Positionsliste.')}</div>
+                                        </button>
+                                      </div>
                                     </div>
-                                    <div className="col-md-6">
-                                      <button
-                                        type="button"
-                                        className={`vergo-order-choice-card h-100 text-start${managerWizard.quote_item_source === 'provider' ? ' is-selected' : ''}`}
-                                        onClick={() => handleManagerWizardChange({ target: { name: 'quote_item_source', value: 'provider' } })}
-                                      >
-                                        <div className="fw-semibold mb-2">{t('Positionen vom Dienstleister erfassen lassen')}</div>
-                                        <div className="text-muted small">{t('Der Dienstleister erstellt nach der Besichtigung die erste Positionsliste.')}</div>
-                                      </button>
-                                    </div>
-                                  </div>
+                                  ) : null}
 
                                   <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
                                     <div>
                                       <h6 className="fw-semibold mb-1">{t('Leistungspositionen')}</h6>
-                                      <p className="text-muted small mb-0">{t('Diese Positionen werden öffentlich ausgeschrieben. Anbieter sehen die Arbeit, aber nicht die Preise anderer Firmen.')}</p>
+                                      <p className="text-muted small mb-0">
+                                        {generateLock
+                                          ? t('Diese Positionen wurden vom Dienstleister nach der Besichtigung erfasst und können nicht geändert werden. Bitte geben Sie nur die Angebotsfrist an.')
+                                          : t('Diese Positionen werden öffentlich ausgeschrieben. Anbieter sehen die Arbeit, aber nicht die Preise anderer Firmen.')}
+                                      </p>
                                     </div>
-                                    {managerWizard.quote_item_source !== 'provider' ? (
+                                    {managerWizard.quote_item_source !== 'provider' && !generateLock ? (
                                       <button type="button" className="btn btn-light-primary btn-sm" onClick={addQuoteItem}>
                                       <i className="ti ti-plus me-1"></i>
                                       {t('Position hinzufügen')}
@@ -1975,12 +2078,13 @@ function OrdersPage() {
                                               <label className="form-label">{t('Position')}</label>
                                               <input className="form-control" value={`${t('Position')} ${index + 1}`} readOnly />
                                             </div>
-                                            <div className="col-lg-5">
+                                            <div className={generateLock ? 'col-lg-6' : 'col-lg-5'}>
                                               <label className="form-label">{t('Leistung')}</label>
                                               <input
                                                 className="form-control"
-                                                list="manager-quote-service-options"
+                                                list={generateLock ? undefined : 'manager-quote-service-options'}
                                                 value={item.label}
+                                                readOnly={generateLock}
                                                 onChange={(event) => {
                                                   const nextValue = event.target.value === t('Service hinzufügen') ? '' : event.target.value
                                                   updateQuoteItem(item.id, 'label', nextValue)
@@ -1994,6 +2098,7 @@ function OrdersPage() {
                                               <input
                                                 className="form-control"
                                                 value={item.unit}
+                                                readOnly={generateLock}
                                                 onChange={(event) => updateQuoteItem(item.id, 'unit', event.target.value)}
                                                 placeholder={t('Stück')}
                                               />
@@ -2006,14 +2111,17 @@ function OrdersPage() {
                                                 step="0.01"
                                                 className="form-control"
                                                 value={item.quantity}
+                                                readOnly={generateLock}
                                                 onChange={(event) => updateQuoteItem(item.id, 'quantity', event.target.value)}
                                               />
                                             </div>
-                                            <div className="col-lg-1">
-                                              <button type="button" className="btn btn-light-danger text-danger w-100" onClick={() => removeQuoteItem(item.id)}>
-                                                <i className="ti ti-trash"></i>
-                                              </button>
-                                            </div>
+                                            {!generateLock ? (
+                                              <div className="col-lg-1">
+                                                <button type="button" className="btn btn-light-danger text-danger w-100" onClick={() => removeQuoteItem(item.id)}>
+                                                  <i className="ti ti-trash"></i>
+                                                </button>
+                                              </div>
+                                            ) : null}
                                           </div>
                                         </div>
                                       </div>
@@ -2236,7 +2344,11 @@ function OrdersPage() {
                           {isSaving ? t('Wird gespeichert...') : t('Als Entwurf speichern')}
                         </button>
 
-                        {managerStep < 5 ? (
+                        {generateLock && managerStep === 4 ? (
+                          <button type="button" className="btn btn-primary" disabled={isSaving} onClick={handleManagerGenerateSubmit}>
+                            {isSaving ? t('Wird gespeichert...') : t('Auftrag erstellen')}
+                          </button>
+                        ) : managerStep < 5 ? (
                           <button type="button" className="btn btn-primary" onClick={handleManagerNextStep}>
                             {t('Weiter')}
                           </button>

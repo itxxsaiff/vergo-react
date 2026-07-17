@@ -21,6 +21,7 @@ class PropertyManagerProfileController extends Controller
             PropertyManagerProfile::query()
                 ->with('property:id,li_number,title')
                 ->withCount('assignedProperties')
+                ->withCount('orders')
                 ->withCount([
                     'orders as active_orders_count' => fn ($query) => $query->whereNotIn('status', ['completed', 'closed']),
                 ])
@@ -55,6 +56,7 @@ class PropertyManagerProfileController extends Controller
         return new PropertyManagerProfileResource(
             $profile->load('property:id,li_number,title')
                 ->loadCount('assignedProperties')
+                ->loadCount('orders')
                 ->loadCount([
                     'orders as active_orders_count' => fn ($query) => $query->whereNotIn('status', ['completed', 'closed']),
                 ])
@@ -87,6 +89,7 @@ class PropertyManagerProfileController extends Controller
         return new PropertyManagerProfileResource(
             $propertyManagerProfile->load('property:id,li_number,title')
                 ->loadCount('assignedProperties')
+                ->loadCount('orders')
                 ->loadCount([
                     'orders as active_orders_count' => fn ($query) => $query->whereNotIn('status', ['completed', 'closed']),
                 ])

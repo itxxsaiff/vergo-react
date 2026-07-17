@@ -34,6 +34,7 @@ class PropertyManagerProfileResource extends JsonResource
                 'title' => $this->property->title,
             ]),
             'assigned_properties_count' => $this->whenCounted('assignedProperties'),
+            'orders_count' => $this->orders_count ?? 0,
             'active_orders_count' => $this->active_orders_count ?? 0,
             'created_at' => $this->created_at?->toDateTimeString(),
         ];

@@ -52,6 +52,48 @@ const SWISS_CANTONS = [
   { value: 'ZH', label: 'ZH - Zurich' },
 ]
 
+function getCompanyKey(manager) {
+  const domain = String(manager.domain_suffix ?? '').trim().toLowerCase()
+  if (domain) return domain
+  const emailDomain = String(manager.email ?? '').split('@')[1]?.trim().toLowerCase()
+  if (emailDomain) return `email:${emailDomain}`
+  return `id:${manager.id}`
+}
+
+// Group the flat per-email profiles into companies (one per email domain / main
+// management). Matching-domain employee logins nest under the same company.
+function buildCompanies(list) {
+  const groups = new Map()
+  list.forEach((manager) => {
+    const key = getCompanyKey(manager)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(manager)
+  })
+
+  return Array.from(groups.entries()).map(([key, employees]) => {
+    // The "main" management is the one assigned to the most properties; if tied,
+    // the oldest profile (lowest id) — that is the one the admin created first.
+    const representative = [...employees].sort((a, b) => {
+      const propsA = a.assigned_properties_count ?? 0
+      const propsB = b.assigned_properties_count ?? 0
+      if (propsB !== propsA) return propsB - propsA
+      return (a.id ?? 0) - (b.id ?? 0)
+    })[0]
+
+    return {
+      key,
+      name: representative.name || 'Immobilienverwaltung',
+      domain: representative.domain_suffix || key.replace(/^email:/, ''),
+      canton: representative.canton || '',
+      representative,
+      employees,
+      totalProperties: employees.reduce((sum, m) => sum + (m.assigned_properties_count ?? 0), 0),
+      totalOrders: employees.reduce((sum, m) => sum + (m.orders_count ?? 0), 0),
+      activeOrders: employees.reduce((sum, m) => sum + (m.active_orders_count ?? 0), 0),
+    }
+  })
+}
+
 function PropertyManagersPage() {
   const [managers, setManagers] = useState([])
   const [filters, setFilters] = useState({ search: '', status: '' })
@@ -60,6 +102,7 @@ function PropertyManagersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [detailKey, setDetailKey] = useState(null)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
 
@@ -68,7 +111,7 @@ function PropertyManagersPage() {
   }, [])
 
   useEffect(() => {
-    if (isModalOpen) {
+    if (isModalOpen || detailKey) {
       document.body.classList.add('modal-open')
       document.body.style.overflow = 'hidden'
     } else {
@@ -80,7 +123,7 @@ function PropertyManagersPage() {
       document.body.classList.remove('modal-open')
       document.body.style.overflow = ''
     }
-  }, [isModalOpen])
+  }, [isModalOpen, detailKey])
 
   async function loadData() {
     setIsLoading(true)
@@ -134,10 +177,12 @@ function PropertyManagersPage() {
     setForm(initialForm)
     setError('')
     setFieldErrors({})
+    setDetailKey(null)
     setIsModalOpen(true)
   }
 
   function handleEdit(manager) {
+    setDetailKey(null)
     setEditingManager(manager)
     setForm({
       property_id: String(manager.property?.id ?? manager.property_id ?? ''),
@@ -283,8 +328,15 @@ function PropertyManagersPage() {
     }
   }
 
-  const filteredManagers = managers.filter((manager) => {
-      const searchValue = [
+  const companies = buildCompanies(managers)
+  const detailCompany = detailKey ? companies.find((company) => company.key === detailKey) ?? null : null
+
+  const filteredCompanies = companies.filter((company) => {
+    const searchValue = [
+      company.name,
+      company.domain,
+      company.canton,
+      ...company.employees.flatMap((manager) => [
         manager.name,
         manager.email,
         manager.phone,
@@ -292,10 +344,10 @@ function PropertyManagersPage() {
         manager.postal_code,
         manager.city,
         manager.canton,
-        manager.domain_suffix,
         manager.property?.li_number,
         manager.property?.title,
-      ].filter(Boolean).join(' ').toLowerCase()
+      ]),
+    ].filter(Boolean).join(' ').toLowerCase()
     const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
     const statusMatch = !filters.status || 'active' === filters.status.toLowerCase()
     return searchMatch && statusMatch
@@ -362,46 +414,54 @@ function PropertyManagersPage() {
               <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                 <thead className="text-dark fs-4">
                   <tr>
-                    <th><h6 className="fs-4 fw-semibold mb-0">Verwalter</h6></th>
+                    <th><h6 className="fs-4 fw-semibold mb-0">Verwaltung</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Kanton</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Liegenschaften</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Aufträge</h6></th>
+                    <th><h6 className="fs-4 fw-semibold mb-0">Mitarbeiter</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
-                    <th width="110"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
+                    <th width="150"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredManagers.map((manager) => (
-                    <tr key={manager.id}>
+                  {filteredCompanies.map((company) => (
+                    <tr key={company.key}>
                       <td>
-                        <div>{manager.name || 'Immobilienverwalter'}</div>
-                        <div className="text-muted">{manager.email}</div>
-                        <div className="text-muted small">{manager.phone || '-'}</div>
+                        <div>{company.name}</div>
+                        <div className="text-muted">{company.domain ? `@${company.domain}` : '-'}</div>
                         <div className="text-muted small">
-                          {[manager.postal_code, manager.city, manager.canton].filter(Boolean).join(' ') || '-'}
+                          {[company.representative.postal_code, company.representative.city].filter(Boolean).join(' ') || '-'}
                         </div>
                       </td>
-                      <td>{manager.canton || '-'}</td>
+                      <td>{company.canton || '-'}</td>
                       <td>
-                        <div className="fw-semibold">{manager.assigned_properties_count ?? 0}</div>
+                        <div className="fw-semibold">{company.totalProperties}</div>
                         <div className="text-muted small">zugewiesene Liegenschaften</div>
                       </td>
-                      <td>{manager.active_orders_count ?? 0}</td>
+                      <td>
+                        <div className="fw-semibold">{company.totalOrders}</div>
+                        <div className="text-muted small">{company.activeOrders} aktiv</div>
+                      </td>
+                      <td>
+                        <button type="button" className="btn btn-sm btn-light-primary" onClick={() => setDetailKey(company.key)}>
+                          {company.employees.length} {company.employees.length === 1 ? 'E-Mail' : 'E-Mails'}
+                        </button>
+                      </td>
                       <td><span className={getStatusBadgeClass('active')}>{formatStatusLabel('active')}</span></td>
                       <td>
                         <div className="table-action-group">
-                          <button type="button" className="table-action-btn table-action-edit" onClick={() => handleEdit(manager)} title="Immobilienverwalter bearbeiten">
-                            <i className="ti ti-pencil"></i>
+                          <button type="button" className="table-action-btn" onClick={() => setDetailKey(company.key)} title="Details anzeigen">
+                            <i className="ti ti-eye"></i>
                           </button>
-                          <button type="button" className="table-action-btn table-action-delete" onClick={() => handleDelete(manager.id)} title="Immobilienverwalter löschen">
-                            <i className="ti ti-trash"></i>
+                          <button type="button" className="table-action-btn table-action-edit" onClick={() => handleEdit(company.representative)} title="Verwaltung bearbeiten">
+                            <i className="ti ti-pencil"></i>
                           </button>
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {filteredManagers.length === 0 ? (
-                    <tr><td colSpan="6" className="text-center text-muted py-4">Keine Immobilienverwalter gefunden.</td></tr>
+                  {filteredCompanies.length === 0 ? (
+                    <tr><td colSpan="7" className="text-center text-muted py-4">Keine Immobilienverwaltungen gefunden.</td></tr>
                   ) : null}
                 </tbody>
               </table>
@@ -409,6 +469,94 @@ function PropertyManagersPage() {
           ) : null}
         </div>
       </div>
+
+      {detailCompany ? (
+        <>
+          <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+              <div className="modal-content rounded-1">
+                <div className="modal-header border-bottom">
+                  <div>
+                    <h5 className="modal-title mb-0">{detailCompany.name}</h5>
+                    <div className="text-muted small">{detailCompany.domain ? `@${detailCompany.domain}` : ''}</div>
+                  </div>
+                  <button type="button" className="btn-close" onClick={() => setDetailKey(null)}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="row g-3 mb-4">
+                    <div className="col-sm-4">
+                      <div className="border rounded-3 p-3 h-100">
+                        <div className="text-muted small">Kanton</div>
+                        <div className="fw-semibold fs-4">{detailCompany.canton || '-'}</div>
+                      </div>
+                    </div>
+                    <div className="col-sm-4">
+                      <div className="border rounded-3 p-3 h-100">
+                        <div className="text-muted small">Liegenschaften</div>
+                        <div className="fw-semibold fs-4">{detailCompany.totalProperties}</div>
+                      </div>
+                    </div>
+                    <div className="col-sm-4">
+                      <div className="border rounded-3 p-3 h-100">
+                        <div className="text-muted small">Aufträge gesamt</div>
+                        <div className="fw-semibold fs-4">{detailCompany.totalOrders}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="fw-semibold mb-2">Registrierte E-Mail-Adressen</div>
+                  <div className="text-muted small mb-3">
+                    Mitarbeitende dieser Verwaltung melden sich über die Domain-Endung an. Diese Adressen erscheinen nicht in der Hauptliste.
+                  </div>
+                  <div className="table-responsive">
+                    <table className="table align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>E-Mail</th>
+                          <th className="text-center">Aufträge</th>
+                          <th className="text-center">Aktiv</th>
+                          <th width="90"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detailCompany.employees.map((employee) => (
+                          <tr key={employee.id}>
+                            <td>
+                              <div>{employee.email}</div>
+                              {employee.id === detailCompany.representative.id ? (
+                                <span className="badge bg-light-primary text-primary">Hauptverwaltung</span>
+                              ) : (
+                                <div className="text-muted small">{employee.name || '-'}</div>
+                              )}
+                            </td>
+                            <td className="text-center fw-semibold">{employee.orders_count ?? 0}</td>
+                            <td className="text-center">{employee.active_orders_count ?? 0}</td>
+                            <td>
+                              <div className="table-action-group">
+                                <button type="button" className="table-action-btn table-action-edit" onClick={() => handleEdit(employee)} title="Bearbeiten">
+                                  <i className="ti ti-pencil"></i>
+                                </button>
+                                <button type="button" className="table-action-btn table-action-delete" onClick={() => handleDelete(employee.id)} title="Löschen">
+                                  <i className="ti ti-trash"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-light-danger text-danger" onClick={() => setDetailKey(null)}>Schließen</button>
+                  <button type="button" className="btn btn-primary" onClick={() => handleEdit(detailCompany.representative)}>Verwaltung bearbeiten</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
+      ) : null}
 
       {isModalOpen ? (
         <>

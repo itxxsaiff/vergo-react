@@ -4,6 +4,7 @@ import PageContent from '../components/PageContent'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
+import { buildManagerCompanies, resolveCompanyRepresentativeId } from '../lib/managerCompanies'
 
 const initialForm = {
   title: '',
@@ -137,7 +138,8 @@ function EmployeePropertiesPage() {
     setEditingProperty(property)
     setForm({
       title: property.title || '',
-      property_manager_profile_id: String(
+      property_manager_profile_id: resolveCompanyRepresentativeId(
+        propertyManagers,
         property.property_manager_profile_id
           ?? property.assigned_manager_profile?.id
           ?? propertyManagers.find((manager) => {
@@ -465,9 +467,9 @@ function EmployeePropertiesPage() {
                             }}
                           >
                             <option value="">Verwalter auswählen</option>
-                            {propertyManagers.map((manager) => (
-                              <option key={manager.id} value={manager.id}>
-                                {manager.name || 'Immobilienverwalter'}{manager.email ? ` (${manager.email})` : ''}
+                            {buildManagerCompanies(propertyManagers).map((company) => (
+                              <option key={company.key} value={company.representative.id}>
+                                {company.name}{company.domain ? ` (@${company.domain})` : ''}
                               </option>
                             ))}
                           </select>

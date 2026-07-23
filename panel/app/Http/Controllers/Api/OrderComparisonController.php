@@ -50,9 +50,9 @@ class OrderComparisonController extends Controller
                     'price_weight' => '40%',
                     'timeline_weight' => '25%',
                     'property_experience_weight' => '15%',
-                    'provider_rating_weight' => '10%',
-                    'completed_history_weight' => '10%',
-                    'note' => 'Current comparison is hybrid rule-based scoring. It now uses price, timing, prior property work, provider rating, and completed-job history.',
+                    'provider_rating_weight' => '20%',
+                    'rating_categories' => ['communication', 'punctuality', 'quality_of_work'],
+                    'note' => 'Current comparison is hybrid rule-based scoring. It uses price, trade-matched uploaded invoice/order benchmarks, start/completion timing, prior property work, and provider ratings for communication, punctuality, and quality of work.',
                 ],
             ],
         ]);
@@ -108,7 +108,7 @@ class OrderComparisonController extends Controller
         }
 
         if ($actor instanceof PropertyManagerProfile) {
-            abort_unless($order->property_id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($order->property_id), 403);
             return;
         }
 

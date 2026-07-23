@@ -17,6 +17,11 @@ class DatabaseBackupController extends Controller
 
         return response()->json([
             'data' => $backupService->list(),
+            'meta' => [
+                'automatic_schedule' => '02:00',
+                'restore_mode' => 'download_only',
+                'note' => 'Backups are created automatically. Full database restore is disabled in the admin UI to protect newer data.',
+            ],
         ]);
     }
 
@@ -24,24 +29,14 @@ class DatabaseBackupController extends Controller
     {
         $this->authorizeAdmin($request);
 
-        return response()->json([
-            'message' => 'Database backup created successfully.',
-            'data' => $backupService->create(),
-        ], 201);
+        abort(422, 'Manual backup creation is disabled. Backups are created automatically by the scheduler at 02:00.');
     }
 
     public function upload(Request $request, DatabaseBackupService $backupService): JsonResponse
     {
         $this->authorizeAdmin($request);
 
-        $validated = $request->validate([
-            'backup' => ['required', 'file', 'mimes:sql,txt', 'max:51200'],
-        ]);
-
-        return response()->json([
-            'message' => 'Database backup uploaded successfully.',
-            'data' => $backupService->storeUploadedBackup($validated['backup']),
-        ], 201);
+        abort(422, 'Backup upload and full restore are disabled here. Use selective recovery so newer data is not overwritten.');
     }
 
     public function download(Request $request, string $fileName, DatabaseBackupService $backupService)
@@ -59,11 +54,7 @@ class DatabaseBackupController extends Controller
     {
         $this->authorizeAdmin($request);
 
-        $backupService->restore($fileName);
-
-        return response()->json([
-            'message' => 'Database backup restored successfully.',
-        ]);
+        abort(422, 'Full database restore is disabled here. Use selective recovery so newer data is not overwritten.');
     }
 
     public function destroy(Request $request, string $fileName, DatabaseBackupService $backupService): JsonResponse

@@ -27,7 +27,8 @@ class PropertyController extends Controller
             ->latest();
 
         if ($actor instanceof PropertyManagerProfile) {
-            $query->whereKey($actor->property_id);
+            $propertyIds = $actor->accessiblePropertyIds();
+            $query->whereIn('id', $propertyIds ?: [0]);
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
         }
@@ -203,7 +204,7 @@ class PropertyController extends Controller
         }
 
         if ($actor instanceof PropertyManagerProfile) {
-            abort_unless($actor->property_id === $property->id, 403);
+            abort_unless($actor->canAccessProperty($property->id), 403);
 
             return;
         }

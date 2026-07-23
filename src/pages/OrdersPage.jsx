@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
-import { formatDateDisplay } from '../lib/dateFormat'
+import { formatDateDisplay, formatDateTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import {
   getOptionLabel,
@@ -337,6 +337,7 @@ function OrdersPage() {
   const { t } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const [orders, setOrders] = useState([])
+  const [deletedOrders, setDeletedOrders] = useState([])
   const [properties, setProperties] = useState([])
   const [objects, setObjects] = useState([])
   const [serviceProviders, setServiceProviders] = useState([])
@@ -359,6 +360,8 @@ function OrdersPage() {
   // Gewerk is fixed, the provider's line items are locked, and only the bid deadline is entered.
   const [generateLock, setGenerateLock] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingDeletedOrders, setIsLoadingDeletedOrders] = useState(false)
+  const [restoringOrderId, setRestoringOrderId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -367,6 +370,7 @@ function OrdersPage() {
   const canDeleteOrders = Boolean(user?.permissions?.orders?.delete)
   const canManageOrders = canCreateOrders || canEditOrders || canDeleteOrders
   const isAdmin = user?.role === 'admin'
+  const canRecoverOrders = isAdmin || user?.role === 'employee' || canDeleteOrders
   const showActionColumn = isAdmin || canEditOrders || canDeleteOrders
   const isManager = user?.role === 'manager'
   const isOwner = user?.role === 'owner'
@@ -377,14 +381,16 @@ function OrdersPage() {
     setError('')
 
     try {
-      const [ordersResponse, propertiesResponse, objectsResponse, serviceProvidersResponse] = await Promise.all([
+      const [ordersResponse, propertiesResponse, objectsResponse, serviceProvidersResponse, deletedOrdersResponse] = await Promise.all([
         api.getOrders(),
         api.getProperties(),
         api.getPropertyObjects(),
         api.getServiceProviders(),
+        canRecoverOrders ? api.getDeletedOrders() : Promise.resolve({ data: [] }),
       ])
 
       setOrders(ordersResponse.data ?? [])
+      setDeletedOrders(deletedOrdersResponse.data ?? [])
       setProperties(propertiesResponse.data ?? [])
       setObjects(objectsResponse.data ?? [])
       setServiceProviders(serviceProvidersResponse.data ?? [])
@@ -392,6 +398,24 @@ function OrdersPage() {
       setError(loadError.message)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function loadDeletedOrders() {
+    if (!canRecoverOrders) {
+      return
+    }
+
+    setIsLoadingDeletedOrders(true)
+    setError('')
+
+    try {
+      const response = await api.getDeletedOrders()
+      setDeletedOrders(response.data ?? [])
+    } catch (loadError) {
+      setError(loadError.message)
+    } finally {
+      setIsLoadingDeletedOrders(false)
     }
   }
 
@@ -1381,6 +1405,21 @@ function OrdersPage() {
     }
   }
 
+  async function handleRestore(orderId) {
+    setRestoringOrderId(orderId)
+    setError('')
+
+    try {
+      const response = await api.restoreOrder(orderId)
+      setDeletedOrders((current) => current.filter((order) => order.id !== orderId))
+      setOrders((current) => [response.data, ...current])
+    } catch (restoreError) {
+      setError(restoreError.message)
+    } finally {
+      setRestoringOrderId(null)
+    }
+  }
+
   const filteredOrders = orders.filter((order) => {
     const searchValue = [
       order.title,
@@ -1596,6 +1635,82 @@ function OrdersPage() {
         </div>
       </div>
 
+      {canRecoverOrders ? (
+        <div className="row">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-body p-4">
+                <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+                  <div>
+                    <h5 className="fw-semibold mb-1">{t('Gelöschte Aufträge')}</h5>
+                    <div className="text-muted small">{t('Gelöschte Aufträge werden hier wiederhergestellt, ohne ein Datenbank-Backup einzuspielen.')}</div>
+                  </div>
+                  <button type="button" className="btn btn-light-primary btn-sm" onClick={loadDeletedOrders} disabled={isLoadingDeletedOrders}>
+                    <i className="ti ti-refresh me-1"></i>
+                    {t('Aktualisieren')}
+                  </button>
+                </div>
+
+                {isLoadingDeletedOrders ? <p className="text-muted mb-0">{t('Gelöschte Aufträge werden geladen...')}</p> : null}
+
+                {!isLoadingDeletedOrders ? (
+                  <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
+                    <table className="table border-none text-nowrap customize-table mb-0 align-middle">
+                      <thead className="text-dark fs-4">
+                        <tr>
+                          <th><h6 className="fs-4 fw-semibold mb-0">{t('Titel')}</h6></th>
+                          <th><h6 className="fs-4 fw-semibold mb-0">{t('Immobilie')}</h6></th>
+                          <th><h6 className="fs-4 fw-semibold mb-0">{t('Anfragender')}</h6></th>
+                          <th><h6 className="fs-4 fw-semibold mb-0">{t('Gelöscht am')}</h6></th>
+                          <th width="120"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deletedOrders.map((order) => (
+                          <tr key={order.id}>
+                            <td>
+                              <div className="fw-semibold">{order.title}</div>
+                              <div className="text-muted">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
+                            </td>
+                            <td>
+                              <div className="fw-semibold">{order.property?.li_number ?? '-'}</div>
+                              <div className="text-muted">{order.property?.title ?? '-'}</div>
+                            </td>
+                            <td>
+                              <div>{order.requester_name || '-'}</div>
+                              <div className="text-muted">{order.requester_email || '-'}</div>
+                            </td>
+                            <td>{formatDateTimeDisplay(order.deleted_at)}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="btn btn-light-primary btn-sm"
+                                disabled={restoringOrderId === order.id}
+                                onClick={() => handleRestore(order.id)}
+                              >
+                                {restoringOrderId === order.id ? t('Wird wiederhergestellt...') : t('Wiederherstellen')}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+
+                        {deletedOrders.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="text-center text-muted py-4">
+                              {t('Keine gelöschten Aufträge vorhanden.')}
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {canManageOrders ? (
         <>
           <div
@@ -1643,7 +1758,7 @@ function OrdersPage() {
                           <div className="row g-3">
                             <div className="col-md-12">
                               <label className="form-label">{t('Liegenschaft')}</label>
-                              <select className="form-select" name="property_id" value={managerWizard.property_id} onChange={handleManagerWizardChange} disabled>
+                              <select className="form-select" name="property_id" value={managerWizard.property_id} onChange={handleManagerWizardChange}>
                                 <option value="">{t('Liegenschaft auswählen')}</option>
                                 {properties.map((property) => (
                                   <option key={property.id} value={property.id}>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -44,6 +45,7 @@ class OrderResource extends JsonResource
                 ->all(),
             'requested_at' => $this->requested_at?->toDateTimeString(),
             'completed_at' => $this->completed_at?->toDateTimeString(),
+            'deleted_at' => $this->deleted_at?->toDateTimeString(),
             'is_approved' => $this->relationLoaded('approvedBid') ? $this->approvedBid !== null : null,
             'property' => $this->whenLoaded('property', fn () => [
                 'id' => $this->property->id,
@@ -78,29 +80,34 @@ class OrderResource extends JsonResource
                 ] : null,
             ] : null),
             'bids_count' => $this->whenCounted('bids'),
-            'bids' => $this->whenLoaded('bids', fn () => $this->bids->map(fn ($bid) => [
-                'id' => $bid->id,
-                'amount' => $bid->amount,
-                'currency' => $bid->currency,
-                'line_items' => $bid->line_items ?? [],
-                'status' => $bid->status,
-                'estimated_start_date' => $bid->estimated_start_date?->toDateString(),
-                'estimated_completion_date' => $bid->estimated_completion_date?->toDateString(),
-                'notes' => $bid->notes,
-                'workflow_meta' => $bid->workflow_meta ?? [],
-                'rejection_reason' => $bid->rejection_reason,
-                'attachment_name' => $bid->attachment_name,
-                'attachment_mime_type' => $bid->attachment_mime_type,
-                'attachment_size' => $bid->attachment_size,
-                'attachment_download_url' => $bid->attachment_path ? route('bids.attachment.download', $bid->id) : null,
-                'submitted_at' => $bid->submitted_at?->toDateTimeString(),
-                'created_at' => $bid->created_at?->toDateTimeString(),
-                'service_provider' => $bid->serviceProvider ? [
-                    'id' => $bid->serviceProvider->id,
-                    'company_name' => $bid->serviceProvider->company_name,
-                    'contact_email' => $bid->serviceProvider->contact_email,
-                ] : null,
-            ])->values()),
+            'bids' => $this->whenLoaded('bids', fn () => $this->bids->map(function ($bid) use ($request) {
+                $hideScopeSeedPrices = $this->shouldHideScopeSeedPrices($request, $bid);
+
+                return [
+                    'id' => $bid->id,
+                    'amount' => $hideScopeSeedPrices ? null : $bid->amount,
+                    'currency' => $bid->currency,
+                    'line_items' => $hideScopeSeedPrices ? $this->scopeOnlyLineItems($bid->line_items ?? []) : ($bid->line_items ?? []),
+                    'prices_hidden' => $hideScopeSeedPrices,
+                    'status' => $bid->status,
+                    'estimated_start_date' => $bid->estimated_start_date?->toDateString(),
+                    'estimated_completion_date' => $bid->estimated_completion_date?->toDateString(),
+                    'notes' => $bid->notes,
+                    'workflow_meta' => $bid->workflow_meta ?? [],
+                    'rejection_reason' => $bid->rejection_reason,
+                    'attachment_name' => $bid->attachment_name,
+                    'attachment_mime_type' => $bid->attachment_mime_type,
+                    'attachment_size' => $bid->attachment_size,
+                    'attachment_download_url' => $bid->attachment_path ? route('bids.attachment.download', $bid->id) : null,
+                    'submitted_at' => $bid->submitted_at?->toDateTimeString(),
+                    'created_at' => $bid->created_at?->toDateTimeString(),
+                    'service_provider' => $bid->serviceProvider ? [
+                        'id' => $bid->serviceProvider->id,
+                        'company_name' => $bid->serviceProvider->company_name,
+                        'contact_email' => $bid->serviceProvider->contact_email,
+                    ] : null,
+                ];
+            })->values()),
             'documents' => $this->whenLoaded('documents', fn () => $this->documents->map(fn ($document) => [
                 'id' => $document->id,
                 'title' => $document->title,
@@ -127,6 +134,9 @@ class OrderResource extends JsonResource
                 ->map(fn ($review) => [
                     'id' => $review->id,
                     'rating' => $review->rating,
+                    'communication_rating' => $review->communication_rating,
+                    'punctuality_rating' => $review->punctuality_rating,
+                    'quality_rating' => $review->quality_rating,
                     'comment' => $review->comment,
                     'reviewer_role' => $review->reviewer_user_id ? 'owner' : 'manager',
                     'reviewer_name' => $review->reviewerUser?->name ?? $review->reviewerManagerProfile?->name ?? 'Reviewer',
@@ -134,5 +144,34 @@ class OrderResource extends JsonResource
                 ])),
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
+    }
+
+    private function shouldHideScopeSeedPrices(Request $request, mixed $bid): bool
+    {
+        if (! data_get($bid->workflow_meta ?? [], 'quote_scope_seed')) {
+            return false;
+        }
+
+        $actor = $request->user();
+
+        return ! (
+            $actor instanceof User
+            && $actor->role?->name === 'provider'
+            && $actor->serviceProvider?->id === $bid->service_provider_id
+        );
+    }
+
+    private function scopeOnlyLineItems(array $lineItems): array
+    {
+        return collect($lineItems)
+            ->map(fn ($item) => [
+                'label' => data_get($item, 'label'),
+                'code' => data_get($item, 'code'),
+                'unit' => data_get($item, 'unit'),
+                'quantity' => data_get($item, 'quantity'),
+                'is_custom' => (bool) data_get($item, 'is_custom', true),
+            ])
+            ->values()
+            ->all();
     }
 }

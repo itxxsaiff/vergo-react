@@ -31,12 +31,21 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('service_providers', function (Blueprint $table) {
-            $table->dropColumn(['address', 'postal_code', 'city']);
-        });
+        $existingProviderColumns = array_filter(
+            ['address', 'postal_code', 'city'],
+            fn (string $column): bool => Schema::hasColumn('service_providers', $column),
+        );
+
+        if ($existingProviderColumns !== []) {
+            Schema::table('service_providers', function (Blueprint $table) use ($existingProviderColumns) {
+                $table->dropColumn($existingProviderColumns);
+            });
+        }
 
         Schema::table('property_manager_profiles', function (Blueprint $table) {
-            $table->dropColumn('phone');
+            if (Schema::hasColumn('property_manager_profiles', 'phone')) {
+                $table->dropColumn('phone');
+            }
         });
     }
 };

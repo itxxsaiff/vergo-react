@@ -51,32 +51,56 @@ return new class extends Migration
         }
 
         // 2. Swap the (property_id, email) unique index for an email-only one.
-        Schema::table('property_manager_profiles', function (Blueprint $table): void {
-            try {
-                $table->dropUnique('property_manager_profiles_property_id_email_unique');
-            } catch (\Throwable $e) {
-                // Index name differs or already dropped — safe to continue.
-            }
-        });
+        try {
+            Schema::table('property_manager_profiles', function (Blueprint $table): void {
+                $table->index('property_id', 'property_manager_profiles_property_id_index');
+            });
+        } catch (\Throwable $e) {
+            // Index already exists — safe to continue.
+        }
 
-        Schema::table('property_manager_profiles', function (Blueprint $table): void {
-            $table->unique('email');
-        });
+        try {
+            Schema::table('property_manager_profiles', function (Blueprint $table): void {
+                $table->dropUnique('property_manager_profiles_property_id_email_unique');
+            });
+        } catch (\Throwable $e) {
+            // Index name differs or already dropped — safe to continue.
+        }
+
+        try {
+            Schema::table('property_manager_profiles', function (Blueprint $table): void {
+                $table->unique('email');
+            });
+        } catch (\Throwable $e) {
+            // Unique index already exists.
+        }
     }
 
     public function down(): void
     {
-        Schema::table('property_manager_profiles', function (Blueprint $table): void {
-            try {
+        try {
+            Schema::table('property_manager_profiles', function (Blueprint $table): void {
                 $table->dropUnique('property_manager_profiles_email_unique');
-            } catch (\Throwable $e) {
-                // no-op
-            }
-        });
+            });
+        } catch (\Throwable $e) {
+            // no-op
+        }
 
-        Schema::table('property_manager_profiles', function (Blueprint $table): void {
-            $table->unique(['property_id', 'email']);
-        });
+        try {
+            Schema::table('property_manager_profiles', function (Blueprint $table): void {
+                $table->unique(['property_id', 'email']);
+            });
+        } catch (\Throwable $e) {
+            // no-op
+        }
+
+        try {
+            Schema::table('property_manager_profiles', function (Blueprint $table): void {
+                $table->dropIndex('property_manager_profiles_property_id_index');
+            });
+        } catch (\Throwable $e) {
+            // no-op
+        }
     }
 
     /**

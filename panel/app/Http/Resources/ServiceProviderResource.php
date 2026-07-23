@@ -26,6 +26,7 @@ class ServiceProviderResource extends JsonResource
             'phone' => $this->phone,
             'is_vat_subject' => (bool) $this->is_vat_subject,
             'rating' => $this->getAverageRatingValue(),
+            'rating_breakdown' => $this->getAverageRatingBreakdownValue(),
             'completed_jobs_count' => $this->getCompletedJobsCountValue(),
             'status' => $this->status === 'pending' ? 'inactive' : $this->status,
             'bids_count' => $this->whenCounted('bids'),

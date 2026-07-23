@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import PageContent from '../components/PageContent'
+import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
 const initialForm = {
+  owner_type: 'company',
   company_name: '',
+  first_name: '',
+  last_name: '',
   address: '',
   postal_code: '',
   city: '',
@@ -16,10 +20,21 @@ const initialForm = {
 }
 
 function getDisplayName(owner) {
-  return owner.company_name || owner.name || '-'
+  return owner.name || owner.company_name || [owner.first_name, owner.last_name].filter(Boolean).join(' ') || '-'
+}
+
+function getOwnerTypeLabel(ownerType) {
+  return ownerType === 'private_individual' ? 'Privatperson' : 'Firma'
+}
+
+function getLoginLabel(owner) {
+  return owner.owner_type === 'private_individual'
+    ? owner.email || '-'
+    : owner.domain_suffix ? `@${owner.domain_suffix}` : '-'
 }
 
 function OwnersPage() {
+  const { t } = useLanguage()
   const [owners, setOwners] = useState([])
   const [form, setForm] = useState(initialForm)
   const [filters, setFilters] = useState({
@@ -55,6 +70,8 @@ function OwnersPage() {
       const searchValue = [
         owner.name,
         owner.company_name,
+        owner.first_name,
+        owner.last_name,
         owner.address,
         owner.city,
         owner.email,
@@ -79,6 +96,15 @@ function OwnersPage() {
       [name]: value,
     }))
     setFieldErrors((current) => {
+      if (name === 'owner_type') {
+        const next = { ...current }
+        delete next.company_name
+        delete next.domain_suffix
+        delete next.first_name
+        delete next.last_name
+        return next
+      }
+
       if (!current[name]) return current
       const next = { ...current }
       delete next[name]
@@ -101,7 +127,16 @@ function OwnersPage() {
     setError('')
     setFieldErrors({})
 
-    const requiredFields = ['company_name', 'address', 'postal_code', 'city', 'email', 'phone', 'domain_suffix']
+    const isPrivateIndividual = form.owner_type === 'private_individual'
+    const requiredFields = [
+      isPrivateIndividual ? 'first_name' : 'company_name',
+      ...(isPrivateIndividual ? ['last_name'] : ['domain_suffix']),
+      'address',
+      'postal_code',
+      'city',
+      'email',
+      'phone',
+    ]
     const nextFieldErrors = requiredFields.reduce((errors, field) => {
       if (!String(form[field] ?? '').trim()) {
         errors[field] = true
@@ -111,7 +146,7 @@ function OwnersPage() {
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors)
-      setError('Bitte alle Pflichtfelder ausfüllen.')
+      setError(t('Bitte alle Pflichtfelder ausfüllen.'))
       setIsSaving(false)
       return
     }
@@ -119,19 +154,21 @@ function OwnersPage() {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailPattern.test(form.email.trim())) {
       setFieldErrors({ email: true })
-      setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.')
+      setError(t('Bitte geben Sie eine gültige E-Mail-Adresse ein.'))
       setIsSaving(false)
       return
     }
 
     try {
       const payload = {
-        owner_type: 'company',
-        company_name: form.company_name.trim(),
+        owner_type: form.owner_type,
+        company_name: isPrivateIndividual ? null : form.company_name.trim(),
+        first_name: isPrivateIndividual ? form.first_name.trim() : null,
+        last_name: isPrivateIndividual ? form.last_name.trim() : null,
         address: form.address.trim(),
         postal_code: form.postal_code.trim(),
         city: form.city.trim(),
-        domain_suffix: form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
+        domain_suffix: isPrivateIndividual ? null : form.domain_suffix.trim().replace(/^@+/, '').toLowerCase(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim(),
         status: form.status,
@@ -159,7 +196,10 @@ function OwnersPage() {
   function handleEdit(owner) {
     setEditingOwnerId(owner.id)
     setForm({
+      owner_type: owner.owner_type || 'company',
       company_name: owner.company_name || '',
+      first_name: owner.first_name || '',
+      last_name: owner.last_name || '',
       address: owner.address || '',
       postal_code: owner.postal_code || '',
       city: owner.city || '',
@@ -201,82 +241,130 @@ function OwnersPage() {
 
   return (
     <PageContent
-      title="Eigentümer"
-      subtitle="Erstellen Sie Eigentümerprofile mit Firmenangaben, Kontaktinformationen und Domain-Endung."
+      title={t('Eigentümer')}
+      subtitle={t('Erstellen Sie Eigentümer als Firma oder Privatperson und hinterlegen Sie nur die für den Login benötigten Stammdaten.')}
       breadcrumbs={[
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Eigentümer' },
+        { label: t('Dashboard'), href: '/dashboard' },
+        { label: t('Eigentümer') },
       ]}
     >
       <div className="row">
         <div className="col-xl-5">
           <div className="card">
             <div className="card-body">
-              <h4 className="card-title mb-4">Eigentümer erstellen</h4>
-              {editingOwnerId ? <p className="text-muted">Ausgewählten Eigentümer bearbeiten.</p> : null}
+              <h4 className="card-title mb-4">{editingOwnerId ? t('Eigentümer bearbeiten') : t('Eigentümer erstellen')}</h4>
+              {editingOwnerId ? <p className="text-muted">{t('Ausgewählten Eigentümer bearbeiten.')}</p> : null}
 
               <form onSubmit={handleSubmit} noValidate>
                 <div className="mb-3">
-                  <label className="form-label">Firmenname</label>
-                  <input className={`form-control${fieldErrors.company_name ? ' is-invalid' : ''}`} name="company_name" value={form.company_name} onChange={handleChange} />
+                  <label className="form-label">{t('Typ')}</label>
+                  <div className="btn-group w-100" role="group" aria-label={t('Typ')}>
+                    <input
+                      type="radio"
+                      className="btn-check"
+                      name="owner_type"
+                      id="owner-type-company"
+                      value="company"
+                      checked={form.owner_type === 'company'}
+                      onChange={handleChange}
+                    />
+                    <label className="btn btn-outline-primary" htmlFor="owner-type-company">{t('Firma')}</label>
+
+                    <input
+                      type="radio"
+                      className="btn-check"
+                      name="owner_type"
+                      id="owner-type-private"
+                      value="private_individual"
+                      checked={form.owner_type === 'private_individual'}
+                      onChange={handleChange}
+                    />
+                    <label className="btn btn-outline-primary" htmlFor="owner-type-private">{t('Privatperson')}</label>
+                  </div>
                 </div>
 
+                {form.owner_type === 'private_individual' ? (
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">{t('Vorname')}</label>
+                        <input className={`form-control${fieldErrors.first_name ? ' is-invalid' : ''}`} name="first_name" value={form.first_name} onChange={handleChange} />
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">{t('Nachname')}</label>
+                        <input className={`form-control${fieldErrors.last_name ? ' is-invalid' : ''}`} name="last_name" value={form.last_name} onChange={handleChange} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-3">
+                    <label className="form-label">{t('Firmenname')}</label>
+                    <input className={`form-control${fieldErrors.company_name ? ' is-invalid' : ''}`} name="company_name" value={form.company_name} onChange={handleChange} />
+                  </div>
+                )}
+
                 <div className="mb-3">
-                  <label className="form-label">Adresse</label>
+                  <label className="form-label">{t('Adresse')}</label>
                   <input className={`form-control${fieldErrors.address ? ' is-invalid' : ''}`} name="address" value={form.address} onChange={handleChange} />
                 </div>
 
                 <div className="row">
                   <div className="col-md-4">
                     <div className="mb-3">
-                      <label className="form-label">PLZ</label>
+                      <label className="form-label">{t('PLZ')}</label>
                       <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
                     </div>
                   </div>
                   <div className="col-md-8">
                     <div className="mb-3">
-                      <label className="form-label">Ort</label>
+                      <label className="form-label">{t('Ort')}</label>
                       <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
                     </div>
                   </div>
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">E-Mail</label>
+                  <label className="form-label">{t('E-Mail')}</label>
                   <input type="email" className={`form-control${fieldErrors.email ? ' is-invalid' : ''}`} name="email" value={form.email} onChange={handleChange} />
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Telefon</label>
+                  <label className="form-label">{t('Telefon')}</label>
                   <input className={`form-control${fieldErrors.phone ? ' is-invalid' : ''}`} name="phone" value={form.phone} onChange={handleChange} />
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Domain-Endung</label>
-                  <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
-                </div>
+                {form.owner_type === 'company' ? (
+                  <div className="mb-3">
+                    <label className="form-label">{t('Domain-Endung')}</label>
+                    <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder={t('beispiel.ch')} />
+                  </div>
+                ) : null}
 
                 <div className="mb-3">
-                  <label className="form-label">Status</label>
+                  <label className="form-label">{t('Status')}</label>
                   <select className="form-select" name="status" value={form.status} onChange={handleChange}>
-                    <option value="active">Aktiv</option>
-                    <option value="inactive">Inaktiv</option>
+                    <option value="active">{t('Aktiv')}</option>
+                    <option value="inactive">{t('Inaktiv')}</option>
                   </select>
                 </div>
 
                 <div className="alert alert-light border small">
-                  Die E-Mail-Adresse und Telefonnummer dienen nur als Kontaktangaben. Für Eigentümer wird automatisch eine Kundennummer erzeugt; ein Passwort wird nicht gesetzt.
+                  {form.owner_type === 'company'
+                    ? t('Firmen-Eigentümer melden sich über die Domain-Endung und einen Code an. Die E-Mail-Adresse dient hier nur als Kontaktoption. Ein Passwort wird nicht gesetzt.')
+                    : t('Privatpersonen melden sich mit genau dieser E-Mail-Adresse und einem Code per E-Mail an. Ein Passwort wird nicht gesetzt.')}
                 </div>
 
                 {error ? <div className="alert alert-danger py-2">{error}</div> : null}
 
                 <div className="d-flex gap-2">
                   <button type="submit" className="btn btn-primary waves-effect waves-light" disabled={isSaving}>
-                    {isSaving ? 'Wird gespeichert...' : editingOwnerId ? 'Eigentümer aktualisieren' : 'Eigentümer erstellen'}
+                    {isSaving ? t('Wird gespeichert...') : editingOwnerId ? t('Eigentümer aktualisieren') : t('Eigentümer erstellen')}
                   </button>
                   {editingOwnerId ? (
                     <button type="button" className="btn btn-light border" onClick={handleCancelEdit}>
-                      Abbrechen
+                      {t('Abbrechen')}
                     </button>
                   ) : null}
                 </div>
@@ -288,32 +376,32 @@ function OwnersPage() {
         <div className="col-xl-7">
           <div className="card">
             <div className="px-4 py-3 border-bottom">
-              <h5 className="card-title fw-semibold mb-0 lh-sm">Eigentümerliste</h5>
+              <h5 className="card-title fw-semibold mb-0 lh-sm">{t('Eigentümerliste')}</h5>
             </div>
             <div className="card-body p-4">
               <div className="row g-3 mb-4 vergo-filter-bar">
                 <div className="col-md-6">
-                  <label className="form-label">Suche</label>
+                  <label className="form-label">{t('Suche')}</label>
                   <div className="vergo-search-input-wrap">
                     <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
                     <input
-                      aria-label="Suche"
+                      aria-label={t('Suche')}
                       className="form-control"
                       name="search"
                       value={filters.search}
                       onChange={handleFilterChange}
-                      placeholder="Suche nach Name, Domain, E-Mail oder Ort"
+                      placeholder={t('Suche nach Name, Domain, E-Mail oder Ort')}
                     />
                   </div>
                 </div>
                 <div className="col-md-3">
-                  <label className="form-label">Status</label>
+                  <label className="form-label">{t('Status')}</label>
                   <div className="vergo-select-input-wrap">
                     <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
-                    <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                      <option value="">All Status</option>
-                      <option value="active">Aktiv</option>
-                      <option value="inactive">Inaktiv</option>
+                    <select aria-label={t('Status')} className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                      <option value="">{t('All Status')}</option>
+                      <option value="active">{t('Aktiv')}</option>
+                      <option value="inactive">{t('Inaktiv')}</option>
                     </select>
                   </div>
                 </div>
@@ -324,25 +412,26 @@ function OwnersPage() {
                     onClick={() => setFilters({ search: '', status: '' })}
                   >
                     <i className="ti ti-refresh me-1" aria-hidden="true"></i>
-                    Zurücksetzen
+                    {t('Zurücksetzen')}
                   </button>
                 </div>
               </div>
 
-              {isLoading ? <p className="text-muted mb-0">Eigentümer werden geladen...</p> : null}
+              {isLoading ? <p className="text-muted mb-0">{t('Eigentümer werden geladen...')}</p> : null}
 
               {!isLoading ? (
                 <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
                   <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                     <thead className="text-dark fs-4">
                       <tr>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Kundennummer</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Name</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Kundennummer')}</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Name')}</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Typ')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Login</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Liegenschaften</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
-                        <th width="90"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Ort')}</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Liegenschaften')}</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Status')}</h6></th>
+                        <th width="90"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -350,7 +439,8 @@ function OwnersPage() {
                         <tr key={owner.id}>
                           <td>{owner.customer_number || '-'}</td>
                           <td className="fw-semibold">{getDisplayName(owner)}</td>
-                          <td>{owner.domain_suffix ? `@${owner.domain_suffix}` : '-'}</td>
+                          <td>{t(getOwnerTypeLabel(owner.owner_type))}</td>
+                          <td>{getLoginLabel(owner)}</td>
                           <td>{[owner.postal_code, owner.city].filter(Boolean).join(' ') || '-'}</td>
                           <td>{owner.properties_count ?? 0}</td>
                           <td>
@@ -364,7 +454,7 @@ function OwnersPage() {
                                 type="button"
                                 className="table-action-btn table-action-edit"
                                 onClick={() => handleEdit(owner)}
-                                title="Eigentümer bearbeiten"
+                                title={t('Eigentümer bearbeiten')}
                               >
                                 <i className="ti ti-pencil"></i>
                               </button>
@@ -372,7 +462,7 @@ function OwnersPage() {
                                 type="button"
                                 className="table-action-btn table-action-delete"
                                 onClick={() => handleDelete(owner.id)}
-                                title="Eigentümer löschen"
+                                title={t('Eigentümer löschen')}
                               >
                                 <i className="ti ti-trash"></i>
                               </button>
@@ -383,8 +473,8 @@ function OwnersPage() {
 
                       {filteredOwners.length === 0 ? (
                         <tr>
-                          <td colSpan="7" className="text-center text-muted py-4">
-                            Keine Eigentümer gefunden.
+                          <td colSpan="8" className="text-center text-muted py-4">
+                            {t('Keine Eigentümer gefunden.')}
                           </td>
                         </tr>
                       ) : null}

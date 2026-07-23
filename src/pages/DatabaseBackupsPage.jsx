@@ -20,11 +20,9 @@ function formatFileSize(bytes) {
 function DatabaseBackupsPage() {
   const { t } = useLanguage()
   const [backups, setBackups] = useState([])
-  const [selectedFile, setSelectedFile] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isWorking, setIsWorking] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     loadBackups()
@@ -44,61 +42,6 @@ function DatabaseBackupsPage() {
     }
   }
 
-  async function handleCreateBackup() {
-    setIsWorking(true)
-    setError('')
-    setSuccess('')
-
-    try {
-      await api.createDatabaseBackup()
-      setSuccess(t('Datenbank-Backup wurde erstellt.'))
-      await loadBackups()
-    } catch (createError) {
-      setError(createError.message)
-    } finally {
-      setIsWorking(false)
-    }
-  }
-
-  async function handleUploadBackup(event) {
-    event.preventDefault()
-
-    if (!selectedFile) {
-      setError(t('Bitte wählen Sie eine SQL-Datei aus.'))
-      return
-    }
-
-    const shouldImport = window.confirm(t('Diese SQL-Datei ersetzt die aktuelle Datenbank. Fortfahren?'))
-
-    if (!shouldImport) {
-      return
-    }
-
-    setIsWorking(true)
-    setError('')
-    setSuccess('')
-
-    try {
-      const formData = new FormData()
-      formData.append('backup', selectedFile)
-      const response = await api.uploadDatabaseBackup(formData)
-      const uploadedFileName = response.data?.name
-
-      if (uploadedFileName) {
-        await api.restoreDatabaseBackup(uploadedFileName)
-      }
-
-      setSelectedFile(null)
-      event.target.reset()
-      setSuccess(t('Backup-Datei wurde importiert und wiederhergestellt.'))
-      await loadBackups()
-    } catch (uploadError) {
-      setError(uploadError.message)
-    } finally {
-      setIsWorking(false)
-    }
-  }
-
   async function handleDownloadBackup(fileName) {
     setError('')
 
@@ -106,28 +49,6 @@ function DatabaseBackupsPage() {
       await api.downloadDatabaseBackup(fileName)
     } catch (downloadError) {
       setError(downloadError.message)
-    }
-  }
-
-  async function handleRestoreBackup(fileName) {
-    const shouldRestore = window.confirm(t('Dieses Backup ersetzt die aktuelle Datenbank. Fortfahren?'))
-
-    if (!shouldRestore) {
-      return
-    }
-
-    setIsWorking(true)
-    setError('')
-    setSuccess('')
-
-    try {
-      await api.restoreDatabaseBackup(fileName)
-      setSuccess(t('Datenbank-Backup wurde wiederhergestellt.'))
-      await loadBackups()
-    } catch (restoreError) {
-      setError(restoreError.message)
-    } finally {
-      setIsWorking(false)
     }
   }
 
@@ -140,11 +61,9 @@ function DatabaseBackupsPage() {
 
     setIsWorking(true)
     setError('')
-    setSuccess('')
 
     try {
       await api.deleteDatabaseBackup(fileName)
-      setSuccess(t('Backup-Datei wurde gelöscht.'))
       await loadBackups()
     } catch (deleteError) {
       setError(deleteError.message)
@@ -156,52 +75,35 @@ function DatabaseBackupsPage() {
   return (
     <PageContent
       title={t('Datenbank-Backups')}
-      subtitle={t('Erstellen, herunterladen und wiederherstellen von SQL-Backups.')}
+      subtitle={t('Backups laufen automatisch im Hintergrund. Die Oberfläche ist nur für Kontrolle und Download gedacht.')}
       breadcrumbs={[
         { label: t('Dashboard'), href: '/dashboard' },
         { label: t('Datenbank-Backups') },
       ]}
     >
       <div className="row g-4">
-        <div className="col-lg-4">
+        <div className="col-lg-6">
           <div className="card h-100">
             <div className="card-body p-4">
-              <h5 className="fw-semibold mb-3">{t('Backup erstellen')}</h5>
+              <h5 className="fw-semibold mb-3">{t('Automatische Sicherung')}</h5>
               <p className="text-muted small mb-4">
-                {t('Erstellt eine SQL-Datei mit Tabellenstruktur und Daten.')}
+                {t('Jeden Tag um 02:00 Uhr wird automatisch ein SQL-Backup erstellt und gespeichert.')}
               </p>
-              <button type="button" className="btn btn-primary w-100" disabled={isWorking} onClick={handleCreateBackup}>
-                <i className="ti ti-database-export me-1"></i>
-                {isWorking ? t('Wird gespeichert...') : t('Backup jetzt erstellen')}
-              </button>
+              <div className="d-flex align-items-center gap-2">
+                <span className="badge bg-light-success text-success rounded-pill px-3 py-2">{t('Aktiv')}</span>
+                <span className="text-muted small">{t('Laravel Scheduler: täglich 02:00')}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="col-lg-8">
+        <div className="col-lg-6">
           <div className="card h-100">
             <div className="card-body p-4">
-              <h5 className="fw-semibold mb-3">{t('Backup importieren')}</h5>
-              <p className="text-muted small mb-3">
-                {t('Import ersetzt die aktuelle Datenbank sofort mit der ausgewählten SQL-Datei.')}
+              <h5 className="fw-semibold mb-3">{t('Wiederherstellung')}</h5>
+              <p className="text-muted small mb-0">
+                {t('Ein vollständiger Restore über die Oberfläche ist deaktiviert, damit neuere Aufträge nicht überschrieben werden. Gelöschte Aufträge werden direkt in der Auftragsliste wiederhergestellt.')}
               </p>
-              <form className="row g-3 align-items-end" onSubmit={handleUploadBackup}>
-                <div className="col-md-8">
-                  <label className="form-label">{t('SQL-Datei')}</label>
-                  <input
-                    type="file"
-                    className="form-control"
-                    accept=".sql,.txt"
-                    onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <button type="submit" className="btn btn-light-primary w-100" disabled={isWorking}>
-                    <i className="ti ti-database-import me-1"></i>
-                    {t('Backup importieren')}
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         </div>
@@ -218,7 +120,6 @@ function DatabaseBackupsPage() {
               </div>
 
               {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-              {success ? <div className="alert alert-success py-2">{success}</div> : null}
               {isLoading ? <p className="text-muted mb-0">{t('Backups werden geladen...')}</p> : null}
 
               {!isLoading ? (
@@ -229,7 +130,7 @@ function DatabaseBackupsPage() {
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Datei')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Größe')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">{t('Erstellt am')}</h6></th>
-                        <th width="220"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
+                        <th width="140"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -242,9 +143,6 @@ function DatabaseBackupsPage() {
                             <div className="table-action-group">
                               <button type="button" className="table-action-btn table-action-view" onClick={() => handleDownloadBackup(backup.name)} title={t('Backup herunterladen')}>
                                 <i className="ti ti-download"></i>
-                              </button>
-                              <button type="button" className="table-action-btn table-action-edit" disabled={isWorking} onClick={() => handleRestoreBackup(backup.name)} title={t('Backup wiederherstellen')}>
-                                <i className="ti ti-database-import"></i>
                               </button>
                               <button type="button" className="table-action-btn table-action-delete" disabled={isWorking} onClick={() => handleDeleteBackup(backup.name)} title={t('Backup löschen')}>
                                 <i className="ti ti-trash"></i>

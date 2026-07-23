@@ -71,21 +71,27 @@ class OwnerController extends Controller
 
     private function buildOwnerPayload(Request $request, int $roleId, ?User $existingOwner = null): array
     {
+        $ownerType = $request->input('owner_type', $existingOwner?->owner_type ?: 'company');
         $companyName = $request->string('company_name')->trim()->toString();
+        $firstName = $request->string('first_name')->trim()->toString();
+        $lastName = $request->string('last_name')->trim()->toString();
+        $displayName = $ownerType === 'private_individual'
+            ? trim($firstName.' '.$lastName)
+            : $companyName;
         $ownerEmail = strtolower($request->string('email')->trim()->toString());
         $domainSuffix = ltrim(strtolower($request->string('domain_suffix')->trim()->toString()), '@');
 
         return [
             'role_id' => $roleId,
-            'owner_type' => 'company',
-            'name' => $companyName,
-            'company_name' => $companyName,
-            'first_name' => null,
-            'last_name' => null,
+            'owner_type' => $ownerType,
+            'name' => $displayName,
+            'company_name' => $ownerType === 'company' ? $companyName : null,
+            'first_name' => $ownerType === 'private_individual' ? $firstName : null,
+            'last_name' => $ownerType === 'private_individual' ? $lastName : null,
             'address' => $request->string('address')->trim()->toString(),
             'postal_code' => $request->string('postal_code')->trim()->toString(),
             'city' => $request->string('city')->trim()->toString(),
-            'domain_suffix' => $domainSuffix,
+            'domain_suffix' => $ownerType === 'company' ? $domainSuffix : null,
             'login_email' => $ownerEmail,
             'email' => $ownerEmail,
             'phone' => $request->string('phone')->trim()->toString(),

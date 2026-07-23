@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
@@ -66,16 +66,23 @@ function OrderDetailsPage() {
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
   const [order, setOrder] = useState(null)
   const [comparison, setComparison] = useState(null)
+  const [hasAutoCompared, setHasAutoCompared] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isComparing, setIsComparing] = useState(false)
   const [isComparingPrice, setIsComparingPrice] = useState(false)
   const [updatingBidId, setUpdatingBidId] = useState(null)
   const [isCompletingOrder, setIsCompletingOrder] = useState(false)
-  const [reviewForm, setReviewForm] = useState({ rating: '', comment: '' })
+  const [isPublishingQuoteRequest, setIsPublishingQuoteRequest] = useState(false)
+  const [reviewForm, setReviewForm] = useState({
+    communication_rating: '',
+    punctuality_rating: '',
+    quality_rating: '',
+    comment: '',
+  })
   const [isSavingReview, setIsSavingReview] = useState(false)
   const [error, setError] = useState('')
 
-  async function loadOrder() {
+  const loadOrder = useCallback(async function loadOrder() {
     setIsLoading(true)
     setError('')
 
@@ -90,11 +97,15 @@ function OrderDetailsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [orderId])
+
+  useEffect(() => {
+    setHasAutoCompared(false)
+  }, [orderId])
 
   useEffect(() => {
     loadOrder()
-  }, [orderId])
+  }, [loadOrder])
 
   async function handleCompare() {
     setIsComparing(true)
@@ -169,12 +180,27 @@ function OrderDetailsPage() {
     }
   }
 
+  async function handlePublishQuoteRequest() {
+    setIsPublishingQuoteRequest(true)
+    setError('')
+
+    try {
+      const response = await api.publishQuoteRequest(orderId)
+      setOrder(response.data ?? null)
+      setIsQuoteModalOpen(false)
+    } catch (publishError) {
+      setError(publishError.message)
+    } finally {
+      setIsPublishingQuoteRequest(false)
+    }
+  }
+
   async function handleReviewSubmit(event) {
     event.preventDefault()
     setError('')
 
-    if (!reviewForm.rating) {
-      setError('Bitte wählen Sie eine Bewertung aus, bevor Sie die Rezension speichern.')
+    if (!reviewForm.communication_rating || !reviewForm.punctuality_rating || !reviewForm.quality_rating) {
+      setError('Bitte bewerten Sie Kommunikation, Pünktlichkeit und Arbeitsqualität.')
       return
     }
 
@@ -182,10 +208,17 @@ function OrderDetailsPage() {
 
     try {
       await api.createProviderReview(orderId, {
-        rating: Number(reviewForm.rating),
+        communication_rating: Number(reviewForm.communication_rating),
+        punctuality_rating: Number(reviewForm.punctuality_rating),
+        quality_rating: Number(reviewForm.quality_rating),
         comment: reviewForm.comment || null,
       })
-      setReviewForm({ rating: '', comment: '' })
+      setReviewForm({
+        communication_rating: '',
+        punctuality_rating: '',
+        quality_rating: '',
+        comment: '',
+      })
       await loadOrder()
     } catch (reviewError) {
       setError(reviewError.message)
@@ -203,25 +236,36 @@ function OrderDetailsPage() {
   const priceRecommendation = getLatestAnalysisResult(order?.analysis_results, 'price_recommendation')
   const providerReviews = order?.provider_reviews ?? []
   const actorReview = providerReviews.find((review) => review.reviewer_role === user?.role)
-  const rankedBids = [...(order?.bids ?? [])].sort((firstBid, secondBid) => {
-    const firstScore = Number(bidScoreMap[firstBid.id]?.final_score ?? -1)
-    const secondScore = Number(bidScoreMap[secondBid.id]?.final_score ?? -1)
+  const comparableBids = (order?.bids ?? []).filter((bid) => !bid.prices_hidden)
+  const arrivalOrderedBids = [...comparableBids].sort((firstBid, secondBid) => {
+    const firstDate = new Date(firstBid.submitted_at ?? firstBid.created_at ?? 0)
+    const secondDate = new Date(secondBid.submitted_at ?? secondBid.created_at ?? 0)
 
-    if (firstScore === secondScore) {
-      return new Date(secondBid.submitted_at ?? secondBid.created_at ?? 0) - new Date(firstBid.submitted_at ?? firstBid.created_at ?? 0)
+    if (firstDate.getTime() === secondDate.getTime()) {
+      return Number(firstBid.id) - Number(secondBid.id)
     }
 
-    return secondScore - firstScore
+    return firstDate - secondDate
   })
-  const recommendedBidId = rankings[0]?.bid_id ?? null
+  const hasAiRanking = rankings.length > 0
+  const rankingIndexByBidId = Object.fromEntries(rankings.map((item, index) => [item.bid_id, index]))
+  const rankedBids = hasAiRanking
+    ? [...comparableBids].sort((firstBid, secondBid) => {
+      const firstIndex = rankingIndexByBidId[firstBid.id] ?? Number.MAX_SAFE_INTEGER
+      const secondIndex = rankingIndexByBidId[secondBid.id] ?? Number.MAX_SAFE_INTEGER
+
+      if (firstIndex === secondIndex) {
+        return arrivalOrderedBids.findIndex((bid) => bid.id === firstBid.id) - arrivalOrderedBids.findIndex((bid) => bid.id === secondBid.id)
+      }
+
+      return firstIndex - secondIndex
+    })
+    : arrivalOrderedBids
+  const recommendedBidId = hasAiRanking ? rankings[0]?.bid_id ?? null : null
   const isQuoteWorkflow = order?.workflow_meta?.assignment?.award_mode === 'request_quotes' || ['published_for_quotes', 'awarded', 'quotes_rejected'].includes(order?.workflow_status)
   const bidDeadlinePassed = !order?.bid_deadline_at || new Date(order.bid_deadline_at) <= new Date()
   const shouldHideBidPrices = isQuoteWorkflow && !bidDeadlinePassed
-  const firstPendingRankIndex = rankedBids.findIndex((bid) => !['rejected', 'approved', 'accepted', 'completed'].includes(bid.status))
-  const visibleRankLimit = firstPendingRankIndex === -1 ? rankedBids.length : firstPendingRankIndex + 1
-  const visibleRankedBids = user?.role === 'manager' && isQuoteWorkflow && bidDeadlinePassed
-    ? rankedBids.slice(0, visibleRankLimit)
-    : rankedBids
+  const visibleRankedBids = rankedBids
   const inspectionSlots = getInspectionSlots(order)
   const onsiteContact = getOnsiteContact(order)
   const isInspectionDetails = isInspectionOrder(order)
@@ -229,6 +273,67 @@ function OrderDetailsPage() {
   const submittedQuoteBid = getSubmittedQuoteBid(order)
   const quoteServices = order?.quote_items ?? []
   const hasQuoteToGenerate = Boolean(submittedQuoteBid) && quoteServices.length > 0
+  const comparisonBenchmarkSources = comparison?.comparison_data?.standard_benchmark_sources
+    ?? comparison?.comparison_data?.invoice_benchmark_sources
+    ?? []
+  const canPublishInspectionQuote = user?.role === 'manager'
+    && order?.workflow_status === 'inspection_quote_created'
+    && quoteServices.length > 0
+  const quoteRequestAlreadyPublished = order?.workflow_status === 'published_for_quotes'
+
+  useEffect(() => {
+    if (
+      !order
+      || comparison
+      || hasAutoCompared
+      || isComparing
+      || shouldHideBidPrices
+      || !isQuoteWorkflow
+      || !bidDeadlinePassed
+      || comparableBids.length === 0
+      || !['admin', 'manager'].includes(user?.role)
+    ) {
+      return undefined
+    }
+
+    let cancelled = false
+
+    async function runAutomaticComparison() {
+      setHasAutoCompared(true)
+      setIsComparing(true)
+      setError('')
+
+      try {
+        const comparisonResponse = await api.compareOrderBids(orderId)
+
+        if (cancelled) {
+          return
+        }
+
+        setComparison(comparisonResponse.data?.analysis ?? null)
+
+        const orderResponse = await api.getOrder(orderId)
+
+        if (!cancelled) {
+          setOrder(orderResponse.data ?? null)
+        }
+      } catch (compareError) {
+        if (!cancelled) {
+          setError(compareError.message)
+        }
+      } finally {
+        if (!cancelled) {
+          setIsComparing(false)
+        }
+      }
+    }
+
+    runAutomaticComparison()
+
+    return () => {
+      cancelled = true
+    }
+  }, [bidDeadlinePassed, comparableBids.length, comparison, hasAutoCompared, isComparing, isQuoteWorkflow, order, orderId, shouldHideBidPrices, user?.role])
 
   return (
     <PageContent
@@ -410,7 +515,13 @@ function OrderDetailsPage() {
                 <div className="card vergo-quote-cta-card">
                   <div className="card-body">
                     <div className="text-uppercase small fw-bold vergo-quote-cta-label mb-2">{t('Offerte nach Besichtigung')}</div>
-                    <p className="mb-3">{t('Der Dienstleister hat nach der Besichtigung eine Offerte erstellt. Sie können die Leistungen ansehen und daraus einen Auftrag generieren.')}</p>
+                    <p className="mb-3">
+                      {canPublishInspectionQuote
+                        ? t('Der Dienstleister hat nach der Besichtigung eine Offerte erstellt. Prüfen Sie die Leistungen und starten Sie die Ausschreibung für weitere Anbieter.')
+                        : quoteRequestAlreadyPublished
+                          ? t('Die Offerte wurde bereits als Ausschreibung für weitere Anbieter veröffentlicht.')
+                          : t('Der Dienstleister hat nach der Besichtigung eine Offerte erstellt. Sie können die Leistungen ansehen.')}
+                    </p>
                     <button type="button" className="btn btn-light fw-semibold" onClick={() => setIsQuoteModalOpen(true)}>
                       {t('Offerte ansehen')}
                     </button>
@@ -525,6 +636,17 @@ function OrderDetailsPage() {
                           <div className="fw-semibold">{review.reviewer_name}</div>
                           <span className="badge bg-light-primary text-primary">{review.rating}/5</span>
                         </div>
+                        <div className="d-flex flex-wrap gap-2 mb-2">
+                          <span className="badge bg-light-secondary text-secondary">
+                            Kommunikation {review.communication_rating ?? review.rating}/5
+                          </span>
+                          <span className="badge bg-light-secondary text-secondary">
+                            Pünktlichkeit {review.punctuality_rating ?? review.rating}/5
+                          </span>
+                          <span className="badge bg-light-secondary text-secondary">
+                            Qualität {review.quality_rating ?? review.rating}/5
+                          </span>
+                        </div>
                         <div className="text-muted small mb-1">
                           {formatStatusLabel(review.reviewer_role)} Bewertung
                         </div>
@@ -541,22 +663,30 @@ function OrderDetailsPage() {
                     </div>
                   ) : (
                     <form onSubmit={handleReviewSubmit}>
-                      <div className="mb-3">
-                        <label className="form-label">Bewertung</label>
-                        <select
-                          className="form-select"
-                          value={reviewForm.rating}
-                          onChange={(event) =>
-                            setReviewForm((current) => ({ ...current, rating: event.target.value }))
-                          }
-                        >
-                          <option value="">Bewertung auswählen</option>
-                          <option value="5">5 - Ausgezeichnet</option>
-                          <option value="4">4 - Gut</option>
-                          <option value="3">3 - Durchschnittlich</option>
-                          <option value="2">2 - Schwach</option>
-                          <option value="1">1 - Schlecht</option>
-                        </select>
+                      <div className="row g-3 mb-3">
+                        {[
+                          ['communication_rating', 'Kommunikation'],
+                          ['punctuality_rating', 'Pünktlichkeit'],
+                          ['quality_rating', 'Arbeitsqualität'],
+                        ].map(([field, label]) => (
+                          <div className="col-md-4" key={field}>
+                            <label className="form-label">{label}</label>
+                            <select
+                              className="form-select"
+                              value={reviewForm[field]}
+                              onChange={(event) =>
+                                setReviewForm((current) => ({ ...current, [field]: event.target.value }))
+                              }
+                            >
+                              <option value="">Bewertung auswählen</option>
+                              <option value="5">5 - Ausgezeichnet</option>
+                              <option value="4">4 - Gut</option>
+                              <option value="3">3 - Durchschnittlich</option>
+                              <option value="2">2 - Schwach</option>
+                              <option value="1">1 - Schlecht</option>
+                            </select>
+                          </div>
+                        ))}
                       </div>
 
                       <div className="mb-3">
@@ -619,7 +749,7 @@ function OrderDetailsPage() {
                     </div>
 
                     <div className="mb-0">
-                      <strong>Quellen:</strong> {priceRecommendation.comparison_data?.benchmark_source_count ?? 0} analysierte Dokument(e)
+                      <strong>Quellen:</strong> {priceRecommendation.comparison_data?.benchmark_source_count ?? 0} historische Quelle(n)
                     </div>
                   </>
                 ) : (
@@ -635,7 +765,7 @@ function OrderDetailsPage() {
             <div className="card">
               <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
                 <h5 className="card-title fw-semibold mb-0">Angebotsvergleich</h5>
-                <span className="text-muted">{order.bids?.length ?? 0} Angebote</span>
+                <span className="text-muted">{comparableBids.length} Angebote</span>
               </div>
 
               <div className="card-body p-4">
@@ -646,7 +776,7 @@ function OrderDetailsPage() {
                       Bis zur Angebotsfrist sehen Sie nur die Anzahl der eingegangenen Angebote.
                       {order?.bid_deadline_at ? ` Frist: ${formatDateDisplay(order.bid_deadline_at)}` : ''}
                     </div>
-                    <div className="mt-2 fw-semibold">{order.bids?.length ?? 0} Angebote eingegangen</div>
+                    <div className="mt-2 fw-semibold">{comparableBids.length} Angebote eingegangen</div>
                   </div>
                 ) : null}
 
@@ -685,10 +815,10 @@ function OrderDetailsPage() {
                       </thead>
                       <tbody>
                         {priceRecommendation.comparison_data.benchmark_sources.slice(0, 6).map((source, index) => (
-                          <tr key={`${source.result_id}-${index}`}>
-                            <td>{source.document_title || '-'}</td>
+                          <tr key={`${source.result_id ?? source.order_id ?? source.bid_id ?? 'source'}-${index}`}>
+                            <td>{source.document_title || source.order_title || '-'}</td>
                             <td>{source.amount ?? '-'} {source.currency || ''}</td>
-                            <td>{source.document_type ? formatStatusLabel(source.document_type) : '-'}</td>
+                            <td>{source.document_type ? formatStatusLabel(source.document_type) : source.source_type === 'historical_order' ? 'Abgeschlossener Auftrag' : '-'}</td>
                             <td>{source.match_score ?? '-'}</td>
                           </tr>
                         ))}
@@ -733,6 +863,56 @@ function OrderDetailsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {comparison.comparison_data?.active_price_benchmark_amount ? (
+                      <div className="border rounded-3 p-3 mb-4">
+                        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
+                          <div>
+                            <div className="text-muted fs-2">Preisbenchmark nach Gewerk</div>
+                            <div className="fw-semibold">
+                              {comparison.comparison_data.active_price_benchmark_amount} CHF
+                            </div>
+                            {comparison.comparison_data?.low_bid_threshold_amount ? (
+                              <div className="text-muted small">
+                                Tiefer-Preis-Schwelle: {comparison.comparison_data.low_bid_threshold_amount} CHF
+                              </div>
+                            ) : null}
+                          </div>
+                          <span className="badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-2 px-3">
+                            {comparison.comparison_data?.standard_benchmark_source_count ?? comparison.comparison_data?.invoice_benchmark_source_count ?? 0} Quellen
+                          </span>
+                        </div>
+                        {comparison.comparison_data?.low_bid_count > 0 ? (
+                          <div className="alert alert-light-warning border py-2 mb-3">
+                            {comparison.comparison_data.low_bid_count} Angebot(e) liegen mindestens 20% unter dem Benchmark und wurden mit Punktabzug bewertet.
+                          </div>
+                        ) : null}
+                        {comparisonBenchmarkSources.length > 0 ? (
+                          <div className="table-responsive rounded-2">
+                            <table className="table table-sm align-middle mb-0">
+                              <thead>
+                                <tr>
+                                  <th>Quelle</th>
+                                  <th>Betrag</th>
+                                  <th>Gewerk</th>
+                                  <th>Treffer</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {comparisonBenchmarkSources.slice(0, 5).map((source, index) => (
+                                  <tr key={`${source.result_id}-${index}`}>
+                                    <td>{source.document_title || source.order_title || '-'}</td>
+                                    <td>{source.amount ?? '-'} {source.currency || 'CHF'}</td>
+                                    <td>{getOptionLabel(JOB_TYPE_OPTIONS, source.service_category) || source.service_category || '-'}</td>
+                                    <td>{source.match_score ?? '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </>
                 ) : !shouldHideBidPrices ? (
                   <div className="text-muted mb-4">
@@ -742,14 +922,17 @@ function OrderDetailsPage() {
 
                 {shouldHideBidPrices ? (
                   <div className="row g-3 mb-4">
-                    {(order.bids ?? []).map((bid, index) => (
+                    {arrivalOrderedBids.map((bid, index) => (
                       <div className="col-md-4 col-lg-3" key={bid.id}>
                         <div className="border rounded-3 p-4 text-center h-100 bg-light">
                           <div className="fw-semibold fs-5">{t('Angebot')} {index + 1}</div>
+                          <div className="text-muted small mt-2">
+                            {t('Eingegangen')}: {formatDateTimeDisplay(bid.submitted_at ?? bid.created_at)}
+                          </div>
                         </div>
                       </div>
                     ))}
-                    {(order.bids ?? []).length === 0 ? (
+                    {comparableBids.length === 0 ? (
                       <div className="col-12">
                         <div className="border rounded-3 p-4 text-muted">
                           {t('Noch keine Angebote eingegangen.')}
@@ -769,7 +952,7 @@ function OrderDetailsPage() {
                         <th><h6 className="fs-4 fw-semibold mb-0">Zeitraum</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Anhang</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Bewertung</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">Punkte</h6></th>
                         {(canShortlistBids || canApproveBids) ? (
                           <th><h6 className="fs-4 fw-semibold mb-0">Entscheidung</h6></th>
                         ) : null}
@@ -785,15 +968,20 @@ function OrderDetailsPage() {
                             <td>
                               <div className="fw-semibold d-flex align-items-center gap-2 flex-wrap">
                                 <span>{bid.service_provider?.company_name || '-'}</span>
+                                {hasAiRanking ? (
+                                  <span className="badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-1 px-2">
+                                    {t('Option')} {index + 1}
+                                  </span>
+                                ) : null}
                                 {recommendedBidId === bid.id ? (
                                   <span className="badge bg-light-success text-success fw-semibold fs-2 rounded-3 py-1 px-2">
-                                    Empfohlen
+                                    {t('Empfohlen')}
                                   </span>
                                 ) : null}
                               </div>
                               <div className="text-muted">
                                 {bid.service_provider?.contact_email || '-'}
-                                {score ? ` • Rang #${index + 1}` : ''}
+                                {score ? ` • ${t('KI-geprüfte Reihenfolge')}` : ''}
                               </div>
                             </td>
 
@@ -827,7 +1015,29 @@ function OrderDetailsPage() {
                               </span>
                             </td>
 
-                            <td>{score?.final_score ?? '-'}</td>
+                            <td>
+                              <div className="fw-semibold">{score?.final_score ?? '-'}</div>
+                              {score ? (
+                                <div className="text-muted small">
+                                  Preis {score.price_score ?? '-'} / Termin {score.timeline_score ?? '-'} / Objekt {score.property_experience_score ?? '-'} / Rating {score.rating_score ?? '-'}
+                                </div>
+                              ) : null}
+                              {score?.provider_rating_breakdown ? (
+                                <div className="text-muted small">
+                                  K {score.provider_rating_breakdown.communication ?? '-'} / P {score.provider_rating_breakdown.punctuality ?? '-'} / Q {score.provider_rating_breakdown.quality ?? '-'}
+                                </div>
+                              ) : null}
+                              {score?.is_unreasonably_low ? (
+                                <div className="mt-1">
+                                  <span className="badge bg-light-warning text-warning fw-semibold fs-2 rounded-3 py-1 px-2">
+                                    Ungewöhnlich tief
+                                  </span>
+                                  <div className="text-muted small mt-1">
+                                    {score.price_benchmark_variance_percentage}% vs. Benchmark, -{score.low_bid_penalty_points} Punkte
+                                  </div>
+                                </div>
+                              ) : null}
+                            </td>
 
                             {(canShortlistBids || canApproveBids) ? (
                               <td>
@@ -966,7 +1176,7 @@ function OrderDetailsPage() {
                 <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={() => setIsQuoteModalOpen(false)} />
               </div>
               <div className="modal-body">
-                <p className="text-muted">{t('Vom Dienstleister nach der Besichtigung erfasste Leistungen. Die Preise werden erst nach Ablauf der Angebotsfrist sichtbar.')}</p>
+                <p className="text-muted">{t('Vom Dienstleister nach der Besichtigung erfasste Leistungen. Preise bleiben für Immobilienverwalter und andere Anbieter verborgen.')}</p>
                 <div className="table-responsive">
                   <table className="table align-middle mb-0">
                     <thead>
@@ -995,9 +1205,15 @@ function OrderDetailsPage() {
                 <button type="button" className="btn btn-outline-secondary" onClick={() => setIsQuoteModalOpen(false)}>
                   {t('Schließen')}
                 </button>
-                <button type="button" className="btn btn-primary" onClick={() => navigate(`/orders?generate-from=${order.id}`)}>
-                  {t('Auftrag generieren')}
-                </button>
+                {canPublishInspectionQuote ? (
+                  <button type="button" className="btn btn-primary" disabled={isPublishingQuoteRequest} onClick={handlePublishQuoteRequest}>
+                    {isPublishingQuoteRequest ? t('Wird veröffentlicht...') : t('Ausschreibung starten')}
+                  </button>
+                ) : quoteRequestAlreadyPublished ? (
+                  <button type="button" className="btn btn-primary" onClick={() => navigate('/orders')}>
+                    {t('Zur Auftragsliste')}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>

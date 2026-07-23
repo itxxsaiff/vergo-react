@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('company_addition_requests')) {
+            return;
+        }
+
         Schema::create('company_addition_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('property_manager_profile_id')->nullable()->constrained()->nullOnDelete();

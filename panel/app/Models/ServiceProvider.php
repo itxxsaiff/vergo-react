@@ -93,15 +93,37 @@ class ServiceProvider extends Model
 
     public function getAverageRatingValue(): ?float
     {
-        $average = $this->reviews()->avg('rating');
+        $averages = $this->getAverageRatingBreakdownValue();
+        $values = collect($averages)->filter(fn ($value) => $value !== null);
 
-        return $average !== null ? round((float) $average, 2) : null;
+        return $values->isNotEmpty() ? round((float) $values->avg(), 2) : null;
+    }
+
+    public function getAverageRatingBreakdownValue(): array
+    {
+        $reviews = $this->reviews()
+            ->select(['rating', 'communication_rating', 'punctuality_rating', 'quality_rating'])
+            ->get();
+
+        if ($reviews->isEmpty()) {
+            return [
+                'communication' => null,
+                'punctuality' => null,
+                'quality' => null,
+            ];
+        }
+
+        return [
+            'communication' => $this->averageReviewColumn($reviews, 'communication_rating'),
+            'punctuality' => $this->averageReviewColumn($reviews, 'punctuality_rating'),
+            'quality' => $this->averageReviewColumn($reviews, 'quality_rating'),
+        ];
     }
 
     public function getCompletedJobsCountValue(): int
     {
         return (int) $this->bids()
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'accepted', 'completed'])
             ->whereHas('order', fn ($query) => $query->where('status', 'completed'))
             ->count();
     }
@@ -109,7 +131,7 @@ class ServiceProvider extends Model
     public function hasWorkedOnPropertyBefore(int $propertyId, ?int $excludeOrderId = null): bool
     {
         $hasCompletedOrderWork = $this->bids()
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'accepted', 'completed'])
             ->whereHas('order', function ($query) use ($propertyId, $excludeOrderId) {
                 $query->where('property_id', $propertyId)
                     ->where('status', 'completed');
@@ -157,5 +179,14 @@ class ServiceProvider extends Model
         }
 
         return in_array(strtolower($serviceType), $supportedServiceTypes, true);
+    }
+
+    private function averageReviewColumn($reviews, string $column): ?float
+    {
+        $values = $reviews
+            ->map(fn ($review) => $review->{$column} ?? $review->rating)
+            ->filter(fn ($value) => $value !== null);
+
+        return $values->isNotEmpty() ? round((float) $values->avg(), 2) : null;
     }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
+import SupportTicketButton from './SupportTicketButton'
 import VergoLogo from '../../public/VERGO.png';
 
 function AuthShell({
@@ -65,7 +66,13 @@ function AuthShell({
         className={shellClasses}
         style={backgroundStyle}
       >
-        <div className="position-absolute top-0 end-0 p-3 p-md-4">
+        <div className="position-absolute top-0 end-0 p-3 p-md-4 d-flex align-items-center gap-2">
+          <SupportTicketButton
+            publicMode
+            asNavItem={false}
+            buttonClassName="btn btn-light border-0 shadow-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+            buttonStyle={{ width: '48px', height: '48px' }}
+          />
           <div className="dropdown" ref={languageMenuRef}>
             <button
               type="button"

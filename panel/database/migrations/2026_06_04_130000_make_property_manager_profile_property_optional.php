@@ -10,18 +10,30 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('property_manager_profiles', function (Blueprint $table) {
-            $table->dropForeign(['property_id']);
+            try {
+                $table->dropForeign(['property_id']);
+            } catch (\Throwable $e) {
+                // Already adjusted on this database.
+            }
         });
 
         Schema::table('property_manager_profiles', function (Blueprint $table) {
-            $table->foreignId('property_id')->nullable()->change();
+            try {
+                $table->foreignId('property_id')->nullable()->change();
+            } catch (\Throwable $e) {
+                // Column is already nullable or cannot be changed by this platform.
+            }
         });
 
         Schema::table('property_manager_profiles', function (Blueprint $table) {
-            $table->foreign('property_id')
-                ->references('id')
-                ->on('properties')
-                ->nullOnDelete();
+            try {
+                $table->foreign('property_id')
+                    ->references('id')
+                    ->on('properties')
+                    ->nullOnDelete();
+            } catch (\Throwable $e) {
+                // Foreign key already exists.
+            }
         });
     }
 

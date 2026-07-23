@@ -38,6 +38,7 @@ export function getStatusBadgeClass(status) {
     'in_review',
     'open',
     'awaiting_owner_approval',
+    'inspection_quote_created',
   ].includes(normalizedStatus)) {
     return 'badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-2 px-3'
   }

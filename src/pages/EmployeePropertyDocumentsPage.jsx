@@ -469,9 +469,9 @@ function EmployeePropertyDocumentsPage() {
       .slice(0, 12)
       .map((source) => `
         <tr>
-          <td>${escapeHtml(source.document_title || '-')}</td>
+          <td>${escapeHtml(source.document_title || source.order_title || '-')}</td>
           <td>${escapeHtml(source.amount ?? '-')} ${escapeHtml(source.currency || '')}</td>
-          <td>${escapeHtml(source.document_type ? formatStatusLabel(source.document_type) : '-')}</td>
+          <td>${escapeHtml(source.document_type ? formatStatusLabel(source.document_type) : source.source_type === 'historical_order' ? 'Abgeschlossener Auftrag' : '-')}</td>
           <td>${escapeHtml(source.match_score ?? '-')}</td>
         </tr>
       `)

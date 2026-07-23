@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,14 +10,17 @@ class BidResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $hideScopeSeedPrices = $this->shouldHideScopeSeedPrices($request);
+
         return [
             'id' => $this->id,
             'order_id' => $this->order_id,
             'service_provider_id' => $this->service_provider_id,
             'assigned_provider_email' => $this->assigned_provider_email,
-            'amount' => $this->amount,
+            'amount' => $hideScopeSeedPrices ? null : $this->amount,
             'currency' => $this->currency,
-            'line_items' => $this->line_items ?? [],
+            'line_items' => $hideScopeSeedPrices ? $this->scopeOnlyLineItems($this->line_items ?? []) : ($this->line_items ?? []),
+            'prices_hidden' => $hideScopeSeedPrices,
             'estimated_start_date' => $this->estimated_start_date?->toDateString(),
             'estimated_completion_date' => $this->estimated_completion_date?->toDateString(),
             'notes' => $this->notes,
@@ -59,5 +63,34 @@ class BidResource extends JsonResource
             ]),
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
+    }
+
+    private function shouldHideScopeSeedPrices(Request $request): bool
+    {
+        if (! data_get($this->workflow_meta ?? [], 'quote_scope_seed')) {
+            return false;
+        }
+
+        $actor = $request->user();
+
+        return ! (
+            $actor instanceof User
+            && $actor->role?->name === 'provider'
+            && $actor->serviceProvider?->id === $this->service_provider_id
+        );
+    }
+
+    private function scopeOnlyLineItems(array $lineItems): array
+    {
+        return collect($lineItems)
+            ->map(fn ($item) => [
+                'label' => data_get($item, 'label'),
+                'code' => data_get($item, 'code'),
+                'unit' => data_get($item, 'unit'),
+                'quantity' => data_get($item, 'quantity'),
+                'is_custom' => (bool) data_get($item, 'is_custom', true),
+            ])
+            ->values()
+            ->all();
     }
 }

@@ -22,7 +22,8 @@ class PropertyObjectController extends Controller
             ->latest();
 
         if ($actor instanceof PropertyManagerProfile) {
-            $query->where('property_id', $actor->property_id);
+            $propertyIds = $actor->accessiblePropertyIds();
+            $query->whereIn('property_id', $propertyIds ?: [0]);
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
         }

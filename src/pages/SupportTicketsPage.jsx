@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import PageContent from '../components/PageContent'
 import { api } from '../lib/api'
 import { useLanguage } from '../context/LanguageContext'
@@ -43,6 +43,12 @@ function statusLabel(status, t) {
   return t(labels[status] ?? status)
 }
 
+function requesterDisplayName(ticket) {
+  const contactName = [ticket.first_name, ticket.last_name].filter(Boolean).join(' ').trim()
+
+  return contactName || ticket.requester_name || '-'
+}
+
 function SupportTicketsPage() {
   const { t } = useLanguage()
   const [tickets, setTickets] = useState([])
@@ -54,7 +60,7 @@ function SupportTicketsPage() {
   const [savingTicketId, setSavingTicketId] = useState(null)
   const [expandedTicketId, setExpandedTicketId] = useState(null)
 
-  async function loadTickets() {
+  const loadTickets = useCallback(async function loadTickets() {
     setIsLoading(true)
     setError('')
 
@@ -66,11 +72,11 @@ function SupportTicketsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [t])
 
   useEffect(() => {
     loadTickets()
-  }, [])
+  }, [loadTickets])
 
   const filteredTickets = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase()
@@ -91,7 +97,11 @@ function SupportTicketsPage() {
         ticket.subject,
         ticket.message,
         ticket.requester_name,
+        ticket.first_name,
+        ticket.last_name,
         ticket.requester_email,
+        ticket.phone,
+        ticket.admin_comment,
       ].filter(Boolean).some((value) => String(value).toLowerCase().includes(normalizedSearch))
     })
   }, [searchTerm, statusFilter, tickets])
@@ -118,6 +128,7 @@ function SupportTicketsPage() {
       const response = await api.updateSupportTicket(ticket.id, {
         status: ticket.status,
         admin_notes: ticket.admin_notes || '',
+        admin_comment: ticket.admin_comment || '',
       })
 
       setTickets((current) => current.map((item) => (
@@ -209,7 +220,7 @@ function SupportTicketsPage() {
                       <span className="vergo-support-ticket-id">{ticket.ticket_number}</span>
                       <span className="vergo-support-ticket-main">
                         <strong>{ticket.subject}</strong>
-                        <small>{ticket.requester_name || '-'} · {ticket.requester_email || '-'}</small>
+                        <small>{requesterDisplayName(ticket)} · {ticket.requester_email || '-'}</small>
                       </span>
                       <span className="vergo-support-ticket-badges">
                         <span className={`badge rounded-pill px-3 py-2 ${statusClassName[ticket.status] ?? 'bg-light-secondary text-secondary'}`}>
@@ -228,9 +239,33 @@ function SupportTicketsPage() {
 
                     {isExpanded ? (
                       <div className="vergo-support-ticket-details">
-                        <div className="vergo-support-ticket-message">
-                          <span>{t('Anfrage')}</span>
-                          <p>{ticket.message}</p>
+                        <div className="vergo-support-ticket-thread">
+                          <div className="vergo-support-ticket-contact">
+                            <span>{t('Kontaktdaten')}</span>
+                            <dl>
+                              <div>
+                                <dt>{t('Vorname')}</dt>
+                                <dd>{ticket.first_name || '-'}</dd>
+                              </div>
+                              <div>
+                                <dt>{t('Nachname')}</dt>
+                                <dd>{ticket.last_name || '-'}</dd>
+                              </div>
+                              <div>
+                                <dt>{t('E-Mail-Adresse')}</dt>
+                                <dd>{ticket.requester_email || '-'}</dd>
+                              </div>
+                              <div>
+                                <dt>{t('Telefonnummer')}</dt>
+                                <dd>{ticket.phone || '-'}</dd>
+                              </div>
+                            </dl>
+                          </div>
+
+                          <div className="vergo-support-ticket-message">
+                            <span>{t('Anfrage')}</span>
+                            <p>{ticket.message}</p>
+                          </div>
                         </div>
 
                         <div className="vergo-support-ticket-edit">
@@ -257,6 +292,18 @@ function SupportTicketsPage() {
                               onChange={(event) => updateLocalTicket(ticket.id, 'admin_notes', event.target.value)}
                               placeholder={t('Notiz für das Vergo-Team')}
                             />
+                          </div>
+                          <div className="vergo-support-ticket-comment">
+                            <label className="form-label" htmlFor={`ticket-comment-${ticket.id}`}>{t('Kommentar an Anfragenden')}</label>
+                            <textarea
+                              id={`ticket-comment-${ticket.id}`}
+                              className="form-control"
+                              rows="3"
+                              value={ticket.admin_comment || ''}
+                              onChange={(event) => updateLocalTicket(ticket.id, 'admin_comment', event.target.value)}
+                              placeholder={t('Nachricht an den Ticket-Ersteller')}
+                            />
+                            <div className="form-text">{t('Wird per E-Mail an den Ersteller gesendet.')}</div>
                           </div>
                           <div className="vergo-support-ticket-save">
                             <button

@@ -60,7 +60,7 @@ class PropertyComparisonController extends Controller
         }
 
         if ($actor instanceof PropertyManagerProfile) {
-            abort_unless($actor->property_id === $property->id, 403);
+            abort_unless($actor->canAccessProperty($property->id), 403);
             return;
         }
 

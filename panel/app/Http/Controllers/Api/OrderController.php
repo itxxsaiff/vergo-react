@@ -71,12 +71,44 @@ class OrderController extends Controller
                     });
             });
         } elseif ($actor instanceof PropertyManagerProfile) {
-            $query->where('property_id', $actor->property_id);
+            $propertyIds = $actor->accessiblePropertyIds();
+            $query->whereIn('property_id', $propertyIds ?: [0]);
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
         }
 
         return OrderResource::collection($query->get());
+    }
+
+    public function deleted(Request $request): AnonymousResourceCollection
+    {
+        $actor = $request->user();
+
+        $query = Order::onlyTrashed()
+            ->with([
+                'property:id,li_number,title,postal_code,city,country',
+                'propertyObject:id,name,address,postal_code,city,type,reference',
+                'propertyManager:id,name,email',
+                'approvedBid.serviceProvider:id,company_name,contact_email',
+            ])
+            ->withCount('bids')
+            ->latest('deleted_at');
+
+        if ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true)) {
+            return OrderResource::collection($query->get());
+        }
+
+        if ($actor instanceof PropertyManagerProfile) {
+            $propertyIds = $actor->accessiblePropertyIds();
+
+            $query
+                ->whereIn('property_id', $propertyIds ?: [0])
+                ->where('requester_email', $actor->email);
+
+            return OrderResource::collection($query->get());
+        }
+
+        abort(403);
     }
 
     public function show(Request $request, Order $order): OrderResource
@@ -106,7 +138,7 @@ class OrderController extends Controller
 
         if ($actor instanceof PropertyManagerProfile) {
             abort_unless($this->canCreateOrders($actor), 403, 'You are not allowed to create orders with this login.');
-            abort_unless($property->id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($property->id), 403);
         } else {
             abort(403, 'Admins can only review orders.');
         }
@@ -253,7 +285,7 @@ class OrderController extends Controller
         if ($actor instanceof PropertyManagerProfile) {
             abort_unless($this->canEditOrders($actor), 403, 'You are not allowed to edit orders with this login.');
             abort_unless(
-                $order->property_id === $actor->property_id && $order->requester_email === $actor->email,
+                $actor->canAccessProperty($order->property_id) && $order->requester_email === $actor->email,
                 403
             );
 
@@ -281,7 +313,7 @@ class OrderController extends Controller
                 ->values();
 
         if ($actor instanceof PropertyManagerProfile) {
-            abort_unless($propertyId === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($propertyId), 403);
         }
 
         if ($propertyObjectIds->isNotEmpty() && !$propertyObjectId) {
@@ -398,22 +430,52 @@ class OrderController extends Controller
         if ($actor instanceof PropertyManagerProfile) {
             abort_unless($this->canDeleteOrders($actor), 403, 'You are not allowed to delete orders with this login.');
             abort_unless(
-                $order->property_id === $actor->property_id && $order->requester_email === $actor->email,
+                $actor->canAccessProperty($order->property_id) && $order->requester_email === $actor->email,
                 403
             );
         } else {
             abort(403, 'Only property managers can delete orders.');
         }
 
-        if ($order->attachment_path) {
-            Storage::delete($order->attachment_path);
-        }
-
         $order->delete();
 
         return response()->json([
-            'message' => 'Order deleted successfully.',
+            'message' => 'Order moved to recovery list successfully.',
         ]);
+    }
+
+    public function restore(Request $request, int $orderId): OrderResource
+    {
+        $order = Order::onlyTrashed()
+            ->with([
+                'property:id,li_number,title,postal_code,city,country',
+                'propertyObject:id,name,address,postal_code,city,type,reference',
+                'propertyManager:id,name,email',
+                'bids.serviceProvider:id,company_name,contact_email',
+                'approvedBid.serviceProvider:id,company_name,contact_email',
+                'providerReviews.reviewerUser:id,name',
+                'providerReviews.reviewerManagerProfile:id,name,email',
+                'documents',
+                'analysisResults',
+            ])
+            ->withCount('bids')
+            ->findOrFail($orderId);
+
+        $this->authorizeDeletedOrderRestore($request->user(), $order);
+
+        $order->restore();
+
+        return new OrderResource($order->fresh()->load([
+            'property:id,li_number,title,postal_code,city,country',
+            'propertyObject:id,name,address,postal_code,city,type,reference',
+            'propertyManager:id,name,email',
+            'bids.serviceProvider:id,company_name,contact_email',
+            'approvedBid.serviceProvider:id,company_name,contact_email',
+            'providerReviews.reviewerUser:id,name',
+            'providerReviews.reviewerManagerProfile:id,name,email',
+            'documents',
+            'analysisResults',
+        ])->loadCount('bids'));
     }
 
     public function markCompleted(Request $request, Order $order): OrderResource
@@ -426,7 +488,7 @@ class OrderController extends Controller
                 403
             );
         } elseif ($actor instanceof PropertyManagerProfile) {
-            abort_unless($order->property_id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($order->property_id), 403);
         } else {
             abort(403, 'Only owners or property managers can complete orders.');
         }
@@ -438,6 +500,53 @@ class OrderController extends Controller
             'status' => 'completed',
             'completed_at' => now(),
         ]);
+
+        return new OrderResource($order->fresh()->load([
+            'property:id,li_number,title,postal_code,city,country',
+            'propertyObject:id,name,address,postal_code,city,type,reference',
+            'propertyManager:id,name,email',
+            'bids.serviceProvider:id,company_name,contact_email',
+            'approvedBid.serviceProvider:id,company_name,contact_email',
+            'providerReviews.reviewerUser:id,name',
+            'providerReviews.reviewerManagerProfile:id,name,email',
+            'documents',
+            'analysisResults',
+        ])->loadCount('bids'));
+    }
+
+    public function publishQuoteRequest(Request $request, Order $order, NotificationService $notificationService): OrderResource
+    {
+        $actor = $request->user();
+
+        abort_unless($actor instanceof PropertyManagerProfile, 403, 'Only property managers can publish quote requests.');
+        abort_unless($actor->canAccessProperty($order->property_id), 403);
+        abort_unless($order->workflow_type === 'inspection', 422, 'Only inspection quotes can be published this way.');
+        abort_unless($order->workflow_status === 'inspection_quote_created', 422, 'This quote is not waiting for publication.');
+        abort_unless(! empty($order->quote_items), 422, 'No quote services are available to publish.');
+
+        $workflowMeta = $order->workflow_meta ?? [];
+        data_set($workflowMeta, 'assignment.award_mode', 'request_quotes');
+        data_set($workflowMeta, 'assignment.quote_item_source', 'provider');
+        data_set($workflowMeta, 'assignment.published_from_inspection_quote_at', now()->toDateTimeString());
+        data_set($workflowMeta, 'assignment.published_by_manager_profile_id', $actor->id);
+
+        $bidDeadline = $order->bid_deadline_at && $order->bid_deadline_at->isFuture()
+            ? $order->bid_deadline_at
+            : now()->addDays(7)->endOfDay();
+
+        $seedBidId = data_get($workflowMeta, 'inspection.quote_seed_bid_id');
+        $excludeProviderIds = $seedBidId
+            ? $order->bids()->whereKey($seedBidId)->pluck('service_provider_id')->map(fn ($id) => (int) $id)->all()
+            : [];
+
+        $order->update([
+            'status' => 'open',
+            'workflow_status' => 'published_for_quotes',
+            'workflow_meta' => $workflowMeta,
+            'bid_deadline_at' => $bidDeadline,
+        ]);
+
+        $notificationService->sendQuoteRequestPublished($order->fresh(), $excludeProviderIds);
 
         return new OrderResource($order->fresh()->load([
             'property:id,li_number,title,postal_code,city,country',
@@ -477,7 +586,7 @@ class OrderController extends Controller
         }
 
         if ($actor instanceof PropertyManagerProfile) {
-            abort_unless($order->property_id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($order->property_id), 403);
             return;
         }
 
@@ -492,6 +601,26 @@ class OrderController extends Controller
                 && $serviceProvider->supportsServiceType($order->service_type);
 
             abort_unless($hasLinkedBid || $isVisiblePublicOrder, 403);
+            return;
+        }
+
+        abort(403);
+    }
+
+    private function authorizeDeletedOrderRestore(mixed $actor, Order $order): void
+    {
+        if ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true)) {
+            return;
+        }
+
+        if ($actor instanceof PropertyManagerProfile) {
+            abort_unless(
+                $this->canDeleteOrders($actor)
+                && $actor->canAccessProperty($order->property_id)
+                && $order->requester_email === $actor->email,
+                403
+            );
+
             return;
         }
 

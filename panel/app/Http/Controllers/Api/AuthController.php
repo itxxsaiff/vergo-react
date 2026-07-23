@@ -315,7 +315,7 @@ class AuthController extends Controller
             'consumed_at' => now(),
         ]);
 
-        $abilities = ['manager:full', 'orders:view_all', 'orders:create', 'orders:update', 'orders:delete'];
+        $abilities = $this->managerAbilitiesForProperty($property);
         $token = $manager->createToken('vergo-manager', $abilities)->plainTextToken;
 
         return response()->json([
@@ -431,7 +431,7 @@ class AuthController extends Controller
             'consumed_at' => now(),
         ]);
 
-        $abilities = ['manager:full', 'orders:view_all', 'orders:create', 'orders:update', 'orders:delete'];
+        $abilities = $this->managerAbilitiesForProperty($property);
         $token = $manager->createToken('vergo-manager', $abilities)->plainTextToken;
 
         return response()->json([
@@ -691,7 +691,19 @@ class AuthController extends Controller
 
     private function propertyAllowsManagerEmail(Property $property, string $email, string $domain): bool
     {
-        return (bool) $this->resolveManagerProfileForEmail($property, $email, $domain);
+        $email = strtolower($email);
+        $domain = strtolower($domain);
+        $property->loadMissing('assignedManagerProfile');
+        $assignedManager = $property->assignedManagerProfile;
+
+        if (! $assignedManager) {
+            return false;
+        }
+
+        $assignedDomain = strtolower((string) $assignedManager->domain_suffix);
+        $assignedEmail = strtolower((string) $assignedManager->email);
+
+        return $assignedEmail === $email || ($assignedDomain !== '' && $assignedDomain === $domain);
     }
 
     private function resolveManagerProfileForEmail(Property $property, string $email, string $domain): ?PropertyManagerProfile
@@ -785,6 +797,7 @@ class AuthController extends Controller
     private function transformManagerActor(PropertyManagerProfile $manager, array $abilities = ['manager:full']): array
     {
         $managerAccess = $this->resolveManagerAccess($abilities);
+        $property = $this->resolveManagerPropertyFromAbilities($abilities) ?? $manager->property;
 
         return [
             'id' => $manager->id,
@@ -799,11 +812,42 @@ class AuthController extends Controller
             'permissions' => $managerAccess['permissions'],
             'status' => 'active',
             'property' => [
-                'id' => $manager->property?->id,
-                'li_number' => $manager->property?->li_number,
-                'title' => $manager->property?->title,
+                'id' => $property?->id,
+                'li_number' => $property?->li_number,
+                'title' => $property?->title,
             ],
         ];
+    }
+
+    private function managerAbilitiesForProperty(Property $property): array
+    {
+        return [
+            'manager:full',
+            'orders:view_all',
+            'orders:create',
+            'orders:update',
+            'orders:delete',
+            'property:'.$property->id,
+        ];
+    }
+
+    private function resolveManagerPropertyFromAbilities(array $abilities): ?Property
+    {
+        foreach ($abilities as $ability) {
+            if (! is_string($ability) || ! Str::startsWith($ability, 'property:')) {
+                continue;
+            }
+
+            $propertyId = (int) Str::after($ability, 'property:');
+
+            if ($propertyId > 0) {
+                return Property::query()
+                    ->select('id', 'li_number', 'title')
+                    ->find($propertyId);
+            }
+        }
+
+        return null;
     }
 
     private function resolveManagerAccess(array $abilities): array

@@ -72,12 +72,14 @@ class CompanyAdditionRequestController extends Controller
         ]);
 
         if (! empty($validated['property_id'])) {
-            abort_unless((int) $validated['property_id'] === (int) $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty((int) $validated['property_id']), 403);
         }
+
+        $fallbackPropertyId = $actor->property_id ?? ($actor->accessiblePropertyIds()[0] ?? null);
 
         $companyRequest = CompanyAdditionRequest::query()->create([
             'property_manager_profile_id' => $actor->id,
-            'property_id' => $validated['property_id'] ?? $actor->property_id,
+            'property_id' => $validated['property_id'] ?? $fallbackPropertyId,
             'company_name' => $validated['company_name'],
             'contact_name' => $validated['contact_name'] ?? null,
             'email' => $validated['email'] ?? null,

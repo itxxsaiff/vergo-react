@@ -17,12 +17,16 @@ class SupportTicket extends Model
         'requester_role',
         'requester_name',
         'requester_email',
+        'first_name',
+        'last_name',
+        'phone',
         'category',
         'priority',
         'subject',
         'message',
         'status',
         'admin_notes',
+        'admin_comment',
     ];
 
     public function user(): BelongsTo

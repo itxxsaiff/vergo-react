@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Storage;
 
 class BidController extends Controller
 {
+    private const VAT_RATE = 0.081;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $actor = $request->user();
@@ -86,6 +88,7 @@ class BidController extends Controller
         $attachmentPath = $attachment?->store('vergo-bid-attachments');
         $lineItems = collect($request->input('line_items', []))->values()->all();
         $currency = 'CHF';
+        $workflowMeta = $request->input('workflow_meta', []);
 
         $isQuoteSubmission = $order->workflow_status === 'published_for_quotes'
             || ($order->workflow_status === 'inspection_signup_closed' && $existingBid)
@@ -117,8 +120,6 @@ class BidController extends Controller
             );
         }
 
-        $workflowMeta = $request->input('workflow_meta', []);
-
         if ($isInspectionQuoteSeed) {
             $workflowMeta = [
                 ...$workflowMeta,
@@ -131,7 +132,16 @@ class BidController extends Controller
             $this->validateSelectedInspectionSlot($order, $workflowMeta);
         }
 
-        $amount = $this->resolveBidAmount($lineItems, $request->input('amount'));
+        $pricing = $this->resolveBidPricing($lineItems, $request->input('amount'), $workflowMeta, $serviceProvider);
+        $amount = $pricing['amount'];
+
+        if (! empty($lineItems) && $pricing['breakdown']) {
+            $workflowMeta = [
+                ...$workflowMeta,
+                'pricing' => $pricing['breakdown'],
+            ];
+        }
+
         $status = $isQuoteSubmission ? 'submitted' : ($isInspectionSignup ? 'inspection_confirmed' : 'inspection_interest');
 
         if ($isQuoteSubmission) {
@@ -614,15 +624,48 @@ class BidController extends Controller
         return max(1, $limit);
     }
 
-    private function resolveBidAmount(array $lineItems, mixed $fallbackAmount): ?float
+    private function resolveBidPricing(array $lineItems, mixed $fallbackAmount, array $workflowMeta, mixed $serviceProvider): array
     {
         if (! empty($lineItems)) {
-            return (float) collect($lineItems)->sum(function ($item) {
+            $enteredTotal = (float) collect($lineItems)->sum(function ($item) {
                 return ((float) data_get($item, 'quantity', 0)) * ((float) data_get($item, 'unit_price', 0));
             });
+
+            $isVatSubject = (bool) data_get($serviceProvider, 'is_vat_subject');
+            $vatIncluded = (bool) data_get($workflowMeta, 'vat_included');
+
+            if (! $isVatSubject) {
+                $subtotal = round($enteredTotal, 2);
+                $vatAmount = 0.0;
+                $total = $subtotal;
+            } elseif ($vatIncluded) {
+                $total = round($enteredTotal, 2);
+                $subtotal = round($total / (1 + self::VAT_RATE), 2);
+                $vatAmount = round($total - $subtotal, 2);
+            } else {
+                $subtotal = round($enteredTotal, 2);
+                $vatAmount = round($subtotal * self::VAT_RATE, 2);
+                $total = round($subtotal + $vatAmount, 2);
+            }
+
+            return [
+                'amount' => $total,
+                'breakdown' => [
+                    'entered_total' => round($enteredTotal, 2),
+                    'subtotal' => $subtotal,
+                    'vat_rate' => $isVatSubject ? self::VAT_RATE : 0,
+                    'vat_amount' => $vatAmount,
+                    'total' => $total,
+                    'vat_included' => $isVatSubject && $vatIncluded,
+                    'vat_subject' => $isVatSubject,
+                ],
+            ];
         }
 
-        return $fallbackAmount !== null ? (float) $fallbackAmount : null;
+        return [
+            'amount' => $fallbackAmount !== null ? (float) $fallbackAmount : null,
+            'breakdown' => null,
+        ];
     }
 
     private function providerLoginEmail(Request $request): string
@@ -645,6 +688,7 @@ class BidController extends Controller
         $quoteItems = collect($lineItems)
             ->filter(fn ($item) => filled(data_get($item, 'label')) && (float) data_get($item, 'quantity', 0) > 0)
             ->map(fn ($item) => [
+                'category' => data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label'),
                 'label' => data_get($item, 'label'),
                 'code' => data_get($item, 'code'),
                 'unit' => data_get($item, 'unit'),

@@ -84,6 +84,7 @@ class BidResource extends JsonResource
     {
         return collect($lineItems)
             ->map(fn ($item) => [
+                'category' => data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label'),
                 'label' => data_get($item, 'label'),
                 'code' => data_get($item, 'code'),
                 'unit' => data_get($item, 'unit'),

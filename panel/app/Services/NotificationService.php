@@ -183,7 +183,7 @@ class NotificationService
 
     public function sendQuoteRequestPublished(Order $order, array $excludeProviderIds = []): void
     {
-        $providers = $this->activeProviders()
+        $providers = $this->providersForTrade($order->service_type)
             ->reject(fn ($provider) => in_array($provider->id, $excludeProviderIds, true))
             ->values();
         $recipients = $this->providerRecipients($providers);

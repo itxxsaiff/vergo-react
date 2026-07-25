@@ -892,6 +892,24 @@ body {
   z-index: 1;
 }
 
+.vergo-public-actions {
+  z-index: 3100;
+}
+
+.vergo-public-language-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  left: auto;
+  min-width: 180px;
+  transform: none !important;
+  z-index: 3200;
+}
+
+.vergo-public-language-menu .dropdown-item {
+  min-height: 36px;
+}
+
 .vergo-type-auth-card {
   position: relative;
   border: 0;
@@ -1462,6 +1480,73 @@ body {
 .vergo-job-apply-btn-submitted:hover {
   color: #2f4858;
   background: rgba(47, 72, 88, 0.08);
+}
+
+.vergo-provider-bid-dialog {
+  width: min(1220px, calc(100vw - 2rem));
+  max-width: min(1220px, calc(100vw - 2rem));
+}
+
+.vergo-provider-quote-line .form-label {
+  margin-bottom: 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.vergo-provider-quote-line .form-control,
+.vergo-provider-quote-line .form-select {
+  min-height: 42px;
+  padding: 0.48rem 0.62rem;
+  font-size: 0.92rem;
+}
+
+.vergo-provider-quote-line-quantity .form-control {
+  padding-right: 0.42rem;
+  padding-left: 0.42rem;
+  text-align: center;
+}
+
+.vergo-provider-quote-line-remove .btn {
+  min-height: 42px;
+  padding: 0.45rem;
+}
+
+.vergo-provider-quote-line-subtotal {
+  min-width: 0;
+}
+
+.vergo-provider-quote-line-subtotal .fw-semibold {
+  word-break: keep-all;
+  white-space: nowrap;
+}
+
+@media (min-width: 992px) {
+  .vergo-provider-quote-line-grid {
+    --bs-gutter-x: 0;
+    display: grid;
+    grid-template-columns:
+      58px
+      minmax(150px, 1.35fr)
+      minmax(180px, 1.55fr)
+      minmax(118px, 0.9fr)
+      86px
+      128px
+      minmax(118px, 0.9fr)
+      44px;
+    column-gap: 0.75rem;
+    row-gap: 0.75rem;
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .vergo-provider-quote-line-grid > [class*="col-"] {
+    flex: none;
+    width: auto;
+    max-width: none;
+    padding-right: 0;
+    padding-left: 0;
+  }
 }
 
 .vergo-dashboard-analytics-card {
@@ -2224,19 +2309,21 @@ body {
 }
 
 .vergo-support-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1060;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    position: fixed;
+    inset: 0;
+    z-index: 3300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   padding: 1rem;
   background: rgba(15, 23, 42, 0.46);
   backdrop-filter: blur(4px);
 }
 
 .vergo-support-modal {
-  width: min(620px, 100%);
+    position: relative;
+    z-index: 1;
+    width: min(620px, 100%);
   max-height: min(92vh, 760px);
   overflow: auto;
   background: #fff;

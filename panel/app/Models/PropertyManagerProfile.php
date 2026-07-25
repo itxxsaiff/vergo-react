@@ -62,7 +62,7 @@ class PropertyManagerProfile extends Authenticatable
         $storedPropertyId = $this->getRawOriginal('property_id');
 
         if ($activePropertyId) {
-            $ids[] = $activePropertyId;
+            return [$activePropertyId];
         }
 
         if ($storedPropertyId) {

@@ -35,6 +35,7 @@ class OrderResource extends JsonResource
             'attachment_download_url' => $this->attachment_path ? route('orders.attachment.download', $this->id) : null,
             'quote_items' => collect($this->quote_items ?? [])
                 ->map(fn ($item) => [
+                    'category' => data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label'),
                     'label' => data_get($item, 'label'),
                     'code' => data_get($item, 'code'),
                     'unit' => data_get($item, 'unit'),
@@ -165,6 +166,7 @@ class OrderResource extends JsonResource
     {
         return collect($lineItems)
             ->map(fn ($item) => [
+                'category' => data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label'),
                 'label' => data_get($item, 'label'),
                 'code' => data_get($item, 'code'),
                 'unit' => data_get($item, 'unit'),

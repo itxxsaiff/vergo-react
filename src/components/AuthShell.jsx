@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import SupportTicketButton from './SupportTicketButton'
@@ -19,6 +20,8 @@ function AuthShell({
 }) {
   const { language, changeLanguage, languages, t } = useLanguage()
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
+  const [languageMenuPosition, setLanguageMenuPosition] = useState({ top: 0, right: 0 })
+  const languageButtonRef = useRef(null)
   const languageMenuRef = useRef(null)
   const shellClasses = [
     'position-relative overflow-hidden radial-gradient min-vh-100 d-flex align-items-center justify-content-center',
@@ -31,9 +34,16 @@ function AuthShell({
 
   useEffect(() => {
     function handlePointerDown(event) {
-      if (!languageMenuRef.current?.contains(event.target)) {
-        setIsLanguageMenuOpen(false)
+      const target = event.target
+
+      if (
+        languageMenuRef.current?.contains(target)
+        || languageButtonRef.current?.contains(target)
+      ) {
+        return
       }
+
+      setIsLanguageMenuOpen(false)
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
@@ -42,6 +52,33 @@ function AuthShell({
       document.removeEventListener('pointerdown', handlePointerDown)
     }
   }, [])
+
+  function updateLanguageMenuPosition() {
+    const rect = languageButtonRef.current?.getBoundingClientRect()
+
+    if (!rect) {
+      return
+    }
+
+    setLanguageMenuPosition({
+      top: rect.bottom + 8,
+      right: Math.max(12, window.innerWidth - rect.right),
+    })
+  }
+
+  useEffect(() => {
+    if (!isLanguageMenuOpen) {
+      return undefined
+    }
+
+    window.addEventListener('resize', updateLanguageMenuPosition)
+    window.addEventListener('scroll', updateLanguageMenuPosition, true)
+
+    return () => {
+      window.removeEventListener('resize', updateLanguageMenuPosition)
+      window.removeEventListener('scroll', updateLanguageMenuPosition, true)
+    }
+  }, [isLanguageMenuOpen])
 
   function handleLanguageChange(nextLanguage) {
     if (nextLanguage === language) {
@@ -52,6 +89,45 @@ function AuthShell({
     changeLanguage(nextLanguage)
     window.location.reload()
   }
+
+  function toggleLanguageMenu() {
+    if (!isLanguageMenuOpen) {
+      updateLanguageMenuPosition()
+    }
+
+    setIsLanguageMenuOpen((current) => !current)
+  }
+
+  const languageMenu = isLanguageMenuOpen ? createPortal(
+    <div
+      ref={languageMenuRef}
+      className="dropdown-menu dropdown-menu-end vergo-public-language-menu show"
+      aria-labelledby="vergo-public-language-dropdown"
+      style={{
+        position: 'fixed',
+        top: `${languageMenuPosition.top}px`,
+        right: `${languageMenuPosition.right}px`,
+      }}
+    >
+      <div className="py-3 px-4 pb-2">
+        <h5 className="mb-0 fs-5 fw-semibold">{t('Sprache')}</h5>
+      </div>
+      <div className="px-2 pb-2" data-no-translate="true">
+        {languages.map((entry) => (
+          <button
+            key={entry.value}
+            type="button"
+            className={`dropdown-item d-flex align-items-center justify-content-between rounded-2${language === entry.value ? ' bg-light-primary text-primary' : ''}`}
+            onClick={() => handleLanguageChange(entry.value)}
+          >
+            <span>{entry.label}</span>
+            <span className="small fw-semibold">{entry.shortLabel}</span>
+          </button>
+        ))}
+      </div>
+    </div>,
+    document.body,
+  ) : null
 
   return (
     <div
@@ -66,50 +142,30 @@ function AuthShell({
         className={shellClasses}
         style={backgroundStyle}
       >
-        <div className="position-absolute top-0 end-0 p-3 p-md-4 d-flex align-items-center gap-2">
+        <div className="position-absolute top-0 end-0 p-3 p-md-4 d-flex align-items-center gap-2 vergo-public-actions">
           <SupportTicketButton
             publicMode
             asNavItem={false}
             buttonClassName="btn btn-light border-0 shadow-sm rounded-circle d-inline-flex align-items-center justify-content-center"
             buttonStyle={{ width: '48px', height: '48px' }}
           />
-          <div className="dropdown" ref={languageMenuRef}>
+          <div className="dropdown">
             <button
+              ref={languageButtonRef}
               type="button"
               className="btn btn-light border-0 shadow-sm rounded-circle d-inline-flex align-items-center justify-content-center"
               id="vergo-public-language-dropdown"
               aria-expanded={isLanguageMenuOpen}
               aria-label={t('Sprache')}
               title={t('Sprache')}
-              onClick={() => setIsLanguageMenuOpen((current) => !current)}
+              onClick={toggleLanguageMenu}
               style={{ width: '48px', height: '48px' }}
             >
               <i className="ti ti-language fs-5"></i>
             </button>
-            <div
-              className={`dropdown-menu dropdown-menu-end dropdown-menu-animate-up${isLanguageMenuOpen ? ' show' : ''}`}
-              aria-labelledby="vergo-public-language-dropdown"
-              style={{ position: 'absolute', inset: '0 0 auto auto', transform: 'translateY(56px)', zIndex: 1100 }}
-            >
-              <div className="py-3 px-4 pb-2">
-                <h5 className="mb-0 fs-5 fw-semibold">{t('Sprache')}</h5>
-              </div>
-              <div className="px-2 pb-2" data-no-translate="true">
-                {languages.map((entry) => (
-                  <button
-                    key={entry.value}
-                    type="button"
-                    className={`dropdown-item d-flex align-items-center justify-content-between rounded-2${language === entry.value ? ' bg-light-primary text-primary' : ''}`}
-                    onClick={() => handleLanguageChange(entry.value)}
-                  >
-                    <span>{entry.label}</span>
-                    <span className="small fw-semibold">{entry.shortLabel}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
+        {languageMenu}
         <div className="d-flex align-items-center justify-content-center w-100">
           <div className="row justify-content-center w-100">
             <div className={columnClassName}>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -120,115 +121,116 @@ function SupportTicketButton({
     </button>
   )
 
+  const modal = isOpen ? (
+    <div className="vergo-support-modal-backdrop" role="presentation" onMouseDown={closeModal}>
+      <div className="vergo-support-modal" role="dialog" aria-modal="true" aria-labelledby="support-ticket-title" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="vergo-support-modal-header">
+          <div>
+            <h5 id="support-ticket-title" className="mb-1">{t('Support-Anfrage erstellen')}</h5>
+            <p className="mb-0 text-muted">{t('Beschreiben Sie Ihr Anliegen. Das Vergo-Team sieht es als Ticket.')}</p>
+          </div>
+          <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={closeModal}></button>
+        </div>
+
+        <form className="vergo-support-modal-body" onSubmit={handleSubmit}>
+          <div className="row g-3">
+            <div className="col-md-6">
+              <label className="form-label" htmlFor="support-first-name">{t('Vorname')}</label>
+              <input
+                id="support-first-name"
+                className="form-control"
+                value={form.first_name}
+                onChange={(event) => updateField('first_name', event.target.value)}
+                autoComplete="given-name"
+              />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label" htmlFor="support-last-name">{t('Nachname')}</label>
+              <input
+                id="support-last-name"
+                className="form-control"
+                value={form.last_name}
+                onChange={(event) => updateField('last_name', event.target.value)}
+                autoComplete="family-name"
+              />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label" htmlFor="support-email">{t('E-Mail-Adresse')}</label>
+              <input
+                id="support-email"
+                className="form-control"
+                type="email"
+                value={form.requester_email}
+                onChange={(event) => updateField('requester_email', event.target.value)}
+                autoComplete="email"
+                required
+              />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label" htmlFor="support-phone">{t('Telefonnummer')}</label>
+              <input
+                id="support-phone"
+                className="form-control"
+                value={form.phone}
+                onChange={(event) => updateField('phone', event.target.value)}
+                autoComplete="tel"
+              />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label" htmlFor="support-priority">{t('Priorität')}</label>
+              <select
+                id="support-priority"
+                className="form-select"
+                value={form.priority}
+                onChange={(event) => updateField('priority', event.target.value)}
+              >
+                <option value="normal">{t('Normal')}</option>
+                <option value="urgent">{t('Dringend')}</option>
+              </select>
+            </div>
+            <div className="col-12">
+              <label className="form-label" htmlFor="support-subject">{t('Betreff')}</label>
+              <input
+                id="support-subject"
+                className="form-control"
+                value={form.subject}
+                onChange={(event) => updateField('subject', event.target.value)}
+                placeholder={t('Kurzer Titel Ihrer Anfrage')}
+              />
+            </div>
+            <div className="col-12">
+              <label className="form-label" htmlFor="support-message">{t('Nachricht')}</label>
+              <textarea
+                id="support-message"
+                className="form-control"
+                rows="5"
+                value={form.message}
+                onChange={(event) => updateField('message', event.target.value)}
+                placeholder={t('Was ist passiert? Was soll geprüft werden?')}
+              />
+            </div>
+          </div>
+
+          {error ? <div className="alert alert-danger mt-3 mb-0">{error}</div> : null}
+          {success ? <div className="alert alert-success mt-3 mb-0">{success}</div> : null}
+
+          <div className="vergo-support-modal-actions">
+            <button type="button" className="btn btn-light" onClick={closeModal} disabled={isSubmitting}>
+              {t('Abbrechen')}
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? t('Wird gesendet...') : t('Ticket senden')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  ) : null
+
   return (
     <>
       {asNavItem ? <li className={wrapperClassName}>{triggerButton}</li> : triggerButton}
-
-      {isOpen ? (
-        <div className="vergo-support-modal-backdrop" role="presentation" onMouseDown={closeModal}>
-          <div className="vergo-support-modal" role="dialog" aria-modal="true" aria-labelledby="support-ticket-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="vergo-support-modal-header">
-              <div>
-                <h5 id="support-ticket-title" className="mb-1">{t('Support-Anfrage erstellen')}</h5>
-                <p className="mb-0 text-muted">{t('Beschreiben Sie Ihr Anliegen. Das Vergo-Team sieht es als Ticket.')}</p>
-              </div>
-              <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={closeModal}></button>
-            </div>
-
-            <form className="vergo-support-modal-body" onSubmit={handleSubmit}>
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="support-first-name">{t('Vorname')}</label>
-                  <input
-                    id="support-first-name"
-                    className="form-control"
-                    value={form.first_name}
-                    onChange={(event) => updateField('first_name', event.target.value)}
-                    autoComplete="given-name"
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="support-last-name">{t('Nachname')}</label>
-                  <input
-                    id="support-last-name"
-                    className="form-control"
-                    value={form.last_name}
-                    onChange={(event) => updateField('last_name', event.target.value)}
-                    autoComplete="family-name"
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="support-email">{t('E-Mail-Adresse')}</label>
-                  <input
-                    id="support-email"
-                    className="form-control"
-                    type="email"
-                    value={form.requester_email}
-                    onChange={(event) => updateField('requester_email', event.target.value)}
-                    autoComplete="email"
-                    required
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="support-phone">{t('Telefonnummer')}</label>
-                  <input
-                    id="support-phone"
-                    className="form-control"
-                    value={form.phone}
-                    onChange={(event) => updateField('phone', event.target.value)}
-                    autoComplete="tel"
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="support-priority">{t('Priorität')}</label>
-                  <select
-                    id="support-priority"
-                    className="form-select"
-                    value={form.priority}
-                    onChange={(event) => updateField('priority', event.target.value)}
-                  >
-                    <option value="normal">{t('Normal')}</option>
-                    <option value="urgent">{t('Dringend')}</option>
-                  </select>
-                </div>
-                <div className="col-12">
-                  <label className="form-label" htmlFor="support-subject">{t('Betreff')}</label>
-                  <input
-                    id="support-subject"
-                    className="form-control"
-                    value={form.subject}
-                    onChange={(event) => updateField('subject', event.target.value)}
-                    placeholder={t('Kurzer Titel Ihrer Anfrage')}
-                  />
-                </div>
-                <div className="col-12">
-                  <label className="form-label" htmlFor="support-message">{t('Nachricht')}</label>
-                  <textarea
-                    id="support-message"
-                    className="form-control"
-                    rows="5"
-                    value={form.message}
-                    onChange={(event) => updateField('message', event.target.value)}
-                    placeholder={t('Was ist passiert? Was soll geprüft werden?')}
-                  />
-                </div>
-              </div>
-
-              {error ? <div className="alert alert-danger mt-3 mb-0">{error}</div> : null}
-              {success ? <div className="alert alert-success mt-3 mb-0">{success}</div> : null}
-
-              <div className="vergo-support-modal-actions">
-                <button type="button" className="btn btn-light" onClick={closeModal} disabled={isSubmitting}>
-                  {t('Abbrechen')}
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  {isSubmitting ? t('Wird gesendet...') : t('Ticket senden')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      {modal ? createPortal(modal, document.body) : null}
     </>
   )
 }

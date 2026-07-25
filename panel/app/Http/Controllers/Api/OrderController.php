@@ -44,7 +44,14 @@ class OrderController extends Controller
                 $providerQuery
                     ->where(function ($publicQuery) use ($supportedServiceTypes) {
                         $publicQuery->where(function ($visibilityQuery) use ($supportedServiceTypes) {
-                            $visibilityQuery->where('workflow_status', 'published_for_quotes')
+                            $visibilityQuery
+                                ->where(function ($quoteQuery) use ($supportedServiceTypes) {
+                                    $quoteQuery->where('workflow_status', 'published_for_quotes');
+
+                                    if (! empty($supportedServiceTypes)) {
+                                        $quoteQuery->whereIn('service_type', $supportedServiceTypes);
+                                    }
+                                })
                                 ->orWhere(function ($inspectionQuery) use ($supportedServiceTypes) {
                                     $inspectionQuery->whereIn('workflow_status', ['public_inspection_open', 'inspection_signup_closed']);
 

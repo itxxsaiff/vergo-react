@@ -3,6 +3,15 @@ export function formatStatusLabel(status) {
     return 'Unknown'
   }
 
+  const normalizedStatus = String(status).toLowerCase()
+  const statusLabels = {
+    uploaded: 'hochgeladen',
+  }
+
+  if (statusLabels[normalizedStatus]) {
+    return statusLabels[normalizedStatus]
+  }
+
   return status
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())

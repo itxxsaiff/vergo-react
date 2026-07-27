@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
@@ -24,6 +25,7 @@ function getAllowedObjectUsageOptions(propertyUsage) {
 }
 
 function EmployeePropertyDetailsPage() {
+  const { t } = useLanguage()
   const { propertyId } = useParams()
   const [property, setProperty] = useState(null)
   const [form, setForm] = useState(initialForm)
@@ -312,15 +314,15 @@ function EmployeePropertyDetailsPage() {
                         </div>
                         <div className="card vergo-property-object-card h-100">
                           <div className="vergo-property-object-body">
-                          <div className="vergo-property-object-label">Adresse</div>
+                          <div className="vergo-property-object-label">{t('Adresse')}</div>
                           <div className="vergo-property-object-value">{object.address || object.name || '-'}</div>
                           <div className="vergo-property-object-meta-grid">
                             <div>
-                              <div className="vergo-property-object-label">PLZ</div>
+                              <div className="vergo-property-object-label">{t('PLZ')}</div>
                               <div className="vergo-property-object-meta">{object.postal_code || '-'}</div>
                             </div>
                             <div>
-                              <div className="vergo-property-object-label">Ort</div>
+                              <div className="vergo-property-object-label">{t('Ort')}</div>
                               <div className="vergo-property-object-meta">{object.city || '-'}</div>
                             </div>
                           </div>
@@ -355,25 +357,25 @@ function EmployeePropertyDetailsPage() {
                     <div className="row">
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Adresse</label>
+                          <label className="form-label">{t('Adresse')}</label>
                           <input className="form-control" name="address" value={form.address} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-3">
                         <div className="mb-3">
-                          <label className="form-label">PLZ</label>
+                          <label className="form-label">{t('PLZ')}</label>
                           <input className="form-control" name="postal_code" value={form.postal_code} readOnly disabled />
                         </div>
                       </div>
                       <div className="col-md-3">
                         <div className="mb-3">
-                          <label className="form-label">Ort</label>
+                          <label className="form-label">{t('Ort')}</label>
                           <input className="form-control" name="city" value={form.city} readOnly disabled />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Nutzung</label>
+                          <label className="form-label">{t('Nutzung')}</label>
                           <select className="form-select" name="type" value={form.type} onChange={handleChange}>
                             <option value="">Nutzung auswählen</option>
                             {allowedObjectUsageOptions.map((option) => (

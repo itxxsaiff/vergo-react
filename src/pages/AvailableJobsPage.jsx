@@ -44,6 +44,29 @@ function getInspectionSlots(order) {
   return order?.workflow_meta?.inspection?.preferred_slots ?? []
 }
 
+function getPreferredInspectionSlotIndex(order) {
+  const value = order?.preferred_inspection_appointment?.slot_index
+    ?? order?.workflow_meta?.inspection?.preferred_appointment?.slot_index
+
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const index = Number(value)
+
+  return Number.isInteger(index) && index >= 0 ? index : null
+}
+
+function getInspectionSlotIndex(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const index = Number(value)
+
+  return Number.isInteger(index) && index >= 0 ? index : null
+}
+
 function getOnsiteContact(order) {
   return order?.workflow_meta?.inspection?.onsite_contact ?? {}
 }
@@ -375,6 +398,25 @@ function AvailableJobsPage() {
       const response = await api.updateBid(providerBid.id, payload)
       const updatedBid = response.data
       setSubmittedBids((current) => current.map((bid) => (bid.id === updatedBid.id ? updatedBid : bid)))
+      if (status === 'inspection_confirmed') {
+        const preferredAppointment = {
+          slot_index: Number(bidForm.selected_inspection_slot),
+          slot: selectedSlot,
+          confirmed_at: updatedBid.workflow_meta?.provider_last_action_at || updatedBid.submitted_at || '',
+        }
+        const applyPreferredAppointment = (order) => (
+          order?.preferred_inspection_appointment
+            ? order
+            : { ...order, preferred_inspection_appointment: preferredAppointment }
+        )
+
+        setSelectedOrder((current) => (
+          current?.id === selectedOrder.id ? applyPreferredAppointment(current) : current
+        ))
+        setOrders((current) => current.map((order) => (
+          order.id === selectedOrder.id ? applyPreferredAppointment(order) : order
+        )))
+      }
     } catch (actionError) {
       setError(t(actionError.message))
     } finally {
@@ -670,6 +712,12 @@ function AvailableJobsPage() {
   const submittedBidsCount = submittedBids.filter((bid) => hasSubmittedQuote({ id: bid.order_id })).length
   const selectedOrderIsInspection = isInspectionWorkflow(selectedOrder)
   const selectedInspectionSlots = getInspectionSlots(selectedOrder)
+  const selectedPreferredInspectionSlotIndex = getPreferredInspectionSlotIndex(selectedOrder)
+  const selectedOwnInspectionSlotIndex = getInspectionSlotIndex(
+    bidForm.selected_inspection_slot !== ''
+      ? bidForm.selected_inspection_slot
+      : activeProviderBid?.workflow_meta?.selected_slot_index
+  )
   const selectedOnsiteContact = getOnsiteContact(selectedOrder)
   const selectedInvoiceRecipient = getInvoiceRecipient(selectedOrder)
   const selectedOrderCompleted = ['completed', 'closed'].includes(String(selectedOrder?.status || '').toLowerCase())
@@ -946,11 +994,29 @@ function AvailableJobsPage() {
                           <div className="row g-3">
                             {[0, 1].map((slotIndex) => {
                               const slot = selectedInspectionSlots[slotIndex]
+                              const isPreferredSlot = selectedPreferredInspectionSlotIndex === slotIndex
+                              const isOwnSlot = selectedOwnInspectionSlotIndex === slotIndex
 
                               return (
                                 <div className="col-md-6" key={slotIndex}>
-                                  <div className="bg-light rounded-3 p-3 h-100">
-                                    <div className="text-muted small">{t(`Termin ${slotIndex + 1}`)}</div>
+                                  <div className={`bg-light rounded-3 p-3 h-100 vergo-inspection-slot-card${isPreferredSlot ? ' is-preferred' : ''}${isOwnSlot ? ' is-own' : ''}`}>
+                                    <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
+                                      <div className="text-muted small">{t(`Termin ${slotIndex + 1}`)}</div>
+                                      <div className="d-flex align-items-center justify-content-end gap-1 flex-wrap">
+                                        {isPreferredSlot ? (
+                                          <span className="vergo-inspection-slot-preferred-badge">
+                                            <i className="ti ti-star-filled" aria-hidden="true"></i>
+                                            {t('Preferred appointment')}
+                                          </span>
+                                        ) : null}
+                                        {isOwnSlot ? (
+                                          <span className="vergo-inspection-slot-own-badge">
+                                            <i className="ti ti-check" aria-hidden="true"></i>
+                                            {t('Your appointment')}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    </div>
                                     <div className="fw-semibold">{formatDateDisplay(slot?.date)}</div>
                                     <div className="text-muted">{formatTimeDisplay(slot?.time)}</div>
                                     <div className="text-muted small mt-2">
@@ -968,11 +1034,16 @@ function AvailableJobsPage() {
                             <label className="form-label">{t('Besichtigungstermin auswählen')}</label>
                             <select className="form-select" name="selected_inspection_slot" value={bidForm.selected_inspection_slot} onChange={handleBidChange}>
                               <option value="">{t('Termin auswählen')}</option>
-                              {selectedInspectionSlots.map((slot, index) => (
-                              <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
-                                  {formatDateDisplay(slot.date)} {formatTimeDisplay(slot.time)}
-                              </option>
-                              ))}
+                              {selectedInspectionSlots.map((slot, index) => {
+                                const isPreferredSlot = selectedPreferredInspectionSlotIndex === index
+                                const isOwnSlot = selectedOwnInspectionSlotIndex === index
+
+                                return (
+                                  <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
+                                    {isPreferredSlot ? '★ ' : ''}{formatDateDisplay(slot.date)} {formatTimeDisplay(slot.time)}{isPreferredSlot ? ` - ${t('Preferred appointment')}` : ''}{isOwnSlot ? ` - ${t('Your appointment')}` : ''}
+                                  </option>
+                                )
+                              })}
                             </select>
                           </div>
                         ) : null}
@@ -1157,7 +1228,7 @@ function AvailableJobsPage() {
 
                                 return (
                                   <div key={item.id || index} className="p-3 border-bottom vergo-provider-quote-line">
-                                    <div className="row g-2 g-xl-3 align-items-end vergo-provider-quote-line-grid">
+                                    <div className="row g-2 g-xl-3 align-items-start vergo-provider-quote-line-grid">
                                       <div className="col-lg-1 col-md-2 vergo-provider-quote-line-item-number">
                                         <label className="form-label mb-1">{t('Position')}</label>
                                         <input className="form-control text-center" value={index + 1} readOnly />
@@ -1306,11 +1377,11 @@ function AvailableJobsPage() {
                         )}
 
                         <div className="col-md-6 mb-3">
-                          <label className="form-label">Voraussichtliches Startdatum</label>
+                          <label className="form-label">{t('Voraussichtliches Startdatum')}</label>
                           <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} onChange={handleBidChange} />
                         </div>
                         <div className="col-md-6 mb-3">
-                          <label className="form-label">Voraussichtliches Fertigstellungsdatum</label>
+                          <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')}</label>
                           <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || undefined} onChange={handleBidChange} />
                         </div>
                         <div className="col-12 mb-0">
@@ -1318,9 +1389,9 @@ function AvailableJobsPage() {
                           <textarea className="form-control" rows="4" name="notes" value={bidForm.notes} onChange={handleBidChange}></textarea>
                         </div>
                         <div className="col-12 mt-3">
-                          <label className="form-label">Angebotsanhang</label>
+                          <label className="form-label">{t('Angebotsanhang')}</label>
                           <input type="file" className="form-control" name="attachment" onChange={handleBidChange} />
-                          <div className="form-text">Optional. Laden Sie ein Angebot, einen Kostenvoranschlag oder eine unterstützende Datei bis zu 10 MB hoch.</div>
+                          <div className="form-text">{t('Optional. Laden Sie ein Angebot, einen Kostenvoranschlag oder eine unterstützende Datei bis zu 10 MB hoch.')}</div>
                         </div>
                       </div>
                     ) : null}

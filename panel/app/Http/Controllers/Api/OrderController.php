@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -31,6 +32,8 @@ class OrderController extends Controller
                 'propertyObject:id,name,address,postal_code,city,type,reference',
                 'propertyManager:id,name,email',
                 'approvedBid.serviceProvider:id,company_name,contact_email',
+                'confirmedInspectionBids:id,order_id,status,workflow_meta,submitted_at,created_at,updated_at',
+                'inspectionQuoteSeedBids:id,order_id,status,line_items,workflow_meta,submitted_at,created_at,updated_at',
             ])
             ->withCount('bids')
             ->latest();
@@ -127,6 +130,8 @@ class OrderController extends Controller
             'propertyObject:id,name,address,postal_code,city,type,reference',
             'propertyManager:id,name,email',
             'bids.serviceProvider:id,company_name,contact_email',
+            'confirmedInspectionBids:id,order_id,status,workflow_meta,submitted_at,created_at,updated_at',
+            'inspectionQuoteSeedBids:id,order_id,status,line_items,workflow_meta,submitted_at,created_at,updated_at',
             'approvedBid.serviceProvider:id,company_name,contact_email',
             'providerReviews.reviewerUser:id,name',
             'providerReviews.reviewerManagerProfile:id,name,email',
@@ -216,6 +221,7 @@ class OrderController extends Controller
                 $request->input('workflow_meta', []),
                 $actor,
             );
+            $quoteSourceExcludeProviderIds = $this->sourceQuoteProviderIdsFromWorkflowMeta($workflowMeta, $actor);
 
             $order = Order::query()->create([
                 'property_id' => $property->id,
@@ -265,7 +271,7 @@ class OrderController extends Controller
             }
 
             if ($workflowStatus === 'published_for_quotes') {
-                $notificationService->sendQuoteRequestPublished($order);
+                $notificationService->sendQuoteRequestPublished($order, $quoteSourceExcludeProviderIds);
             } elseif ($workflowStatus === 'public_inspection_open') {
                 $notificationService->sendPublicInspectionPublished($order);
             }
@@ -350,6 +356,11 @@ class OrderController extends Controller
             ->filter()
             ->unique()
             ->values();
+        $normalizedWorkflowMeta = $this->normalizeWorkflowMeta(
+            $request->input('workflow_meta', $order->workflow_meta ?? []),
+            $actor,
+            $order->workflow_meta ?? []
+        );
 
         $order->update([
             'property_id' => $propertyId,
@@ -376,11 +387,7 @@ class OrderController extends Controller
             'bid_priority' => $request->input('bid_priority', $order->bid_priority),
             'due_date' => $request->input('due_date', $order->due_date),
             'bid_deadline_at' => $request->input('bid_deadline_at', $order->bid_deadline_at),
-            'workflow_meta' => $this->normalizeWorkflowMeta(
-                $request->input('workflow_meta', $order->workflow_meta ?? []),
-                $actor,
-                $order->workflow_meta ?? []
-            ),
+            'workflow_meta' => $normalizedWorkflowMeta,
             'quote_items' => $request->input('quote_items', $order->quote_items),
             'requested_at' => $request->input('requested_at', $order->requested_at),
         ]);
@@ -415,7 +422,10 @@ class OrderController extends Controller
             }
 
             if ($order->workflow_status === 'published_for_quotes') {
-                $notificationService->sendQuoteRequestPublished($order);
+                $notificationService->sendQuoteRequestPublished(
+                    $order,
+                    $this->sourceQuoteProviderIdsFromWorkflowMeta($normalizedWorkflowMeta, $actor)
+                );
             } elseif ($order->workflow_status === 'public_inspection_open') {
                 $notificationService->sendPublicInspectionPublished($order);
             }
@@ -529,28 +539,40 @@ class OrderController extends Controller
         abort_unless($actor->canAccessProperty($order->property_id), 403);
         abort_unless($order->workflow_type === 'inspection', 422, 'Only inspection quotes can be published this way.');
         abort_unless($order->workflow_status === 'inspection_quote_created', 422, 'This quote is not waiting for publication.');
-        abort_unless(! empty($order->quote_items), 422, 'No quote services are available to publish.');
+
+        $requestedQuoteItems = $request->input('quote_items');
+        $quoteItems = is_array($requestedQuoteItems)
+            ? $this->sanitizeQuoteItems($requestedQuoteItems)
+            : $this->sanitizeQuoteItems($order->quote_items ?? []);
+
+        abort_unless(! empty($quoteItems), 422, 'No quote services are available to publish.');
 
         $workflowMeta = $order->workflow_meta ?? [];
         data_set($workflowMeta, 'assignment.award_mode', 'request_quotes');
         data_set($workflowMeta, 'assignment.quote_item_source', 'provider');
         data_set($workflowMeta, 'assignment.published_from_inspection_quote_at', now()->toDateTimeString());
         data_set($workflowMeta, 'assignment.published_by_manager_profile_id', $actor->id);
+        data_set($workflowMeta, 'assignment.published_quote_item_count', count($quoteItems));
 
         $bidDeadline = $order->bid_deadline_at && $order->bid_deadline_at->isFuture()
             ? $order->bid_deadline_at
             : now()->addDays(7)->endOfDay();
 
+        $sourceBidIds = $this->selectedQuoteSourceBidIds($request, $requestedQuoteItems);
         $seedBidId = data_get($workflowMeta, 'inspection.quote_seed_bid_id');
-        $excludeProviderIds = $seedBidId
-            ? $order->bids()->whereKey($seedBidId)->pluck('service_provider_id')->map(fn ($id) => (int) $id)->all()
-            : [];
+
+        if ($sourceBidIds->isEmpty() && $seedBidId) {
+            $sourceBidIds = collect([(int) $seedBidId]);
+        }
+
+        $excludeProviderIds = $this->quoteSeedProviderIds($order, $sourceBidIds);
 
         $order->update([
             'status' => 'open',
             'workflow_status' => 'published_for_quotes',
             'workflow_meta' => $workflowMeta,
             'bid_deadline_at' => $bidDeadline,
+            'quote_items' => $quoteItems,
         ]);
 
         $notificationService->sendQuoteRequestPublished($order->fresh(), $excludeProviderIds);
@@ -560,6 +582,8 @@ class OrderController extends Controller
             'propertyObject:id,name,address,postal_code,city,type,reference',
             'propertyManager:id,name,email',
             'bids.serviceProvider:id,company_name,contact_email',
+            'confirmedInspectionBids:id,order_id,status,workflow_meta,submitted_at,created_at,updated_at',
+            'inspectionQuoteSeedBids:id,order_id,status,line_items,workflow_meta,submitted_at,created_at,updated_at',
             'approvedBid.serviceProvider:id,company_name,contact_email',
             'providerReviews.reviewerUser:id,name',
             'providerReviews.reviewerManagerProfile:id,name,email',
@@ -735,6 +759,77 @@ class OrderController extends Controller
                 'invoice_recipient' => $invoiceRecipient,
             ],
         ];
+    }
+
+    private function sanitizeQuoteItems(array $items): array
+    {
+        return collect($items)
+            ->filter(fn ($item) => filled(data_get($item, 'label')) && (float) data_get($item, 'quantity', 0) > 0)
+            ->map(function ($item) {
+                $category = data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label');
+
+                return [
+                    'category' => $category,
+                    'label' => data_get($item, 'label'),
+                    'code' => data_get($item, 'code') ?: $category,
+                    'unit' => data_get($item, 'unit'),
+                    'quantity' => (float) data_get($item, 'quantity', 0),
+                    'source' => data_get($item, 'source') ?: 'provider',
+                    'is_custom' => (bool) data_get($item, 'is_custom', true),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function selectedQuoteSourceBidIds(Request $request, mixed $requestedQuoteItems): Collection
+    {
+        return collect($request->input('quote_source_bid_ids', []))
+            ->merge(is_array($requestedQuoteItems) ? collect($requestedQuoteItems)->pluck('source_bid_id') : [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    private function quoteSeedProviderIds(Order $order, Collection $sourceBidIds): array
+    {
+        if ($sourceBidIds->isEmpty()) {
+            return [];
+        }
+
+        return $order->bids()
+            ->whereIn('id', $sourceBidIds->all())
+            ->get(['id', 'service_provider_id', 'workflow_meta'])
+            ->filter(fn ($bid) => (bool) data_get($bid->workflow_meta ?? [], 'quote_scope_seed'))
+            ->pluck('service_provider_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function sourceQuoteProviderIdsFromWorkflowMeta(array $workflowMeta, PropertyManagerProfile $actor): array
+    {
+        $sourceOrderId = (int) data_get($workflowMeta, 'assignment.source_inspection_order_id');
+        $sourceBidIds = collect(data_get($workflowMeta, 'assignment.source_inspection_quote_bid_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if (! $sourceOrderId || $sourceBidIds->isEmpty()) {
+            return [];
+        }
+
+        $sourceOrder = Order::query()->find($sourceOrderId);
+
+        if (! $sourceOrder || ! $actor->canAccessProperty($sourceOrder->property_id)) {
+            return [];
+        }
+
+        return $this->quoteSeedProviderIds($sourceOrder, $sourceBidIds);
     }
 
     private function createDirectProviderInvitations(

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
@@ -20,6 +21,7 @@ const initialForm = {
 
 function PropertyObjectsPage() {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [objects, setObjects] = useState([])
   const [properties, setProperties] = useState([])
   const [form, setForm] = useState(initialForm)
@@ -309,9 +311,9 @@ function PropertyObjectsPage() {
                     <thead className="text-dark fs-4">
                       <tr>
                         <th><h6 className="fs-4 fw-semibold mb-0">Immobilie</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Adresse</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">PLZ / Ort</h6></th>
-                        <th><h6 className="fs-4 fw-semibold mb-0">Nutzung</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Adresse')}</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('PLZ / Ort')}</h6></th>
+                        <th><h6 className="fs-4 fw-semibold mb-0">{t('Nutzung')}</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Stockwerke</h6></th>
                         <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
                         <th width="90"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
@@ -402,20 +404,20 @@ function PropertyObjectsPage() {
                     </div>
 
                     <div className="mb-3">
-                      <label className="form-label">Adresse</label>
+                      <label className="form-label">{t('Adresse')}</label>
                       <input className="form-control" name="address" value={form.address} onChange={handleChange} />
                     </div>
 
                     <div className="row">
                       <div className="col-md-4">
                         <div className="mb-3">
-                          <label className="form-label">PLZ</label>
+                          <label className="form-label">{t('PLZ')}</label>
                           <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-8">
                         <div className="mb-3">
-                          <label className="form-label">Ort</label>
+                          <label className="form-label">{t('Ort')}</label>
                           <input className="form-control" name="city" value={form.city} onChange={handleChange} />
                         </div>
                       </div>

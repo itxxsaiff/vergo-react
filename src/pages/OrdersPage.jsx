@@ -134,6 +134,44 @@ const MANAGER_ORDER_STEPS = [
   { id: 5, label: 'Firmen', helper: 'Anbieter auswählen', icon: 'ti ti-users' },
 ]
 
+function getInspectionQuoteGenerateStorageKey(orderId) {
+  return `vergo.inspectionQuoteGenerate.${orderId}`
+}
+
+function readInspectionQuoteGenerateState(orderId) {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const value = window.sessionStorage.getItem(getInspectionQuoteGenerateStorageKey(orderId))
+
+    if (!value) {
+      return null
+    }
+
+    const parsed = JSON.parse(value)
+    const quoteItems = Array.isArray(parsed?.quote_items) ? parsed.quote_items : []
+    const quoteSourceBidIds = Array.isArray(parsed?.quote_source_bid_ids) ? parsed.quote_source_bid_ids : []
+
+    return {
+      source_order_id: parsed?.source_order_id ?? orderId,
+      quote_items: quoteItems,
+      quote_source_bid_ids: quoteSourceBidIds,
+    }
+  } catch {
+    return null
+  }
+}
+
+function clearInspectionQuoteGenerateState(orderId) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.sessionStorage.removeItem(getInspectionQuoteGenerateStorageKey(orderId))
+}
+
 function getInitialManagerWizard(propertyId = '') {
   return {
     property_id: propertyId,
@@ -178,6 +216,8 @@ function getInitialManagerWizard(propertyId = '') {
     invoice_postal_code: '',
     invoice_city: '',
     quote_items: [],
+    source_inspection_order_id: '',
+    source_inspection_quote_bid_ids: [],
     selected_provider_ids: [],
   }
 }
@@ -290,6 +330,8 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
         completion_mode: wizard.completion_mode,
         award_mode: 'request_quotes',
         quote_item_source: wizard.quote_item_source || 'manager',
+        source_inspection_order_id: wizard.source_inspection_order_id || null,
+        source_inspection_quote_bid_ids: wizard.source_inspection_quote_bid_ids ?? [],
         cost_estimate_range: null,
         bid_priority: null,
         bid_deadline_at: wizard.bid_deadline_at || null,
@@ -503,7 +545,11 @@ function OrdersPage() {
           ? source.property_object_ids
           : (source.property_object_id ? [source.property_object_id] : [])).map(Number)
         const sourceTradeGroup = source.workflow_meta?.detail_catalog?.trade_group || source.service_type || ''
-        const quoteItems = (source.quote_items ?? []).map((item, index) => createQuoteLineItem(sourceTradeGroup, {
+        const generatedQuoteState = readInspectionQuoteGenerateState(generateFromId)
+        const sourceQuoteItems = (generatedQuoteState?.quote_items ?? []).length > 0
+          ? generatedQuoteState.quote_items
+          : (source.quote_items ?? [])
+        const quoteItems = sourceQuoteItems.map((item, index) => createQuoteLineItem(sourceTradeGroup, {
           ...item,
           id: `gen-${index}`,
           category: item.category ?? item.code ?? '',
@@ -528,6 +574,8 @@ function OrdersPage() {
           award_mode: 'request_quotes',
           quote_item_source: 'manager',
           quote_items: quoteItems,
+          source_inspection_order_id: Number(generatedQuoteState?.source_order_id ?? source.id),
+          source_inspection_quote_bid_ids: generatedQuoteState?.quote_source_bid_ids ?? [],
         })
         setManagerStep(3)
         setGenerateLock(true)
@@ -542,6 +590,7 @@ function OrdersPage() {
           const nextParams = new URLSearchParams(searchParams)
           nextParams.delete('generate-from')
           setSearchParams(nextParams, { replace: true })
+          clearInspectionQuoteGenerateState(generateFromId)
         }
       }
     }
@@ -627,6 +676,8 @@ function OrdersPage() {
           invoice_postal_code: '',
           invoice_city: '',
           quote_items: [],
+          source_inspection_order_id: '',
+          source_inspection_quote_bid_ids: [],
           selected_provider_ids: [],
         }
         : {}),

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PageContent from '../components/PageContent'
+import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
@@ -28,6 +29,7 @@ function getOwnerCompanyLabel(property) {
 }
 
 function EmployeePropertiesPage() {
+  const { t } = useLanguage()
   const [properties, setProperties] = useState([])
   const [owners, setOwners] = useState([])
   const [propertyManagers, setPropertyManagers] = useState([])
@@ -301,7 +303,7 @@ function EmployeePropertiesPage() {
                   name="search"
                   value={filters.search}
                   onChange={handleFilterChange}
-                  placeholder="Nach Liegenschaftsnummer, Name oder PLZ suchen"
+                  placeholder={t('Nach Liegenschaftsnummer, Name oder PLZ suchen')}
                 />
               </div>
             </div>
@@ -429,7 +431,7 @@ function EmployeePropertiesPage() {
                 <div className="modal-header border-bottom">
                   <div>
                     <h5 className="modal-title mb-1">{editingProperty ? 'Liegenschaft bearbeiten' : 'Liegenschaft erstellen'}</h5>
-                    <p className="text-muted mb-0">Pflegen Sie die Stammdaten der Liegenschaft inklusive Eigentümer und Nutzung.</p>
+                    <p className="text-muted mb-0">{t('Pflegen Sie die Stammdaten der Liegenschaft inklusive Eigentümer und Nutzung.')}</p>
                   </div>
                   <button type="button" className="btn-close" aria-label="Schließen" onClick={closeModal}></button>
                 </div>
@@ -439,13 +441,13 @@ function EmployeePropertiesPage() {
                     <div className="row">
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Bezeichnung</label>
+                          <label className="form-label">{t('Bezeichnung')}</label>
                           <input className={`form-control${fieldErrors.title ? ' is-invalid' : ''}`} name="title" value={form.title} onChange={handleChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Bewirtschaftung</label>
+                          <label className="form-label">{t('Bewirtschaftung')}</label>
                           <select
                             className={`form-select${fieldErrors.property_manager_profile_id ? ' is-invalid' : ''}`}
                             name="property_manager_profile_id"
@@ -466,7 +468,7 @@ function EmployeePropertiesPage() {
                               })
                             }}
                           >
-                            <option value="">Verwalter auswählen</option>
+                            <option value="">{t('Verwalter auswählen')}</option>
                             {buildManagerCompanies(propertyManagers).map((company) => (
                               <option key={company.key} value={company.representative.id}>
                                 {company.name}{company.domain ? ` (@${company.domain})` : ''}
@@ -477,7 +479,7 @@ function EmployeePropertiesPage() {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Eigentümer</label>
+                          <label className="form-label">{t('Eigentümer')}</label>
                           <select className={`form-select${fieldErrors.owner_id ? ' is-invalid' : ''}`} name="owner_id" value={form.owner_id} onChange={handleChange}>
                             <option value="">Eigentümer auswählen</option>
                             {owners.map((owner) => (
@@ -500,7 +502,7 @@ function EmployeePropertiesPage() {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Nutzung</label>
+                          <label className="form-label">{t('Nutzung')}</label>
                           <select className={`form-select${fieldErrors.usage ? ' is-invalid' : ''}`} name="usage" value={form.usage} onChange={handleChange}>
                             <option value="">Nutzung auswählen</option>
                             {PROPERTY_USAGE_OPTIONS.map((option) => (

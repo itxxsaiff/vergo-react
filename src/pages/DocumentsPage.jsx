@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
@@ -21,6 +22,7 @@ const AVAILABLE_DOCUMENT_TYPE_OPTIONS = DOCUMENT_TYPE_OPTIONS.filter((option) =>
 
 function DocumentsPage() {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const [documents, setDocuments] = useState([])
   const [properties, setProperties] = useState([])
@@ -277,7 +279,7 @@ function DocumentsPage() {
                 {canUpload ? (
                   <button type="button" className="btn btn-primary text-nowrap" onClick={openModal}>
                     <i className="ti ti-plus me-1"></i>
-                    {isOwner ? 'Rechnung hochladen zur Preisprüfung' : 'Rechnung hochladen'}
+                    {isOwner ? t('Rechnung hochladen zur Preisprüfung') : 'Rechnung hochladen'}
                   </button>
                 ) : null}
               </div>

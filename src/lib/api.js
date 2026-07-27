@@ -276,8 +276,8 @@ export const api = {
   getProperty(id) {
     return request(`/properties/${id}`)
   },
-  openPropertyPdf(id) {
-    return openPdfInNewTab(`/properties/${id}/pdf`)
+  openPropertyPdf(id, language = 'de') {
+    return openPdfInNewTab(`/properties/${id}/pdf?language=${encodeURIComponent(language)}`)
   },
   comparePropertyPrice(id) {
     return request(`/properties/${id}/compare-price`, {
@@ -330,9 +330,10 @@ export const api = {
       method: 'POST',
     })
   },
-  publishQuoteRequest(id) {
+  publishQuoteRequest(id, data = null) {
     return request(`/orders/${id}/publish-quote-request`, {
       method: 'POST',
+      ...(data ? { body: JSON.stringify(data) } : {}),
     })
   },
   createProviderReview(orderId, data) {

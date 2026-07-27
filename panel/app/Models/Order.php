@@ -72,6 +72,18 @@ class Order extends Model
         return $this->hasMany(Bid::class);
     }
 
+    public function confirmedInspectionBids(): HasMany
+    {
+        return $this->hasMany(Bid::class)->where('status', 'inspection_confirmed');
+    }
+
+    public function inspectionQuoteSeedBids(): HasMany
+    {
+        return $this->hasMany(Bid::class)
+            ->where('status', 'submitted')
+            ->whereNotNull('line_items');
+    }
+
     public function approvedBid(): HasOne
     {
         return $this->hasOne(Bid::class)->whereIn('status', ['approved', 'accepted', 'completed', 'awarded_pending_acceptance'])->latestOfMany();

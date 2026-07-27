@@ -73,6 +73,7 @@ class PriceRecommendationService
                     'recommended_bid_amount' => null,
                     'benchmark_amount' => null,
                     'benchmark_source_count' => 0,
+                    'benchmark_scope' => 'global_all_properties',
                     'document_benchmark_source_count' => 0,
                     'historical_order_source_count' => 0,
                     'benchmark_amounts' => [],
@@ -127,6 +128,7 @@ class PriceRecommendationService
                 'recommended_bid_currency' => $recommendedBid?->currency,
                 'benchmark_amount' => $benchmarkAmount,
                 'benchmark_source_count' => $estimatedAmounts->count(),
+                'benchmark_scope' => 'global_all_properties',
                 'document_benchmark_source_count' => $documentBenchmarkCount,
                 'historical_order_source_count' => $orderBenchmarkCount,
                 'benchmark_amounts' => $estimatedAmounts->all(),
@@ -198,6 +200,7 @@ class PriceRecommendationService
                     'orders_count' => $property->orders->count(),
                     'document_count' => $property->documents->count(),
                     'benchmark_source_count' => 0,
+                    'benchmark_scope' => 'global_all_properties',
                     'document_benchmark_source_count' => 0,
                     'historical_order_source_count' => 0,
                     'benchmark_amounts' => [],
@@ -253,6 +256,7 @@ class PriceRecommendationService
                 'orders_count' => $property->orders->count(),
                 'document_count' => $property->documents->count(),
                 'benchmark_source_count' => $estimatedAmounts->count(),
+                'benchmark_scope' => 'global_all_properties',
                 'document_benchmark_source_count' => $documentBenchmarkCount,
                 'historical_order_source_count' => $orderBenchmarkCount,
                 'benchmark_amounts' => $estimatedAmounts->all(),
@@ -359,13 +363,12 @@ class PriceRecommendationService
             ->where('amount', '>', 0)
             ->when($excludedOrderId, fn ($query) => $query->where('order_id', '!=', $excludedOrderId))
             ->whereHas('order', function ($query) use ($serviceType, $propertyId) {
-                $query->where(function ($innerQuery) use ($serviceType, $propertyId) {
-                    $innerQuery->where('property_id', $propertyId);
+                if ($serviceType) {
+                    $query->where('service_type', $serviceType);
+                    return;
+                }
 
-                    if ($serviceType) {
-                        $innerQuery->orWhere('service_type', $serviceType);
-                    }
-                });
+                $query->where('property_id', $propertyId);
             })
             ->with([
                 'order:id,title,status,property_id,property_object_id,property_object_ids,service_type,due_date,completed_at',

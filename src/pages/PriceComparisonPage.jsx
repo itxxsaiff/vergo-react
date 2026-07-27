@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PageContent from '../components/PageContent'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
@@ -12,6 +13,7 @@ function getLatestBidComparison(results) {
 }
 
 function PriceComparisonPage() {
+  const { t } = useLanguage()
   const [orders, setOrders] = useState([])
   const [selectedOrderId, setSelectedOrderId] = useState(null)
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -138,7 +140,7 @@ function PriceComparisonPage() {
                       name="search"
                       value={filters.search}
                       onChange={handleFilterChange}
-                      placeholder="Suche nach Titel, Immobilie oder Objekt"
+                      placeholder={t('Suche nach Titel, Immobilie oder Objekt')}
                     />
                   </div>
                 </div>

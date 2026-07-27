@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
@@ -16,6 +17,7 @@ const initialForm = {
 
 function BidsPage() {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [bids, setBids] = useState([])
   const [filters, setFilters] = useState({ search: '', status: '' })
   const [editingBid, setEditingBid] = useState(null)
@@ -169,7 +171,7 @@ function BidsPage() {
 
   return (
     <PageContent
-      title={isProvider ? 'Eingereichte Angebote' : 'Angebote'}
+      title={isProvider ? t('Eingereichte Angebote') : 'Angebote'}
       subtitle={
         isProvider
           ? 'Verfolgen Sie Ihre eingereichten Angebote und deren Entscheidungsstatus.'
@@ -177,7 +179,7 @@ function BidsPage() {
       }
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
-        { label: isProvider ? 'Eingereichte Angebote' : 'Angebote' },
+        { label: isProvider ? t('Eingereichte Angebote') : 'Angebote' },
       ]}
     >
       <div className="card">
@@ -206,7 +208,7 @@ function BidsPage() {
               <div className="vergo-select-input-wrap">
                 <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
                 <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                  <option value="">All Status</option>
+                  <option value="">{t('Status auswählen')}</option>
                   <option value="submitted">Eingereicht</option>
                   <option value="inspection_requested">Besichtigung angefragt</option>
                   <option value="inspection_confirmed">Besichtigung bestätigt</option>

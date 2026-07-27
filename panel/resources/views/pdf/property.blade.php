@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="{{ $pdfLanguage ?? 'de' }}">
 <head>
     <meta charset="UTF-8">
     <title>{{ $property->li_number ?: 'Liegenschaft' }}</title>
@@ -258,8 +258,8 @@
 <body>
     <div class="header">
         <div class="header-left">
-            <div class="eyebrow">Vergo Property Sheet</div>
-            <div class="document-title">Liegenschaftsinformationen</div>
+            <div class="eyebrow">{{ $labels['sheet_eyebrow'] }}</div>
+            <div class="document-title">{{ $labels['property_information'] }}</div>
         </div>
         <div class="header-right">
             @if($logoDataUri)
@@ -270,38 +270,38 @@
 
     <div class="hero">
         <div class="hero-li">
-            <div class="li-label">LI-Nummer</div>
+            <div class="li-label">{{ $labels['li_number'] }}</div>
             <div class="li-number">{{ $property->li_number ?: '-' }}</div>
         </div>
         <div class="hero-info">
             <table class="info-table">
                 <tr>
                     <td>
-                        <div class="info-label">Bezeichnung</div>
+                        <div class="info-label">{{ $labels['description'] }}</div>
                         <div class="info-value">{{ $property->title ?: '-' }}</div>
                     </td>
                     <td>
-                        <div class="info-label">Nutzung</div>
+                        <div class="info-label">{{ $labels['use'] }}</div>
                         <div class="info-value">{{ $usageLabel }}</div>
                     </td>
                 </tr>
                 <tr>
                     <td>
-                        <div class="info-label">Bewirtschaftung</div>
+                        <div class="info-label">{{ $labels['management'] }}</div>
                         <div class="info-value">{{ $managerLabel }}</div>
                     </td>
                     <td>
-                        <div class="info-label">Eigentümer</div>
+                        <div class="info-label">{{ $labels['owner'] }}</div>
                         <div class="info-value">{{ $ownerLabel }}</div>
                     </td>
                 </tr>
                 <tr>
                     <td>
-                        <div class="info-label">PLZ / Ort</div>
+                        <div class="info-label">{{ $labels['zip_city'] }}</div>
                         <div class="info-value">{{ trim(($property->postal_code ?: '-') . ' ' . ($property->city ?: '-')) }}</div>
                     </td>
                     <td>
-                        <div class="info-label">Objekte</div>
+                        <div class="info-label">{{ $labels['properties'] }}</div>
                         <div class="info-value">{{ count($objectCards) }}</div>
                     </td>
                 </tr>
@@ -310,8 +310,8 @@
     </div>
 
     <div class="section-head">
-        <div class="section-title">Objekte</div>
-        <div class="section-meta">Adresse, PLZ und Ort</div>
+        <div class="section-title">{{ $labels['properties'] }}</div>
+        <div class="section-meta">{{ $labels['address_zip_city'] }}</div>
     </div>
 
     <table class="objects-table">
@@ -326,14 +326,14 @@
                 </td>
                 <td style="width: 52%;">
                     <div class="object-address">{{ $card['address'] }}</div>
-                    <div class="object-muted">Objektadresse</div>
+                    <div class="object-muted">{{ $labels['property_address'] }}</div>
                 </td>
                 <td style="width: 20%;">
-                    <div class="object-data-label">PLZ</div>
+                    <div class="object-data-label">{{ $labels['zip'] }}</div>
                     <div class="object-data-value">{{ $card['postal_code'] }}</div>
                 </td>
                 <td style="width: 28%;">
-                    <div class="object-data-label">Ort</div>
+                    <div class="object-data-label">{{ $labels['city'] }}</div>
                     <div class="object-data-value">{{ $card['city'] }}</div>
                 </td>
             </tr>
@@ -341,7 +341,7 @@
     </table>
 
     <div class="footer-note">
-        Automatisch generiert durch Vergo
+        {{ $labels['generated_by_vergo'] }}
     </div>
 </body>
 </html>

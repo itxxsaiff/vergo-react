@@ -6,7 +6,16 @@ import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatDateDisplay, formatTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
-import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
+import {
+  ADD_SERVICE_OPTION_VALUE,
+  calculateQuoteVatBreakdown,
+  createQuoteLineItem,
+  formatCurrencyAmount,
+  getOptionLabel,
+  getTradeActivityOptions,
+  getTradeUnitOptions,
+  JOB_TYPE_OPTIONS,
+} from '../lib/vergoOptions'
 
 const initialBidForm = {
   amount: '',
@@ -22,9 +31,10 @@ const initialBidForm = {
 
 const emptyLineItem = {
   id: '',
+  category: '',
   label: '',
   code: '',
-  unit: 'Stück',
+  unit: '',
   quantity: '',
   unit_price: '',
   is_custom: true,
@@ -32,6 +42,29 @@ const emptyLineItem = {
 
 function getInspectionSlots(order) {
   return order?.workflow_meta?.inspection?.preferred_slots ?? []
+}
+
+function getPreferredInspectionSlotIndex(order) {
+  const value = order?.preferred_inspection_appointment?.slot_index
+    ?? order?.workflow_meta?.inspection?.preferred_appointment?.slot_index
+
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const index = Number(value)
+
+  return Number.isInteger(index) && index >= 0 ? index : null
+}
+
+function getInspectionSlotIndex(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const index = Number(value)
+
+  return Number.isInteger(index) && index >= 0 ? index : null
 }
 
 function getOnsiteContact(order) {
@@ -57,6 +90,10 @@ function getAssignedProviderEmail(bid) {
 
 function getInvoiceRecipient(order) {
   return order?.workflow_meta?.assignment?.invoice_recipient ?? null
+}
+
+function getOrderTradeGroup(order) {
+  return order?.workflow_meta?.detail_catalog?.trade_group || order?.service_type || ''
 }
 
 function getCardDisplayStatus(order, providerBid) {
@@ -182,11 +219,22 @@ function AvailableJobsPage() {
   }
 
   function handleLineItemChange(index, field, value) {
+    const categoryOptions = getTradeActivityOptions(getOrderTradeGroup(selectedOrder))
+
     setBidForm((current) => ({
       ...current,
       line_items: current.line_items.map((item, itemIndex) => (
         itemIndex === index
-          ? { ...item, [field]: value }
+          ? field === 'category'
+            ? {
+              ...item,
+              category: value === ADD_SERVICE_OPTION_VALUE ? '' : value,
+              code: value === ADD_SERVICE_OPTION_VALUE ? '' : value,
+              is_custom: value === ADD_SERVICE_OPTION_VALUE
+                ? true
+                : Boolean(value && !categoryOptions.includes(value)),
+            }
+            : { ...item, [field]: value }
           : item
       )),
     }))
@@ -194,8 +242,11 @@ function AvailableJobsPage() {
 
   function hydrateBidForm(order, providerBid = null) {
     const draft = providerBid?.draft_payload
+    const tradeGroup = getOrderTradeGroup(order)
     const quoteItems = draft?.line_items
-      ?? ((order.quote_items ?? []).length > 0 ? order.quote_items : [{ ...emptyLineItem }])
+      ?? ((order.quote_items ?? []).length > 0
+        ? order.quote_items
+        : [createQuoteLineItem(tradeGroup, { ...emptyLineItem, category: '', code: '', quantity: '', source: 'custom', is_custom: true })])
 
     return {
       ...initialBidForm,
@@ -206,10 +257,14 @@ function AvailableJobsPage() {
       notes: draft?.notes ?? providerBid?.notes ?? '',
       selected_inspection_slot: draft?.selected_inspection_slot ?? providerBid?.workflow_meta?.selected_slot_index ?? '',
       vat_included: Boolean(draft?.vat_included ?? providerBid?.workflow_meta?.vat_included),
-      line_items: quoteItems.map((item, index) => ({
+      line_items: quoteItems.map((item, index) => createQuoteLineItem(tradeGroup, {
         ...item,
         id: item.id || `${providerBid?.id || order.id || 'new'}-${index}`,
+        category: item.category ?? item.code ?? '',
+        code: item.code ?? item.category ?? '',
+        label: item.label ?? '',
         unit_price: draft ? item.unit_price : '',
+        is_custom: item.is_custom ?? false,
       })),
     }
   }
@@ -217,7 +272,18 @@ function AvailableJobsPage() {
   function addLineItem() {
     setBidForm((current) => ({
       ...current,
-      line_items: [...(current.line_items ?? []), { ...emptyLineItem, id: `custom-${Date.now()}` }],
+      line_items: [
+        ...(current.line_items ?? []),
+        createQuoteLineItem(getOrderTradeGroup(selectedOrder), {
+          ...emptyLineItem,
+          id: `custom-${Date.now()}`,
+          category: '',
+          code: '',
+          quantity: '',
+          source: 'custom',
+          is_custom: true,
+        }),
+      ],
     }))
   }
 
@@ -226,12 +292,6 @@ function AvailableJobsPage() {
       ...current,
       line_items: current.line_items.filter((_, itemIndex) => itemIndex !== index),
     }))
-  }
-
-  function getQuoteBidTotal() {
-    return (bidForm.line_items ?? []).reduce((sum, item) => {
-      return sum + (Number(item.quantity || 0) * Number(item.unit_price || 0))
-    }, 0)
   }
 
   function openBidModal(order) {
@@ -338,6 +398,25 @@ function AvailableJobsPage() {
       const response = await api.updateBid(providerBid.id, payload)
       const updatedBid = response.data
       setSubmittedBids((current) => current.map((bid) => (bid.id === updatedBid.id ? updatedBid : bid)))
+      if (status === 'inspection_confirmed') {
+        const preferredAppointment = {
+          slot_index: Number(bidForm.selected_inspection_slot),
+          slot: selectedSlot,
+          confirmed_at: updatedBid.workflow_meta?.provider_last_action_at || updatedBid.submitted_at || '',
+        }
+        const applyPreferredAppointment = (order) => (
+          order?.preferred_inspection_appointment
+            ? order
+            : { ...order, preferred_inspection_appointment: preferredAppointment }
+        )
+
+        setSelectedOrder((current) => (
+          current?.id === selectedOrder.id ? applyPreferredAppointment(current) : current
+        ))
+        setOrders((current) => current.map((order) => (
+          order.id === selectedOrder.id ? applyPreferredAppointment(order) : order
+        )))
+      }
     } catch (actionError) {
       setError(t(actionError.message))
     } finally {
@@ -366,15 +445,20 @@ function AvailableJobsPage() {
 
     if (isQuoteRequest) {
       const quoteLineItems = (bidForm.line_items ?? []).filter((item) => (
-        item.label?.trim()
+        item.category?.trim()
+        && item.label?.trim()
+        && item.unit?.trim()
         && Number(item.quantity || 0) > 0
         && Number(item.unit_price || 0) > 0
       ))
 
       quoteLineItems.forEach((item, index) => {
-        payload.append(`line_items[${index}][label]`, item.label)
-        payload.append(`line_items[${index}][code]`, item.code || '')
-        payload.append(`line_items[${index}][unit]`, item.unit || '')
+        const category = item.category.trim()
+
+        payload.append(`line_items[${index}][category]`, category)
+        payload.append(`line_items[${index}][label]`, item.label.trim())
+        payload.append(`line_items[${index}][code]`, item.code || category)
+        payload.append(`line_items[${index}][unit]`, item.unit.trim())
         payload.append(`line_items[${index}][quantity]`, Number(item.quantity || 0))
         payload.append(`line_items[${index}][unit_price]`, Number(item.unit_price || 0))
         payload.append(`line_items[${index}][is_custom]`, item.is_custom ? '1' : '0')
@@ -420,13 +504,15 @@ function AvailableJobsPage() {
 
     if (isQuoteRequest) {
       const validLineItems = (bidForm.line_items ?? []).filter((item) => (
-        item.label?.trim()
+        item.category?.trim()
+        && item.label?.trim()
+        && item.unit?.trim()
         && Number(item.quantity || 0) > 0
         && Number(item.unit_price || 0) > 0
       ))
 
       if (validLineItems.length === 0) {
-        setError('Bitte erfassen Sie mindestens eine Position mit Menge und Preis.')
+        setError('Bitte erfassen Sie mindestens eine Position mit Kategorie, Service, Einheit, Menge und Preis.')
         setIsSaving(false)
         return
       }
@@ -626,8 +712,25 @@ function AvailableJobsPage() {
   const submittedBidsCount = submittedBids.filter((bid) => hasSubmittedQuote({ id: bid.order_id })).length
   const selectedOrderIsInspection = isInspectionWorkflow(selectedOrder)
   const selectedInspectionSlots = getInspectionSlots(selectedOrder)
+  const selectedPreferredInspectionSlotIndex = getPreferredInspectionSlotIndex(selectedOrder)
+  const selectedOwnInspectionSlotIndex = getInspectionSlotIndex(
+    bidForm.selected_inspection_slot !== ''
+      ? bidForm.selected_inspection_slot
+      : activeProviderBid?.workflow_meta?.selected_slot_index
+  )
   const selectedOnsiteContact = getOnsiteContact(selectedOrder)
   const selectedInvoiceRecipient = getInvoiceRecipient(selectedOrder)
+  const selectedOrderCompleted = ['completed', 'closed'].includes(String(selectedOrder?.status || '').toLowerCase())
+    || ['completed', 'closed'].includes(String(selectedOrder?.workflow_status || '').toLowerCase())
+    || activeProviderBid?.status === 'completed'
+  const selectedQuoteTradeGroup = getOrderTradeGroup(selectedOrder)
+  const selectedQuoteCategoryOptions = getTradeActivityOptions(selectedQuoteTradeGroup)
+  const selectedQuoteUnitOptions = getTradeUnitOptions(selectedQuoteTradeGroup)
+  const quoteBidBreakdown = calculateQuoteVatBreakdown(
+    bidForm.line_items ?? [],
+    providerIsVatSubject,
+    Boolean(bidForm.vat_included),
+  )
   const selectedOnsiteName = [
     selectedOnsiteContact.first_name,
     selectedOnsiteContact.last_name,
@@ -842,7 +945,7 @@ function AvailableJobsPage() {
       {selectedOrder ? (
         <>
           <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
-            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl vergo-provider-bid-dialog">
               <div className="modal-content rounded-1">
                 <div className="modal-header border-bottom">
                   <h5 className="modal-title">{t('Auftrag bearbeiten')}</h5>
@@ -891,11 +994,29 @@ function AvailableJobsPage() {
                           <div className="row g-3">
                             {[0, 1].map((slotIndex) => {
                               const slot = selectedInspectionSlots[slotIndex]
+                              const isPreferredSlot = selectedPreferredInspectionSlotIndex === slotIndex
+                              const isOwnSlot = selectedOwnInspectionSlotIndex === slotIndex
 
                               return (
                                 <div className="col-md-6" key={slotIndex}>
-                                  <div className="bg-light rounded-3 p-3 h-100">
-                                    <div className="text-muted small">{t(`Termin ${slotIndex + 1}`)}</div>
+                                  <div className={`bg-light rounded-3 p-3 h-100 vergo-inspection-slot-card${isPreferredSlot ? ' is-preferred' : ''}${isOwnSlot ? ' is-own' : ''}`}>
+                                    <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
+                                      <div className="text-muted small">{t(`Termin ${slotIndex + 1}`)}</div>
+                                      <div className="d-flex align-items-center justify-content-end gap-1 flex-wrap">
+                                        {isPreferredSlot ? (
+                                          <span className="vergo-inspection-slot-preferred-badge">
+                                            <i className="ti ti-star-filled" aria-hidden="true"></i>
+                                            {t('Preferred appointment')}
+                                          </span>
+                                        ) : null}
+                                        {isOwnSlot ? (
+                                          <span className="vergo-inspection-slot-own-badge">
+                                            <i className="ti ti-check" aria-hidden="true"></i>
+                                            {t('Your appointment')}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    </div>
                                     <div className="fw-semibold">{formatDateDisplay(slot?.date)}</div>
                                     <div className="text-muted">{formatTimeDisplay(slot?.time)}</div>
                                     <div className="text-muted small mt-2">
@@ -913,11 +1034,16 @@ function AvailableJobsPage() {
                             <label className="form-label">{t('Besichtigungstermin auswählen')}</label>
                             <select className="form-select" name="selected_inspection_slot" value={bidForm.selected_inspection_slot} onChange={handleBidChange}>
                               <option value="">{t('Termin auswählen')}</option>
-                              {selectedInspectionSlots.map((slot, index) => (
-                              <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
-                                  {formatDateDisplay(slot.date)} {formatTimeDisplay(slot.time)}
-                              </option>
-                              ))}
+                              {selectedInspectionSlots.map((slot, index) => {
+                                const isPreferredSlot = selectedPreferredInspectionSlotIndex === index
+                                const isOwnSlot = selectedOwnInspectionSlotIndex === index
+
+                                return (
+                                  <option key={`${slot.date}-${slot.time}-${index}`} value={index}>
+                                    {isPreferredSlot ? '★ ' : ''}{formatDateDisplay(slot.date)} {formatTimeDisplay(slot.time)}{isPreferredSlot ? ` - ${t('Preferred appointment')}` : ''}{isOwnSlot ? ` - ${t('Your appointment')}` : ''}
+                                  </option>
+                                )
+                              })}
                             </select>
                           </div>
                         ) : null}
@@ -1025,7 +1151,7 @@ function AvailableJobsPage() {
                       </div>
                     ) : null}
 
-                    {!selectedOrderIsInspection ? (
+                    {(!selectedOrderIsInspection || isOrderQuoteRequest(selectedOrder)) ? (
                       <div className="row">
                         {selectedOrder?.attachment_name ? (
                           <div className="col-12 mb-3">
@@ -1046,7 +1172,7 @@ function AvailableJobsPage() {
                             </div>
                           </div>
                         ) : null}
-                        {selectedInvoiceRecipient ? (
+                        {selectedInvoiceRecipient && selectedOrderCompleted ? (
                           <div className="col-12 mb-3">
                             <div className="border rounded-3 p-3">
                               <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Rechnungsversand')}</div>
@@ -1095,87 +1221,133 @@ function AvailableJobsPage() {
                         ) : null}
                         {isOrderQuoteRequest(selectedOrder) ? (
                           <div className="col-12 mb-3">
-                            <label className="form-label">Positionen und Preise</label>
+                            <label className="form-label">{t('Positionen und Preise')}</label>
                             <div className="border rounded-3">
-                              {(bidForm.line_items ?? []).map((item, index) => (
-                                <div key={item.id || index} className="p-3 border-bottom">
-                                  <div className="row g-3 align-items-end">
-                                    <div className="col-md-5">
-                                      {(selectedOrder.quote_items ?? []).length > 0 ? (
-                                        <>
-                                          <div className="fw-semibold">{item.label}</div>
-                                          <div className="text-muted small">{item.quantity} {item.unit || 'Stück'}</div>
-                                        </>
-                                      ) : (
-                                        <div className="row g-2">
-                                          <div className="col-12">
-                                            <label className="form-label mb-1">Leistung</label>
-                                            <input
-                                              className="form-control"
-                                              value={item.label}
-                                              onChange={(event) => handleLineItemChange(index, 'label', event.target.value)}
-                                            />
-                                          </div>
-                                          <div className="col-6">
-                                            <label className="form-label mb-1">Menge</label>
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              step="0.01"
-                                              className="form-control"
-                                              value={item.quantity}
-                                              onChange={(event) => handleLineItemChange(index, 'quantity', event.target.value)}
-                                            />
-                                          </div>
-                                          <div className="col-6">
-                                            <label className="form-label mb-1">Einheit</label>
-                                            <input
-                                              className="form-control"
-                                              value={item.unit}
-                                              onChange={(event) => handleLineItemChange(index, 'unit', event.target.value)}
-                                            />
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="col-md-3">
-                                      <label className="form-label mb-1">Einzelpreis</label>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="form-control"
-                                        value={item.unit_price}
-                                        onChange={(event) => handleLineItemChange(index, 'unit_price', event.target.value)}
-                                      />
-                                    </div>
-                                    <div className={(selectedOrder.quote_items ?? []).length > 0 ? 'col-md-4' : 'col-md-3'}>
-                                      <div className="text-muted small mb-1">Zwischensumme</div>
-                                      <div className="fw-semibold">
-                                        {(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)} {bidForm.currency}
+                              {(bidForm.line_items ?? []).map((item, index) => {
+                                const usesCustomCategory = Boolean(item.is_custom || (item.category && !selectedQuoteCategoryOptions.includes(item.category)))
+
+                                return (
+                                  <div key={item.id || index} className="p-3 border-bottom vergo-provider-quote-line">
+                                    <div className="row g-2 g-xl-3 align-items-start vergo-provider-quote-line-grid">
+                                      <div className="col-lg-1 col-md-2 vergo-provider-quote-line-item-number">
+                                        <label className="form-label mb-1">{t('Position')}</label>
+                                        <input className="form-control text-center" value={index + 1} readOnly />
                                       </div>
-                                    </div>
-                                    {(selectedOrder.quote_items ?? []).length === 0 ? (
-                                      <div className="col-md-1">
-                                        <button type="button" className="btn btn-light-danger btn-sm" onClick={() => removeLineItem(index)}>
+                                      <div className="col-lg-3 col-md-5 vergo-provider-quote-line-category">
+                                        <label className="form-label mb-1">{t('Kategorie')}</label>
+                                        {usesCustomCategory ? (
+                                          <>
+                                            <input
+                                              className="form-control"
+                                              value={item.category || ''}
+                                              onChange={(event) => handleLineItemChange(index, 'category', event.target.value)}
+                                              placeholder={t('Kategorie eingeben')}
+                                            />
+                                            <button type="button" className="btn btn-link btn-sm p-0 mt-1" onClick={() => handleLineItemChange(index, 'category', '')}>
+                                              {t('Aus Liste wählen')}
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <select
+                                            className="form-select"
+                                            value={item.category || ''}
+                                            onChange={(event) => handleLineItemChange(index, 'category', event.target.value)}
+                                          >
+                                            <option value="">{t('Kategorie auswählen')}</option>
+                                            {selectedQuoteCategoryOptions.map((option) => (
+                                              <option key={option} value={option}>{option}</option>
+                                            ))}
+                                            <option value={ADD_SERVICE_OPTION_VALUE}>{t('Service hinzufügen')}</option>
+                                          </select>
+                                        )}
+                                      </div>
+                                      <div className="col-lg-3 col-md-5 vergo-provider-quote-line-service">
+                                        <label className="form-label mb-1">{t('Service')}</label>
+                                        <input
+                                          className="form-control"
+                                          value={item.label}
+                                          onChange={(event) => handleLineItemChange(index, 'label', event.target.value)}
+                                          placeholder={t('Service beschreiben')}
+                                        />
+                                      </div>
+                                      <div className="col-lg-2 col-md-4 vergo-provider-quote-line-unit">
+                                        <label className="form-label mb-1">{t('Einheit')}</label>
+                                        <select
+                                          className="form-select"
+                                          value={item.unit || ''}
+                                          onChange={(event) => handleLineItemChange(index, 'unit', event.target.value)}
+                                        >
+                                          <option value="">{t('Einheit wählen')}</option>
+                                          {item.unit && !selectedQuoteUnitOptions.includes(item.unit) ? (
+                                            <option value={item.unit}>{item.unit}</option>
+                                          ) : null}
+                                          {selectedQuoteUnitOptions.map((option) => (
+                                            <option key={option} value={option}>{option}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      <div className="col-lg-1 col-md-4 vergo-provider-quote-line-quantity">
+                                        <label className="form-label mb-1">{t('Menge')}</label>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="0.01"
+                                          className="form-control"
+                                          value={item.quantity}
+                                          onChange={(event) => handleLineItemChange(index, 'quantity', event.target.value)}
+                                        />
+                                      </div>
+                                      <div className="col-lg-2 col-md-4 vergo-provider-quote-line-price">
+                                        <label className="form-label mb-1">{t('Einzelpreis')}</label>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="0.01"
+                                          className="form-control"
+                                          value={item.unit_price}
+                                          onChange={(event) => handleLineItemChange(index, 'unit_price', event.target.value)}
+                                        />
+                                      </div>
+                                      <div className="col-lg-2 col-md-6 vergo-provider-quote-line-subtotal">
+                                        <div className="text-muted small mb-1">{t('Zwischensumme')}</div>
+                                        <div className="fw-semibold">
+                                          {formatCurrencyAmount(Number(item.quantity || 0) * Number(item.unit_price || 0), bidForm.currency)}
+                                        </div>
+                                      </div>
+                                      <div className="col-lg-1 col-md-6 vergo-provider-quote-line-remove">
+                                        <button
+                                          type="button"
+                                          className="btn btn-light-danger btn-sm w-100"
+                                          onClick={() => removeLineItem(index)}
+                                          disabled={(bidForm.line_items ?? []).length <= 1}
+                                          aria-label={t('Position entfernen')}
+                                        >
                                           <i className="ti ti-trash"></i>
                                         </button>
                                       </div>
-                                    ) : null}
+                                    </div>
                                   </div>
+                                )
+                              })}
+                              <div className="p-3 border-bottom">
+                                <button type="button" className="btn btn-light-primary btn-sm" onClick={addLineItem}>
+                                  <i className="ti ti-plus me-1"></i>
+                                  {t('Position hinzufügen')}
+                                </button>
+                              </div>
+                              <div className="p-3">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <span className="fw-semibold">{t('Total')}</span>
+                                  <span className="fw-semibold">{formatCurrencyAmount(quoteBidBreakdown.subtotal, bidForm.currency)}</span>
                                 </div>
-                              ))}
-                              {(selectedOrder.quote_items ?? []).length === 0 ? (
-                                <div className="p-3 border-bottom">
-                                  <button type="button" className="btn btn-light-primary btn-sm" onClick={addLineItem}>
-                                    <i className="ti ti-plus me-1"></i>
-                                    Position hinzufügen
-                                  </button>
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <span className="text-muted">{t('MwSt.')} (8.1%)</span>
+                                  <span className="text-muted">{formatCurrencyAmount(quoteBidBreakdown.vat, bidForm.currency)}</span>
                                 </div>
-                              ) : null}
-                              <div className="p-3 d-flex justify-content-between align-items-center">
-                                <span className="fw-semibold">Gesamtsumme</span>
-                                <span className="fw-semibold">{getQuoteBidTotal().toFixed(2)} {bidForm.currency}</span>
+                                <div className="d-flex justify-content-between align-items-center border-top pt-2">
+                                  <span className="fw-semibold">{t('Gesamtsumme')}</span>
+                                  <span className="fw-semibold">{formatCurrencyAmount(quoteBidBreakdown.total, bidForm.currency)}</span>
+                                </div>
                               </div>
                             </div>
                             {providerIsVatSubject ? (
@@ -1189,10 +1361,10 @@ function AvailableJobsPage() {
                                   onChange={handleBidChange}
                                 />
                                 <label className="form-check-label fw-semibold" htmlFor="bid-vat-included">
-                                  Preise inkl. MwSt.
+                                  {t('Preise inkl. MwSt.')}
                                 </label>
                                 <div className="form-text">
-                                  Nicht aktiviert bedeutet: Preise exkl. MwSt. Diese Einstellung gilt für alle Positionen.
+                                  {t('Nicht aktiviert bedeutet: Preise exkl. MwSt. Diese Einstellung gilt für alle Positionen.')}
                                 </div>
                               </div>
                             ) : null}
@@ -1205,11 +1377,11 @@ function AvailableJobsPage() {
                         )}
 
                         <div className="col-md-6 mb-3">
-                          <label className="form-label">Voraussichtliches Startdatum</label>
+                          <label className="form-label">{t('Voraussichtliches Startdatum')}</label>
                           <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} onChange={handleBidChange} />
                         </div>
                         <div className="col-md-6 mb-3">
-                          <label className="form-label">Voraussichtliches Fertigstellungsdatum</label>
+                          <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')}</label>
                           <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || undefined} onChange={handleBidChange} />
                         </div>
                         <div className="col-12 mb-0">
@@ -1217,9 +1389,9 @@ function AvailableJobsPage() {
                           <textarea className="form-control" rows="4" name="notes" value={bidForm.notes} onChange={handleBidChange}></textarea>
                         </div>
                         <div className="col-12 mt-3">
-                          <label className="form-label">Angebotsanhang</label>
+                          <label className="form-label">{t('Angebotsanhang')}</label>
                           <input type="file" className="form-control" name="attachment" onChange={handleBidChange} />
-                          <div className="form-text">Optional. Laden Sie ein Angebot, einen Kostenvoranschlag oder eine unterstützende Datei bis zu 10 MB hoch.</div>
+                          <div className="form-text">{t('Optional. Laden Sie ein Angebot, einen Kostenvoranschlag oder eine unterstützende Datei bis zu 10 MB hoch.')}</div>
                         </div>
                       </div>
                     ) : null}

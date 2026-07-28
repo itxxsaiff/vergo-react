@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
 class StoreOwnerRequest extends FormRequest
 {
     public function authorize(): bool
@@ -13,12 +15,14 @@ class StoreOwnerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'owner_type' => ['nullable', 'in:company'],
-            'company_name' => ['required', 'string', 'max:255'],
+            'owner_type' => ['required', Rule::in(['company', 'private_individual'])],
+            'company_name' => ['nullable', 'required_if:owner_type,company', 'string', 'max:255'],
+            'first_name' => ['nullable', 'required_if:owner_type,private_individual', 'string', 'max:120'],
+            'last_name' => ['nullable', 'required_if:owner_type,private_individual', 'string', 'max:120'],
             'address' => ['required', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:30'],
             'city' => ['required', 'string', 'max:120'],
-            'domain_suffix' => ['required', 'string', 'max:255'],
+            'domain_suffix' => ['nullable', 'required_if:owner_type,company', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email', 'unique:users,login_email'],
             'phone' => ['required', 'string', 'max:50'],
             'status' => ['nullable', 'in:active,inactive'],
@@ -29,10 +33,14 @@ class StoreOwnerRequest extends FormRequest
     {
         return [
             'company_name.required' => 'Company name is required.',
+            'company_name.required_if' => 'Company name is required.',
+            'first_name.required_if' => 'First name is required.',
+            'last_name.required_if' => 'Last name is required.',
             'address.required' => 'Address is required.',
             'postal_code.required' => 'Postal code is required.',
             'city.required' => 'City is required.',
             'domain_suffix.required' => 'Domain suffix is required.',
+            'domain_suffix.required_if' => 'Domain suffix is required.',
             'email.required' => 'Email is required.',
             'email.email' => 'Please enter a valid owner email address.',
             'email.unique' => 'This owner email is already in use.',

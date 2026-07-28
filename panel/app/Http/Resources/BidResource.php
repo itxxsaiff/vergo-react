@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,27 +10,30 @@ class BidResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $hideScopeSeedPrices = $this->shouldHideScopeSeedPrices($request);
+
         return [
             'id' => $this->id,
             'order_id' => $this->order_id,
-            'service_provider_id' => $this->service_provider_id,
-            'assigned_provider_email' => $this->assigned_provider_email,
-            'amount' => $this->amount,
+            'service_provider_id' => $hideScopeSeedPrices ? null : $this->service_provider_id,
+            'assigned_provider_email' => $hideScopeSeedPrices ? null : $this->assigned_provider_email,
+            'amount' => $hideScopeSeedPrices ? null : $this->amount,
             'currency' => $this->currency,
-            'line_items' => $this->line_items ?? [],
+            'line_items' => $hideScopeSeedPrices ? $this->scopeOnlyLineItems($this->line_items ?? []) : ($this->line_items ?? []),
+            'prices_hidden' => $hideScopeSeedPrices,
             'estimated_start_date' => $this->estimated_start_date?->toDateString(),
             'estimated_completion_date' => $this->estimated_completion_date?->toDateString(),
-            'notes' => $this->notes,
-            'workflow_meta' => $this->workflow_meta ?? [],
-            'draft_payload' => $this->draft_payload ?? null,
+            'notes' => $hideScopeSeedPrices ? null : $this->notes,
+            'workflow_meta' => $hideScopeSeedPrices ? $this->scopeOnlyWorkflowMeta($this->workflow_meta ?? []) : ($this->workflow_meta ?? []),
+            'draft_payload' => $hideScopeSeedPrices ? null : ($this->draft_payload ?? null),
             'draft_saved_at' => $this->draft_saved_at?->toDateTimeString(),
-            'attachment_name' => $this->attachment_name,
-            'attachment_mime_type' => $this->attachment_mime_type,
-            'attachment_size' => $this->attachment_size,
+            'attachment_name' => $hideScopeSeedPrices ? null : $this->attachment_name,
+            'attachment_mime_type' => $hideScopeSeedPrices ? null : $this->attachment_mime_type,
+            'attachment_size' => $hideScopeSeedPrices ? null : $this->attachment_size,
             'status' => $this->status,
             'rejection_reason' => $this->rejection_reason,
             'submitted_at' => $this->submitted_at?->toDateTimeString(),
-            'attachment_download_url' => $this->attachment_path ? route('bids.attachment.download', $this->id) : null,
+            'attachment_download_url' => ! $hideScopeSeedPrices && $this->attachment_path ? route('bids.attachment.download', $this->id) : null,
             'order' => $this->whenLoaded('order', fn () => [
                 'id' => $this->order->id,
                 'title' => $this->order->title,
@@ -51,7 +55,7 @@ class BidResource extends JsonResource
                     'city' => $this->order->propertyObject->city,
                 ] : null,
             ]),
-            'service_provider' => $this->whenLoaded('serviceProvider', fn () => [
+            'service_provider' => $this->whenLoaded('serviceProvider', fn () => $hideScopeSeedPrices ? null : [
                 'id' => $this->serviceProvider->id,
                 'company_name' => $this->serviceProvider->company_name,
                 'contact_name' => $this->serviceProvider->contact_name,
@@ -59,5 +63,43 @@ class BidResource extends JsonResource
             ]),
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
+    }
+
+    private function shouldHideScopeSeedPrices(Request $request): bool
+    {
+        if (! data_get($this->workflow_meta ?? [], 'quote_scope_seed')) {
+            return false;
+        }
+
+        $actor = $request->user();
+
+        return ! (
+            $actor instanceof User
+            && $actor->role?->name === 'provider'
+            && $actor->serviceProvider?->id === $this->service_provider_id
+        );
+    }
+
+    private function scopeOnlyLineItems(array $lineItems): array
+    {
+        return collect($lineItems)
+            ->map(fn ($item) => [
+                'category' => data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label'),
+                'label' => data_get($item, 'label'),
+                'code' => data_get($item, 'code'),
+                'unit' => data_get($item, 'unit'),
+                'quantity' => data_get($item, 'quantity'),
+                'is_custom' => (bool) data_get($item, 'is_custom', true),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function scopeOnlyWorkflowMeta(array $workflowMeta): array
+    {
+        data_forget($workflowMeta, 'pricing');
+        data_forget($workflowMeta, 'benchmark_warning');
+
+        return $workflowMeta;
     }
 }

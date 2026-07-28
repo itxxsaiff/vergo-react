@@ -44,6 +44,61 @@ class PropertyManagerProfile extends Authenticatable
         ];
     }
 
+    public function getPropertyIdAttribute($value): ?int
+    {
+        $activePropertyId = $this->activePropertyIdFromCurrentToken();
+
+        if ($activePropertyId) {
+            return $activePropertyId;
+        }
+
+        return $value === null ? null : (int) $value;
+    }
+
+    public function accessiblePropertyIds(): array
+    {
+        $ids = [];
+        $activePropertyId = $this->activePropertyIdFromCurrentToken();
+        $storedPropertyId = $this->getRawOriginal('property_id');
+
+        if ($activePropertyId) {
+            return [$activePropertyId];
+        }
+
+        if ($storedPropertyId) {
+            $ids[] = (int) $storedPropertyId;
+        }
+
+        $assignedPropertyIds = $this->assignedProperties()
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_unique([...$ids, ...$assignedPropertyIds]));
+    }
+
+    public function canAccessProperty(int $propertyId): bool
+    {
+        return in_array($propertyId, $this->accessiblePropertyIds(), true);
+    }
+
+    private function activePropertyIdFromCurrentToken(): ?int
+    {
+        $abilities = $this->currentAccessToken()?->abilities ?? [];
+
+        foreach ($abilities as $ability) {
+            if (! is_string($ability) || ! str_starts_with($ability, 'property:')) {
+                continue;
+            }
+
+            $propertyId = (int) substr($ability, strlen('property:'));
+
+            return $propertyId > 0 ? $propertyId : null;
+        }
+
+        return null;
+    }
+
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);

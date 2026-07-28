@@ -9,15 +9,27 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->json('property_object_ids')->nullable()->after('property_object_id');
-            $table->json('workflow_meta')->nullable()->after('due_date');
+            if (! Schema::hasColumn('orders', 'property_object_ids')) {
+                $table->json('property_object_ids')->nullable()->after('property_object_id');
+            }
+
+            if (! Schema::hasColumn('orders', 'workflow_meta')) {
+                $table->json('workflow_meta')->nullable()->after('due_date');
+            }
         });
     }
 
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn(['property_object_ids', 'workflow_meta']);
-        });
+        $existingColumns = array_filter(
+            ['property_object_ids', 'workflow_meta'],
+            fn (string $column): bool => Schema::hasColumn('orders', $column),
+        );
+
+        if ($existingColumns !== []) {
+            Schema::table('orders', function (Blueprint $table) use ($existingColumns) {
+                $table->dropColumn($existingColumns);
+            });
+        }
     }
 };

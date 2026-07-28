@@ -27,7 +27,8 @@ class AiAnalysisController extends Controller
             ->latest();
 
         if ($actor instanceof PropertyManagerProfile) {
-            $query->whereHas('document', fn ($documentQuery) => $documentQuery->where('property_id', $actor->property_id));
+            $propertyIds = $actor->accessiblePropertyIds();
+            $query->whereHas('document', fn ($documentQuery) => $documentQuery->whereIn('property_id', $propertyIds ?: [0]));
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('document.property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
         } elseif (! ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true))) {
@@ -80,7 +81,7 @@ class AiAnalysisController extends Controller
         }
 
         if ($actor instanceof PropertyManagerProfile) {
-            abort_unless($document->property_id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($document->property_id), 403);
             return;
         }
 

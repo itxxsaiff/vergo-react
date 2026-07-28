@@ -17,6 +17,9 @@ class ProviderReview extends Model
         'reviewer_user_id',
         'reviewer_manager_profile_id',
         'rating',
+        'communication_rating',
+        'punctuality_rating',
+        'quality_rating',
         'comment',
     ];
 
@@ -24,6 +27,9 @@ class ProviderReview extends Model
     {
         return [
             'rating' => 'integer',
+            'communication_rating' => 'integer',
+            'punctuality_rating' => 'integer',
+            'quality_rating' => 'integer',
         ];
     }
 

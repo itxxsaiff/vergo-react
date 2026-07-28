@@ -25,7 +25,8 @@ class BackgroundJobController extends Controller
             ->latest();
 
         if ($actor instanceof PropertyManagerProfile) {
-            $query->whereHas('document', fn ($documentQuery) => $documentQuery->where('property_id', $actor->property_id));
+            $propertyIds = $actor->accessiblePropertyIds();
+            $query->whereHas('document', fn ($documentQuery) => $documentQuery->whereIn('property_id', $propertyIds ?: [0]));
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('document.property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
         } elseif (! ($actor instanceof User && $actor->role?->name === 'admin')) {

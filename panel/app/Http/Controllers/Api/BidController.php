@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBidRequest;
 use App\Http\Requests\UpdateBidRequest;
 use App\Http\Resources\BidResource;
+use App\Models\AiAnalysisResult;
 use App\Models\Bid;
 use App\Models\Order;
 use App\Models\PropertyManagerProfile;
 use App\Models\User;
+use App\Services\BidComparisonService;
 use App\Services\NotificationService;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,6 +23,8 @@ use Illuminate\Support\Facades\Storage;
 
 class BidController extends Controller
 {
+    private const VAT_RATE = 0.081;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $actor = $request->user();
@@ -39,7 +44,8 @@ class BidController extends Controller
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('order.property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
         } elseif ($actor instanceof PropertyManagerProfile) {
-            $query->whereHas('order', fn ($orderQuery) => $orderQuery->where('property_id', $actor->property_id));
+            $propertyIds = $actor->accessiblePropertyIds();
+            $query->whereHas('order', fn ($orderQuery) => $orderQuery->whereIn('property_id', $propertyIds ?: [0]));
         } else {
             abort_unless($actor instanceof User && $actor->role?->name === 'admin', 403);
         }
@@ -82,11 +88,13 @@ class BidController extends Controller
         $attachmentPath = $attachment?->store('vergo-bid-attachments');
         $lineItems = collect($request->input('line_items', []))->values()->all();
         $currency = 'CHF';
+        $workflowMeta = $request->input('workflow_meta', []);
 
         $isQuoteSubmission = $order->workflow_status === 'published_for_quotes'
             || ($order->workflow_status === 'inspection_signup_closed' && $existingBid)
             || $isConfirmedInspectionBid;
         $isInspectionSignup = $order->workflow_status === 'public_inspection_open';
+        $isInspectionQuoteSeed = $isQuoteSubmission && $isConfirmedInspectionBid;
 
         if ($isQuoteSubmission && ! $isConfirmedInspectionBid) {
             abort_unless(
@@ -112,13 +120,28 @@ class BidController extends Controller
             );
         }
 
-        $workflowMeta = $request->input('workflow_meta', []);
+        if ($isInspectionQuoteSeed) {
+            $workflowMeta = [
+                ...$workflowMeta,
+                'quote_scope_seed' => true,
+                'quote_scope_seeded_at' => now()->toDateTimeString(),
+            ];
+        }
 
         if ($isInspectionSignup) {
             $this->validateSelectedInspectionSlot($order, $workflowMeta);
         }
 
-        $amount = $this->resolveBidAmount($lineItems, $request->input('amount'));
+        $pricing = $this->resolveBidPricing($lineItems, $request->input('amount'), $workflowMeta, $serviceProvider);
+        $amount = $pricing['amount'];
+
+        if (! empty($lineItems) && $pricing['breakdown']) {
+            $workflowMeta = [
+                ...$workflowMeta,
+                'pricing' => $pricing['breakdown'],
+            ];
+        }
+
         $status = $isQuoteSubmission ? 'submitted' : ($isInspectionSignup ? 'inspection_confirmed' : 'inspection_interest');
 
         if ($isQuoteSubmission) {
@@ -160,13 +183,20 @@ class BidController extends Controller
             : Bid::query()->create($bidPayload);
 
         if ($isQuoteSubmission) {
-            $this->publishQuoteItemsFromBid($order, $lineItems, $existingBid);
+            $this->publishQuoteItemsFromBid($order, $lineItems, $bid);
 
-            $notificationService->sendBidSubmitted(
-                $order->load('property.owners', 'property.managerProfiles'),
-                $serviceProvider->company_name ?: $serviceProvider->contact_name ?: 'A provider',
-                $actor
-            );
+            if ($isInspectionQuoteSeed) {
+                $notificationService->sendInspectionQuoteCreated(
+                    $bid->fresh()->load(['order.property.managerProfiles', 'serviceProvider']),
+                    $actor
+                );
+            } else {
+                $notificationService->sendBidSubmitted(
+                    $order->load('property.owners', 'property.managerProfiles'),
+                    $serviceProvider->company_name ?: $serviceProvider->contact_name ?: 'A provider',
+                    $actor
+                );
+            }
 
             $this->syncOrderStatus($order->fresh());
         } elseif ($isInspectionSignup) {
@@ -313,7 +343,7 @@ class BidController extends Controller
         ]));
     }
 
-    public function update(UpdateBidRequest $request, Bid $bid, NotificationService $notificationService): BidResource
+    public function update(UpdateBidRequest $request, Bid $bid, NotificationService $notificationService, BidComparisonService $comparisonService): BidResource
     {
         $actor = $request->user();
 
@@ -372,7 +402,8 @@ class BidController extends Controller
                 );
             }
         } elseif ($actor instanceof PropertyManagerProfile) {
-            abort_unless($bid->order()->where('property_id', $actor->property_id)->exists(), 403);
+            $propertyIds = $actor->accessiblePropertyIds();
+            abort_unless($bid->order()->whereIn('property_id', $propertyIds ?: [0])->exists(), 403);
 
             $status = $request->input('status', $bid->status);
             $order = $bid->order()->firstOrFail();
@@ -381,16 +412,12 @@ class BidController extends Controller
                 abort_unless(! $order->bid_deadline_at || now()->gt($order->bid_deadline_at), 422, 'Bids remain hidden until the submission deadline passes.');
                 abort_unless(in_array($status, ['approved', 'rejected'], true), 422, 'Managers can only award or reject ranked bids.');
 
-                $orderedBids = $order->bids()
-                    ->with('serviceProvider')
-                    ->get()
-                    ->sortByDesc(fn ($item) => (float) $item->amount)
-                    ->values();
+                $orderedBids = $this->orderedBidsForQuoteReview($order, $comparisonService);
 
-                $currentReviewIndex = $orderedBids->search(fn ($item) => !in_array($item->status, ['rejected', 'approved'], true));
+                $currentReviewIndex = $orderedBids->search(fn ($item) => !in_array($item->status, ['rejected', 'approved', 'accepted', 'completed'], true));
                 $currentBid = $currentReviewIndex !== false ? $orderedBids->get($currentReviewIndex) : null;
 
-                abort_unless($currentBid && $currentBid->id === $bid->id, 422, 'You must review bids in order and reject the current top candidate before opening the next one.');
+                abort_unless($currentBid && $currentBid->id === $bid->id, 422, 'You must review bids in the AI-ranked option order and reject the current top candidate before opening the next one.');
 
                 if ($status === 'rejected') {
                     abort_unless($request->filled('rejection_reason'), 422, 'A rejection reason is required before the next bid can be opened.');
@@ -500,7 +527,8 @@ class BidController extends Controller
                 403
             );
         } elseif ($actor instanceof PropertyManagerProfile) {
-            abort_unless($bid->order()->where('property_id', $actor->property_id)->exists(), 403);
+            $propertyIds = $actor->accessiblePropertyIds();
+            abort_unless($bid->order()->whereIn('property_id', $propertyIds ?: [0])->exists(), 403);
         } else {
             abort_unless($actor instanceof User && $actor->role?->name === 'admin', 403);
         }
@@ -596,15 +624,48 @@ class BidController extends Controller
         return max(1, $limit);
     }
 
-    private function resolveBidAmount(array $lineItems, mixed $fallbackAmount): ?float
+    private function resolveBidPricing(array $lineItems, mixed $fallbackAmount, array $workflowMeta, mixed $serviceProvider): array
     {
         if (! empty($lineItems)) {
-            return (float) collect($lineItems)->sum(function ($item) {
+            $enteredTotal = (float) collect($lineItems)->sum(function ($item) {
                 return ((float) data_get($item, 'quantity', 0)) * ((float) data_get($item, 'unit_price', 0));
             });
+
+            $isVatSubject = (bool) data_get($serviceProvider, 'is_vat_subject');
+            $vatIncluded = (bool) data_get($workflowMeta, 'vat_included');
+
+            if (! $isVatSubject) {
+                $subtotal = round($enteredTotal, 2);
+                $vatAmount = 0.0;
+                $total = $subtotal;
+            } elseif ($vatIncluded) {
+                $total = round($enteredTotal, 2);
+                $subtotal = round($total / (1 + self::VAT_RATE), 2);
+                $vatAmount = round($total - $subtotal, 2);
+            } else {
+                $subtotal = round($enteredTotal, 2);
+                $vatAmount = round($subtotal * self::VAT_RATE, 2);
+                $total = round($subtotal + $vatAmount, 2);
+            }
+
+            return [
+                'amount' => $total,
+                'breakdown' => [
+                    'entered_total' => round($enteredTotal, 2),
+                    'subtotal' => $subtotal,
+                    'vat_rate' => $isVatSubject ? self::VAT_RATE : 0,
+                    'vat_amount' => $vatAmount,
+                    'total' => $total,
+                    'vat_included' => $isVatSubject && $vatIncluded,
+                    'vat_subject' => $isVatSubject,
+                ],
+            ];
         }
 
-        return $fallbackAmount !== null ? (float) $fallbackAmount : null;
+        return [
+            'amount' => $fallbackAmount !== null ? (float) $fallbackAmount : null,
+            'breakdown' => null,
+        ];
     }
 
     private function providerLoginEmail(Request $request): string
@@ -627,6 +688,7 @@ class BidController extends Controller
         $quoteItems = collect($lineItems)
             ->filter(fn ($item) => filled(data_get($item, 'label')) && (float) data_get($item, 'quantity', 0) > 0)
             ->map(fn ($item) => [
+                'category' => data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label'),
                 'label' => data_get($item, 'label'),
                 'code' => data_get($item, 'code'),
                 'unit' => data_get($item, 'unit'),
@@ -641,17 +703,102 @@ class BidController extends Controller
             $selectedSlot = data_get($order->workflow_meta ?? [], "inspection.preferred_slots.{$selectedSlotIndex}", []);
             $quoteDueDate = data_get($selectedSlot, 'quote_due_date');
 
+            $workflowMeta = $order->workflow_meta ?? [];
+            data_set($workflowMeta, 'assignment.award_mode', 'request_quotes');
+            data_set($workflowMeta, 'assignment.quote_item_source', 'provider');
+            data_set($workflowMeta, 'inspection.quote_created_at', now()->toDateTimeString());
+
+            if ($bid) {
+                data_set($workflowMeta, 'inspection.quote_seed_bid_id', $bid->id);
+            }
+
+            if ($quoteDueDate) {
+                data_set($workflowMeta, 'inspection.accepted_quote_due_date', $quoteDueDate);
+            }
+
             $updates = [
                 'quote_items' => $quoteItems,
-                'workflow_status' => 'published_for_quotes',
+                'workflow_status' => 'inspection_quote_created',
+                'workflow_meta' => $workflowMeta,
             ];
-
-            if (! $order->bid_deadline_at && $quoteDueDate) {
-                $updates['bid_deadline_at'] = "{$quoteDueDate} 23:59:00";
-            }
 
             $order->update($updates);
         }
+    }
+
+    private function orderedBidsForQuoteReview(Order $order, BidComparisonService $comparisonService): Collection
+    {
+        $reviewableBids = $order->bids()
+            ->with('serviceProvider')
+            ->whereNotNull('amount')
+            ->where('amount', '>', 0)
+            ->get()
+            ->reject(fn ($item) => $this->isHiddenScopeSeedBid($item))
+            ->values();
+
+        if ($reviewableBids->isEmpty()) {
+            return $reviewableBids;
+        }
+
+        $rankedBidIds = $this->latestBidComparisonRanking($order);
+
+        if ($rankedBidIds->isEmpty()) {
+            $order->loadMissing([
+                'property.owners',
+                'property.documents.analysisResults',
+                'documents.analysisResults',
+                'bids.serviceProvider',
+            ]);
+
+            $comparison = $comparisonService->build($order);
+
+            AiAnalysisResult::query()->create([
+                'order_id' => $order->id,
+                'property_id' => $order->property_id,
+                'status' => 'completed',
+                'score' => $comparison['score'],
+                'summary' => $comparison['summary'],
+                'comparison_data' => [
+                    ...$comparison['comparison_data'],
+                    'analysis_type' => 'bid_comparison',
+                    'created_via' => 'deadline_review',
+                ],
+            ]);
+
+            $rankedBidIds = collect(data_get($comparison, 'comparison_data.rankings', []))
+                ->pluck('bid_id')
+                ->map(fn ($id) => (int) $id)
+                ->values();
+        }
+
+        $arrivalIndexByBidId = $reviewableBids
+            ->sortBy(fn ($item) => $item->submitted_at ?? $item->created_at)
+            ->values()
+            ->mapWithKeys(fn ($item, $index) => [(int) $item->id => $index]);
+
+        return $reviewableBids
+            ->sortBy(function ($item) use ($rankedBidIds, $arrivalIndexByBidId) {
+                $rankIndex = $rankedBidIds->search((int) $item->id);
+
+                return $rankIndex !== false
+                    ? $rankIndex
+                    : 100000 + (int) ($arrivalIndexByBidId[(int) $item->id] ?? 100000);
+            })
+            ->values();
+    }
+
+    private function latestBidComparisonRanking(Order $order): Collection
+    {
+        $latestComparison = AiAnalysisResult::query()
+            ->where('order_id', $order->id)
+            ->latest()
+            ->get()
+            ->first(fn ($result) => data_get($result->comparison_data, 'analysis_type') === 'bid_comparison');
+
+        return collect(data_get($latestComparison?->comparison_data, 'rankings', []))
+            ->pluck('bid_id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
     }
 
     private function getBenchmarkWarning(Order $order, float $amount): ?array
@@ -676,5 +823,10 @@ class BidController extends Controller
             'benchmark_amount' => round((float) $benchmark, 2),
             'threshold_amount' => round((float) $benchmark * 0.8, 2),
         ];
+    }
+
+    private function isHiddenScopeSeedBid(mixed $bid): bool
+    {
+        return (bool) data_get($bid->workflow_meta ?? [], 'quote_scope_seed');
     }
 }

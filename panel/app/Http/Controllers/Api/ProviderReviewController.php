@@ -22,7 +22,7 @@ class ProviderReviewController extends Controller
                 403
             );
         } elseif ($actor instanceof PropertyManagerProfile) {
-            abort_unless($order->property_id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($order->property_id), 403);
         } else {
             abort(403, 'Only owners or property managers can review completed work.');
         }
@@ -32,11 +32,28 @@ class ProviderReviewController extends Controller
         $approvedBid = $order->approvedBid()->first();
         abort_unless($approvedBid && $approvedBid->service_provider_id, 422, 'No approved provider is linked to this completed order.');
 
+        $communicationRating = $request->integer('communication_rating') ?: null;
+        $punctualityRating = $request->integer('punctuality_rating') ?: null;
+        $qualityRating = $request->integer('quality_rating') ?: null;
+        $overallRating = collect([$communicationRating, $punctualityRating, $qualityRating])
+            ->filter()
+            ->avg();
+
+        if ($overallRating === null) {
+            $overallRating = $request->integer('rating');
+            $communicationRating = $communicationRating ?: $overallRating;
+            $punctualityRating = $punctualityRating ?: $overallRating;
+            $qualityRating = $qualityRating ?: $overallRating;
+        }
+
         $reviewPayload = [
             'service_provider_id' => $approvedBid->service_provider_id,
             'order_id' => $order->id,
             'property_id' => $order->property_id,
-            'rating' => $request->integer('rating'),
+            'rating' => (int) round($overallRating),
+            'communication_rating' => $communicationRating,
+            'punctuality_rating' => $punctualityRating,
+            'quality_rating' => $qualityRating,
             'comment' => $request->input('comment'),
             'reviewer_user_id' => $actor instanceof User ? $actor->id : null,
             'reviewer_manager_profile_id' => $actor instanceof PropertyManagerProfile ? $actor->id : null,

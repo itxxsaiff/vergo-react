@@ -19,14 +19,16 @@ class DashboardController extends Controller
         $actor = $request->user();
 
         if ($actor instanceof PropertyManagerProfile) {
+            $propertyIds = $actor->accessiblePropertyIds();
+
             return response()->json([
                 'data' => [
-                    'properties' => 1,
+                    'properties' => count($propertyIds),
                     'owners' => 0,
-                    'orders' => Order::where('property_id', $actor->property_id)
+                    'orders' => Order::whereIn('property_id', $propertyIds ?: [0])
                         ->where('requester_email', $actor->email)
                         ->count(),
-                    'documents' => Document::where('property_id', $actor->property_id)->count(),
+                    'documents' => Document::whereIn('property_id', $propertyIds ?: [0])->count(),
                     'service_providers' => 0,
                 ],
             ]);

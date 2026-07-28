@@ -6,9 +6,13 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
-import { formatDateDisplay } from '../lib/dateFormat'
+import { formatDateDisplay, formatDateTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import {
+  ADD_SERVICE_OPTION_VALUE,
+  createQuoteLineItem,
+  getTradeActivityOptions,
+  getTradeUnitOptions,
   getOptionLabel,
   JOB_TYPE_OPTIONS,
   TRADE_ACTIVITY_OPTIONS_BY_GROUP,
@@ -130,6 +134,44 @@ const MANAGER_ORDER_STEPS = [
   { id: 5, label: 'Firmen', helper: 'Anbieter auswählen', icon: 'ti ti-users' },
 ]
 
+function getInspectionQuoteGenerateStorageKey(orderId) {
+  return `vergo.inspectionQuoteGenerate.${orderId}`
+}
+
+function readInspectionQuoteGenerateState(orderId) {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const value = window.sessionStorage.getItem(getInspectionQuoteGenerateStorageKey(orderId))
+
+    if (!value) {
+      return null
+    }
+
+    const parsed = JSON.parse(value)
+    const quoteItems = Array.isArray(parsed?.quote_items) ? parsed.quote_items : []
+    const quoteSourceBidIds = Array.isArray(parsed?.quote_source_bid_ids) ? parsed.quote_source_bid_ids : []
+
+    return {
+      source_order_id: parsed?.source_order_id ?? orderId,
+      quote_items: quoteItems,
+      quote_source_bid_ids: quoteSourceBidIds,
+    }
+  } catch {
+    return null
+  }
+}
+
+function clearInspectionQuoteGenerateState(orderId) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.sessionStorage.removeItem(getInspectionQuoteGenerateStorageKey(orderId))
+}
+
 function getInitialManagerWizard(propertyId = '') {
   return {
     property_id: propertyId,
@@ -174,6 +216,8 @@ function getInitialManagerWizard(propertyId = '') {
     invoice_postal_code: '',
     invoice_city: '',
     quote_items: [],
+    source_inspection_order_id: '',
+    source_inspection_quote_bid_ids: [],
     selected_provider_ids: [],
   }
 }
@@ -194,7 +238,7 @@ function getOrderObjectLabel(order) {
 }
 
 function getQuoteServiceOptions(serviceType) {
-  return TRADE_ACTIVITY_OPTIONS_BY_GROUP[serviceType] ?? []
+  return getTradeActivityOptions(serviceType)
 }
 
 function serializeManagerWizardDraft(wizard, currentStep, providerCantonFilter) {
@@ -286,6 +330,8 @@ function buildManagerWorkflowMeta(wizard, selectedObjects) {
         completion_mode: wizard.completion_mode,
         award_mode: 'request_quotes',
         quote_item_source: wizard.quote_item_source || 'manager',
+        source_inspection_order_id: wizard.source_inspection_order_id || null,
+        source_inspection_quote_bid_ids: wizard.source_inspection_quote_bid_ids ?? [],
         cost_estimate_range: null,
         bid_priority: null,
         bid_deadline_at: wizard.bid_deadline_at || null,
@@ -337,6 +383,7 @@ function OrdersPage() {
   const { t } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const [orders, setOrders] = useState([])
+  const [deletedOrders, setDeletedOrders] = useState([])
   const [properties, setProperties] = useState([])
   const [objects, setObjects] = useState([])
   const [serviceProviders, setServiceProviders] = useState([])
@@ -359,6 +406,8 @@ function OrdersPage() {
   // Gewerk is fixed, the provider's line items are locked, and only the bid deadline is entered.
   const [generateLock, setGenerateLock] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingDeletedOrders, setIsLoadingDeletedOrders] = useState(false)
+  const [restoringOrderId, setRestoringOrderId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -367,6 +416,7 @@ function OrdersPage() {
   const canDeleteOrders = Boolean(user?.permissions?.orders?.delete)
   const canManageOrders = canCreateOrders || canEditOrders || canDeleteOrders
   const isAdmin = user?.role === 'admin'
+  const canRecoverOrders = isAdmin || user?.role === 'employee' || canDeleteOrders
   const showActionColumn = isAdmin || canEditOrders || canDeleteOrders
   const isManager = user?.role === 'manager'
   const isOwner = user?.role === 'owner'
@@ -377,14 +427,16 @@ function OrdersPage() {
     setError('')
 
     try {
-      const [ordersResponse, propertiesResponse, objectsResponse, serviceProvidersResponse] = await Promise.all([
+      const [ordersResponse, propertiesResponse, objectsResponse, serviceProvidersResponse, deletedOrdersResponse] = await Promise.all([
         api.getOrders(),
         api.getProperties(),
         api.getPropertyObjects(),
         api.getServiceProviders(),
+        canRecoverOrders ? api.getDeletedOrders() : Promise.resolve({ data: [] }),
       ])
 
       setOrders(ordersResponse.data ?? [])
+      setDeletedOrders(deletedOrdersResponse.data ?? [])
       setProperties(propertiesResponse.data ?? [])
       setObjects(objectsResponse.data ?? [])
       setServiceProviders(serviceProvidersResponse.data ?? [])
@@ -395,27 +447,65 @@ function OrdersPage() {
     }
   }
 
+  async function loadDeletedOrders() {
+    if (!canRecoverOrders) {
+      return
+    }
+
+    setIsLoadingDeletedOrders(true)
+    setError('')
+
+    try {
+      const response = await api.getDeletedOrders()
+      setDeletedOrders(response.data ?? [])
+    } catch (loadError) {
+      setError(loadError.message)
+    } finally {
+      setIsLoadingDeletedOrders(false)
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [])
 
-  useEffect(() => {
-    if (isManager && properties.length > 0 && !form.property_id) {
-      setForm((current) => ({
-        ...current,
-        property_id: String(user?.property?.id ?? properties[0].id),
-      }))
+  const managerPropertyOptions = useMemo(() => {
+    if (!isManager) {
+      return properties
     }
-  }, [form.property_id, isManager, properties, user?.property?.id])
+
+    const scopedPropertyId = String(user?.property?.id ?? '')
+
+    if (!scopedPropertyId) {
+      return properties
+    }
+
+    const scopedProperties = properties.filter((property) => String(property.id) === scopedPropertyId)
+
+    return scopedProperties.length > 0 ? scopedProperties : [user.property].filter(Boolean)
+  }, [isManager, properties, user?.property])
+
+  const defaultManagerPropertyId = isManager
+    ? String(managerPropertyOptions[0]?.id ?? user?.property?.id ?? '')
+    : ''
 
   useEffect(() => {
-    if (isManager && properties.length > 0 && !managerWizard.property_id) {
-      setManagerWizard((current) => ({
+    if (isManager && managerPropertyOptions.length > 0 && !form.property_id) {
+      setForm((current) => ({
         ...current,
-        property_id: String(user?.property?.id ?? properties[0].id),
+        property_id: defaultManagerPropertyId,
       }))
     }
-  }, [isManager, managerWizard.property_id, properties, user?.property?.id])
+  }, [defaultManagerPropertyId, form.property_id, isManager, managerPropertyOptions.length])
+
+  useEffect(() => {
+    if (isManager && managerPropertyOptions.length > 0 && !managerWizard.property_id) {
+      setManagerWizard((current) => ({
+        ...current,
+        property_id: defaultManagerPropertyId,
+      }))
+    }
+  }, [defaultManagerPropertyId, isManager, managerPropertyOptions.length, managerWizard.property_id])
 
   useEffect(() => {
     const shouldOpenCreate = searchParams.get('open') === 'create'
@@ -429,7 +519,7 @@ function OrdersPage() {
     const nextParams = new URLSearchParams(searchParams)
     nextParams.delete('open')
     setSearchParams(nextParams, { replace: true })
-  }, [canCreateOrders, isLoading, isModalOpen, searchParams, setSearchParams, properties.length, user?.property?.id])
+  }, [canCreateOrders, defaultManagerPropertyId, isLoading, isModalOpen, searchParams, setSearchParams, properties.length])
 
   useEffect(() => {
     const generateFromId = searchParams.get('generate-from')
@@ -449,17 +539,20 @@ function OrdersPage() {
           return
         }
 
-        const resolvedPropertyId = String(source.property_id ?? user?.property?.id ?? properties[0]?.id ?? '')
+        const resolvedPropertyId = String(source.property_id ?? defaultManagerPropertyId ?? properties[0]?.id ?? '')
         const baseWizard = getInitialManagerWizard(resolvedPropertyId)
         const objectIds = (Array.isArray(source.property_object_ids) && source.property_object_ids.length > 0
           ? source.property_object_ids
           : (source.property_object_id ? [source.property_object_id] : [])).map(Number)
-        const quoteItems = (source.quote_items ?? []).map((item, index) => ({
+        const sourceTradeGroup = source.workflow_meta?.detail_catalog?.trade_group || source.service_type || ''
+        const generatedQuoteState = readInspectionQuoteGenerateState(generateFromId)
+        const sourceQuoteItems = (generatedQuoteState?.quote_items ?? []).length > 0
+          ? generatedQuoteState.quote_items
+          : (source.quote_items ?? [])
+        const quoteItems = sourceQuoteItems.map((item, index) => createQuoteLineItem(sourceTradeGroup, {
+          ...item,
           id: `gen-${index}`,
-          label: item.label ?? '',
-          code: item.code ?? '',
-          unit: item.unit ?? 'Stück',
-          quantity: item.quantity ?? 1,
+          category: item.category ?? item.code ?? '',
           source: 'provider',
           is_custom: item.is_custom ?? true,
         }))
@@ -481,6 +574,8 @@ function OrdersPage() {
           award_mode: 'request_quotes',
           quote_item_source: 'manager',
           quote_items: quoteItems,
+          source_inspection_order_id: Number(generatedQuoteState?.source_order_id ?? source.id),
+          source_inspection_quote_bid_ids: generatedQuoteState?.quote_source_bid_ids ?? [],
         })
         setManagerStep(3)
         setGenerateLock(true)
@@ -495,6 +590,7 @@ function OrdersPage() {
           const nextParams = new URLSearchParams(searchParams)
           nextParams.delete('generate-from')
           setSearchParams(nextParams, { replace: true })
+          clearInspectionQuoteGenerateState(generateFromId)
         }
       }
     }
@@ -504,7 +600,7 @@ function OrdersPage() {
     return () => {
       cancelled = true
     }
-  }, [canCreateOrders, isLoading, isModalOpen, searchParams, setSearchParams, properties, user, t])
+  }, [canCreateOrders, defaultManagerPropertyId, isLoading, isModalOpen, searchParams, setSearchParams, properties, user, t])
 
   useEffect(() => {
     if (isModalOpen) {
@@ -580,6 +676,8 @@ function OrdersPage() {
           invoice_postal_code: '',
           invoice_city: '',
           quote_items: [],
+          source_inspection_order_id: '',
+          source_inspection_quote_bid_ids: [],
           selected_provider_ids: [],
         }
         : {}),
@@ -666,23 +764,18 @@ function OrdersPage() {
 
   function seedQuoteItemsForTrade(serviceType) {
     const services = getQuoteServiceOptions(serviceType)
-    const baseItems = [{
-      label: services[0] || getOptionLabel(JOB_TYPE_OPTIONS, serviceType),
-      unit: 'Stück',
-      quantity: 1,
-      code: services[0] || serviceType || '',
-      source: 'catalog',
-    }]
 
-    return baseItems.map((item, index) => ({
-      id: `${serviceType || 'custom'}-${index}-${Date.now()}`,
-      label: item.label,
-      code: item.code || '',
-      unit: item.unit || '',
-      quantity: item.quantity ?? 1,
-      source: item.source || 'catalog',
-      is_custom: false,
-    }))
+    return [
+      createQuoteLineItem(serviceType, {
+        id: `${serviceType || 'custom'}-0-${Date.now()}`,
+        category: services[0] || '',
+        code: services[0] || '',
+        label: '',
+        quantity: 1,
+        source: 'catalog',
+        is_custom: false,
+      }),
+    ]
   }
 
   function handleManagerServiceTypeChange(value) {
@@ -702,15 +795,15 @@ function OrdersPage() {
       ...current,
       quote_items: [
         ...(current.quote_items ?? []),
-        {
+        createQuoteLineItem(current.service_type, {
           id: `custom-${Date.now()}`,
-          label: '',
+          category: '',
           code: '',
-          unit: 'Stück',
+          label: '',
           quantity: 1,
           source: 'custom',
           is_custom: true,
-        },
+        }),
       ],
     }))
   }
@@ -720,10 +813,19 @@ function OrdersPage() {
       ...current,
       quote_items: (current.quote_items ?? []).map((item) => (
         item.id === itemId
-          ? {
-            ...item,
-            [field]: field === 'quantity' ? Number(value || 0) : value,
-          }
+          ? field === 'category'
+            ? {
+              ...item,
+              category: value === ADD_SERVICE_OPTION_VALUE ? '' : value,
+              code: value === ADD_SERVICE_OPTION_VALUE ? '' : value,
+              is_custom: value === ADD_SERVICE_OPTION_VALUE
+                ? true
+                : Boolean(value && !getQuoteServiceOptions(current.service_type).includes(value)),
+            }
+            : {
+              ...item,
+              [field]: field === 'quantity' ? Number(value || 0) : value,
+            }
           : item
       )),
     }))
@@ -823,9 +925,9 @@ function OrdersPage() {
     setExistingAttachmentName('')
     setForm({
       ...initialForm,
-      property_id: isManager ? String(user?.property?.id ?? properties[0]?.id ?? '') : '',
+      property_id: defaultManagerPropertyId,
     })
-    setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
+    setManagerWizard(getInitialManagerWizard(defaultManagerPropertyId))
     setManagerStep(1)
     setGenerateLock(false)
     setProviderCantonFilter('')
@@ -877,10 +979,18 @@ function OrdersPage() {
 
   function hydrateManagerWizardFromDraft(order) {
     const draftState = order?.workflow_meta?.manager_wizard_draft ?? {}
-    const baseWizard = getInitialManagerWizard(String(order?.property_id ?? user?.property?.id ?? properties[0]?.id ?? ''))
+    const baseWizard = getInitialManagerWizard(String(order?.property_id ?? defaultManagerPropertyId ?? properties[0]?.id ?? ''))
     const selectedObjectIds = Array.isArray(draftState.selected_object_ids)
       ? draftState.selected_object_ids
       : (order?.property_object_ids ?? []).map((id) => Number(id))
+    const draftTradeGroup = draftState.service_type || order?.workflow_meta?.detail_catalog?.trade_group || order?.service_type || baseWizard.service_type
+    const draftQuoteItems = Array.isArray(draftState.quote_items)
+      ? draftState.quote_items.map((item, index) => createQuoteLineItem(draftTradeGroup, {
+        ...item,
+        id: item.id || `draft-${index}`,
+        category: item.category ?? item.code ?? '',
+      }))
+      : baseWizard.quote_items
 
     setManagerWizard({
       ...baseWizard,
@@ -888,6 +998,7 @@ function OrdersPage() {
       property_id: String(draftState.property_id ?? order?.property_id ?? baseWizard.property_id),
       selected_object_ids: selectedObjectIds,
       selected_provider_ids: (draftState.selected_provider_ids ?? []).map((id) => String(id)),
+      quote_items: draftQuoteItems,
       attachment: null,
     })
     setManagerStep(Number(draftState.current_step) || 1)
@@ -1072,6 +1183,22 @@ function OrdersPage() {
           setError(t('Bitte wählen Sie für die Angebotsfrist keinen Samstag oder Sonntag.'))
           return false
         }
+
+        if (managerWizard.quote_item_source !== 'provider') {
+          const quoteItems = managerWizard.quote_items ?? []
+          const hasQuoteItems = quoteItems.length > 0
+          const hasInvalidQuoteItem = quoteItems.some((item) => (
+            !String(item.category || '').trim()
+            || !String(item.label || '').trim()
+            || !String(item.unit || '').trim()
+            || Number(item.quantity || 0) <= 0
+          ))
+
+          if (!hasQuoteItems || hasInvalidQuoteItem) {
+            setError(t('Bitte erfassen Sie für jede Position Kategorie, Service, Einheit und Menge.'))
+            return false
+          }
+        }
       }
     }
 
@@ -1131,11 +1258,19 @@ function OrdersPage() {
         : null,
       quote_items: managerWizard.flow_type === 'direct_order' && managerWizard.quote_item_source !== 'provider'
         ? (managerWizard.quote_items ?? [])
-          .filter((item) => item.label.trim())
+          .filter((item) => item.category?.trim() && item.label?.trim())
           .map((item) => {
-            const payloadItem = { ...item }
-            delete payloadItem.id
-            return payloadItem
+            const category = item.category.trim()
+
+            return {
+              category,
+              label: item.label.trim(),
+              code: item.code || category,
+              unit: item.unit || '',
+              quantity: Number(item.quantity || 0),
+              source: item.source || (item.is_custom ? 'custom' : 'catalog'),
+              is_custom: Boolean(item.is_custom),
+            }
           })
         : [],
       due_date: managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date'
@@ -1351,9 +1486,9 @@ function OrdersPage() {
     setExistingAttachmentName('')
     setForm({
       ...initialForm,
-      property_id: isManager ? String(user?.property?.id ?? properties[0]?.id ?? '') : '',
+      property_id: defaultManagerPropertyId,
     })
-    setManagerWizard(getInitialManagerWizard(String(user?.property?.id ?? properties[0]?.id ?? '')))
+    setManagerWizard(getInitialManagerWizard(defaultManagerPropertyId))
     setManagerStep(1)
     setGenerateLock(false)
     setProviderCantonFilter('')
@@ -1378,6 +1513,21 @@ function OrdersPage() {
       }
     } catch (deleteError) {
       setError(deleteError.message)
+    }
+  }
+
+  async function handleRestore(orderId) {
+    setRestoringOrderId(orderId)
+    setError('')
+
+    try {
+      const response = await api.restoreOrder(orderId)
+      setDeletedOrders((current) => current.filter((order) => order.id !== orderId))
+      setOrders((current) => [response.data, ...current])
+    } catch (restoreError) {
+      setError(restoreError.message)
+    } finally {
+      setRestoringOrderId(null)
     }
   }
 
@@ -1408,6 +1558,7 @@ function OrdersPage() {
       : serviceProviders
   ), [providerCantonFilter, serviceProviders])
   const managerQuoteServiceOptions = getQuoteServiceOptions(managerWizard.service_type)
+  const managerQuoteUnitOptions = getTradeUnitOptions(managerWizard.service_type)
   const quoteDeadlineWarning = managerWizard.flow_type === 'direct_order'
     ? getQuoteDeadlineWarning(managerWizard.bid_deadline_at)
     : ''
@@ -1596,6 +1747,82 @@ function OrdersPage() {
         </div>
       </div>
 
+      {canRecoverOrders ? (
+        <div className="row">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-body p-4">
+                <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+                  <div>
+                    <h5 className="fw-semibold mb-1">{t('Gelöschte Aufträge')}</h5>
+                    <div className="text-muted small">{t('Gelöschte Aufträge werden hier wiederhergestellt, ohne ein Datenbank-Backup einzuspielen.')}</div>
+                  </div>
+                  <button type="button" className="btn btn-light-primary btn-sm" onClick={loadDeletedOrders} disabled={isLoadingDeletedOrders}>
+                    <i className="ti ti-refresh me-1"></i>
+                    {t('Aktualisieren')}
+                  </button>
+                </div>
+
+                {isLoadingDeletedOrders ? <p className="text-muted mb-0">{t('Gelöschte Aufträge werden geladen...')}</p> : null}
+
+                {!isLoadingDeletedOrders ? (
+                  <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
+                    <table className="table border-none text-nowrap customize-table mb-0 align-middle">
+                      <thead className="text-dark fs-4">
+                        <tr>
+                          <th><h6 className="fs-4 fw-semibold mb-0">{t('Titel')}</h6></th>
+                          <th><h6 className="fs-4 fw-semibold mb-0">{t('Immobilie')}</h6></th>
+                          <th><h6 className="fs-4 fw-semibold mb-0">{t('Anfragender')}</h6></th>
+                          <th><h6 className="fs-4 fw-semibold mb-0">{t('Gelöscht am')}</h6></th>
+                          <th width="120"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deletedOrders.map((order) => (
+                          <tr key={order.id}>
+                            <td>
+                              <div className="fw-semibold">{order.title}</div>
+                              <div className="text-muted">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
+                            </td>
+                            <td>
+                              <div className="fw-semibold">{order.property?.li_number ?? '-'}</div>
+                              <div className="text-muted">{order.property?.title ?? '-'}</div>
+                            </td>
+                            <td>
+                              <div>{order.requester_name || '-'}</div>
+                              <div className="text-muted">{order.requester_email || '-'}</div>
+                            </td>
+                            <td>{formatDateTimeDisplay(order.deleted_at)}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="btn btn-light-primary btn-sm"
+                                disabled={restoringOrderId === order.id}
+                                onClick={() => handleRestore(order.id)}
+                              >
+                                {restoringOrderId === order.id ? t('Wird wiederhergestellt...') : t('Wiederherstellen')}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+
+                        {deletedOrders.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="text-center text-muted py-4">
+                              {t('Keine gelöschten Aufträge vorhanden.')}
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {canManageOrders ? (
         <>
           <div
@@ -1643,11 +1870,11 @@ function OrdersPage() {
                           <div className="row g-3">
                             <div className="col-md-12">
                               <label className="form-label">{t('Liegenschaft')}</label>
-                              <select className="form-select" name="property_id" value={managerWizard.property_id} onChange={handleManagerWizardChange} disabled>
+                              <select className="form-select" name="property_id" value={managerWizard.property_id} onChange={handleManagerWizardChange} disabled={isManager}>
                                 <option value="">{t('Liegenschaft auswählen')}</option>
-                                {properties.map((property) => (
+                                {managerPropertyOptions.map((property) => (
                                   <option key={property.id} value={property.id}>
-                                    {property.li_number} - {property.title}
+                                    {property.li_number ?? property.id} - {property.title ?? property.name ?? ''}
                                   </option>
                                 ))}
                               </select>
@@ -2064,68 +2291,100 @@ function OrdersPage() {
                                     </div>
                                   ) : (
                                   <div className="row g-3">
-                                    <datalist id="manager-quote-service-options">
-                                      {managerQuoteServiceOptions.map((option) => (
-                                        <option key={option} value={option} />
-                                      ))}
-                                      <option value={t('Service hinzufügen')} />
-                                    </datalist>
-                                    {(managerWizard.quote_items ?? []).map((item, index) => (
-                                      <div className="col-12" key={item.id}>
-                                        <div className="border rounded-3 p-3">
-                                          <div className="row g-3 align-items-end">
-                                            <div className="col-lg-2">
-                                              <label className="form-label">{t('Position')}</label>
-                                              <input className="form-control" value={`${t('Position')} ${index + 1}`} readOnly />
-                                            </div>
-                                            <div className={generateLock ? 'col-lg-6' : 'col-lg-5'}>
-                                              <label className="form-label">{t('Leistung')}</label>
-                                              <input
-                                                className="form-control"
-                                                list={generateLock ? undefined : 'manager-quote-service-options'}
-                                                value={item.label}
-                                                readOnly={generateLock}
-                                                onChange={(event) => {
-                                                  const nextValue = event.target.value === t('Service hinzufügen') ? '' : event.target.value
-                                                  updateQuoteItem(item.id, 'label', nextValue)
-                                                  updateQuoteItem(item.id, 'code', nextValue)
-                                                }}
-                                                placeholder={t('Leistung auswählen oder eingeben')}
-                                              />
-                                            </div>
-                                            <div className="col-lg-2">
-                                              <label className="form-label">{t('Einheit')}</label>
-                                              <input
-                                                className="form-control"
-                                                value={item.unit}
-                                                readOnly={generateLock}
-                                                onChange={(event) => updateQuoteItem(item.id, 'unit', event.target.value)}
-                                                placeholder={t('Stück')}
-                                              />
-                                            </div>
-                                            <div className="col-lg-2">
-                                              <label className="form-label">{t('Menge')}</label>
-                                              <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                className="form-control"
-                                                value={item.quantity}
-                                                readOnly={generateLock}
-                                                onChange={(event) => updateQuoteItem(item.id, 'quantity', event.target.value)}
-                                              />
-                                            </div>
-                                            {!generateLock ? (
-                                              <div className="col-lg-1">
-                                                <button type="button" className="btn btn-light-danger text-danger w-100" onClick={() => removeQuoteItem(item.id)}>
-                                                  <i className="ti ti-trash"></i>
-                                                </button>
+                                    {(managerWizard.quote_items ?? []).map((item, index) => {
+                                      const usesCustomCategory = Boolean(item.is_custom || (item.category && !managerQuoteServiceOptions.includes(item.category)))
+
+                                      return (
+                                        <div className="col-12" key={item.id}>
+                                          <div className="border rounded-3 p-3">
+                                            <div className="row g-3 align-items-end">
+                                              <div className="col-lg-1 col-md-2">
+                                                <label className="form-label">{t('Position')}</label>
+                                                <input className="form-control text-center" value={index + 1} readOnly />
                                               </div>
-                                            ) : null}
+                                              <div className="col-lg-3 col-md-5">
+                                                <label className="form-label">{t('Kategorie')}</label>
+                                                {usesCustomCategory ? (
+                                                  <>
+                                                    <input
+                                                      className="form-control"
+                                                      value={item.category || ''}
+                                                      readOnly={generateLock}
+                                                      onChange={(event) => updateQuoteItem(item.id, 'category', event.target.value)}
+                                                      placeholder={t('Kategorie eingeben')}
+                                                    />
+                                                    {!generateLock ? (
+                                                      <button type="button" className="btn btn-link btn-sm p-0 mt-1" onClick={() => updateQuoteItem(item.id, 'category', '')}>
+                                                        {t('Aus Liste wählen')}
+                                                      </button>
+                                                    ) : null}
+                                                  </>
+                                                ) : (
+                                                  <select
+                                                    className="form-select"
+                                                    value={item.category || ''}
+                                                    disabled={generateLock}
+                                                    onChange={(event) => updateQuoteItem(item.id, 'category', event.target.value)}
+                                                  >
+                                                    <option value="">{t('Kategorie auswählen')}</option>
+                                                    {managerQuoteServiceOptions.map((option) => (
+                                                      <option key={option} value={option}>{option}</option>
+                                                    ))}
+                                                    {!generateLock ? <option value={ADD_SERVICE_OPTION_VALUE}>{t('Service hinzufügen')}</option> : null}
+                                                  </select>
+                                                )}
+                                              </div>
+                                              <div className={generateLock ? 'col-lg-4 col-md-5' : 'col-lg-3 col-md-5'}>
+                                                <label className="form-label">{t('Service')}</label>
+                                                <input
+                                                  className="form-control"
+                                                  value={item.label}
+                                                  readOnly={generateLock}
+                                                  onChange={(event) => updateQuoteItem(item.id, 'label', event.target.value)}
+                                                  placeholder={t('Service beschreiben')}
+                                                />
+                                              </div>
+                                              <div className="col-lg-2 col-md-4">
+                                                <label className="form-label">{t('Einheit')}</label>
+                                                <select
+                                                  className="form-select"
+                                                  value={item.unit || ''}
+                                                  disabled={generateLock}
+                                                  onChange={(event) => updateQuoteItem(item.id, 'unit', event.target.value)}
+                                                >
+                                                  <option value="">{t('Einheit wählen')}</option>
+                                                  {item.unit && !managerQuoteUnitOptions.includes(item.unit) ? (
+                                                    <option value={item.unit}>{item.unit}</option>
+                                                  ) : null}
+                                                  {managerQuoteUnitOptions.map((option) => (
+                                                    <option key={option} value={option}>{option}</option>
+                                                  ))}
+                                                </select>
+                                              </div>
+                                              <div className="col-lg-2 col-md-4">
+                                                <label className="form-label">{t('Menge')}</label>
+                                                <input
+                                                  type="number"
+                                                  min="0"
+                                                  step="0.01"
+                                                  className="form-control"
+                                                  value={item.quantity}
+                                                  readOnly={generateLock}
+                                                  onChange={(event) => updateQuoteItem(item.id, 'quantity', event.target.value)}
+                                                />
+                                              </div>
+                                              {!generateLock ? (
+                                                <div className="col-lg-1 col-md-4">
+                                                  <button type="button" className="btn btn-light-danger text-danger w-100" onClick={() => removeQuoteItem(item.id)} aria-label={t('Position entfernen')}>
+                                                    <i className="ti ti-trash"></i>
+                                                  </button>
+                                                </div>
+                                              ) : null}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    ))}
+                                      )
+                                    })}
                                   </div>
                                   )}
                                 </div>
@@ -2230,9 +2489,9 @@ function OrdersPage() {
                               disabled={isManager}
                             >
                               <option value="">{t('Immobilie auswählen')}</option>
-                              {properties.map((property) => (
+                              {(isManager ? managerPropertyOptions : properties).map((property) => (
                                 <option key={property.id} value={property.id}>
-                                  {property.li_number} - {property.title}
+                                  {property.li_number ?? property.id} - {property.title ?? property.name ?? ''}
                                 </option>
                               ))}
                             </select>

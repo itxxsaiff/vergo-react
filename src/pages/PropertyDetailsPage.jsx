@@ -138,7 +138,7 @@ function PropertyDetailsPage() {
                     <div className="mb-2"><strong>Service:</strong> {getOptionLabel(JOB_TYPE_OPTIONS, propertyPriceRecommendation.comparison_data?.service_category) || propertyPriceRecommendation.comparison_data?.service_category || '-'}</div>
                     <div className="mb-2"><strong>Intervall:</strong> {propertyPriceRecommendation.comparison_data?.service_interval || '-'}</div>
                     <div className="mb-2"><strong>Ersparnis:</strong> {propertyPriceRecommendation.comparison_data?.estimated_savings ?? '-'} {propertyPriceRecommendation.comparison_data?.lowest_bid_currency ?? 'CHF'}</div>
-                    <div className="mb-0"><strong>Quellen:</strong> {propertyPriceRecommendation.comparison_data?.benchmark_source_count ?? 0} analysierte Dokumente</div>
+                    <div className="mb-0"><strong>Quellen:</strong> {propertyPriceRecommendation.comparison_data?.benchmark_source_count ?? 0} historische Quelle(n)</div>
                   </>
                 ) : (
                   <div className="text-muted">Keine Empfehlung auf Objektebene vorhanden. Analysieren Sie zuerst die Objektdokumente und klicken Sie dann auf <strong>Preis vergleichen</strong>.</div>)}

@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -31,6 +32,8 @@ class OrderController extends Controller
                 'propertyObject:id,name,address,postal_code,city,type,reference',
                 'propertyManager:id,name,email',
                 'approvedBid.serviceProvider:id,company_name,contact_email',
+                'confirmedInspectionBids:id,order_id,status,workflow_meta,submitted_at,created_at,updated_at',
+                'inspectionQuoteSeedBids:id,order_id,status,line_items,workflow_meta,submitted_at,created_at,updated_at',
             ])
             ->withCount('bids')
             ->latest();
@@ -44,7 +47,14 @@ class OrderController extends Controller
                 $providerQuery
                     ->where(function ($publicQuery) use ($supportedServiceTypes) {
                         $publicQuery->where(function ($visibilityQuery) use ($supportedServiceTypes) {
-                            $visibilityQuery->where('workflow_status', 'published_for_quotes')
+                            $visibilityQuery
+                                ->where(function ($quoteQuery) use ($supportedServiceTypes) {
+                                    $quoteQuery->where('workflow_status', 'published_for_quotes');
+
+                                    if (! empty($supportedServiceTypes)) {
+                                        $quoteQuery->whereIn('service_type', $supportedServiceTypes);
+                                    }
+                                })
                                 ->orWhere(function ($inspectionQuery) use ($supportedServiceTypes) {
                                     $inspectionQuery->whereIn('workflow_status', ['public_inspection_open', 'inspection_signup_closed']);
 
@@ -71,12 +81,44 @@ class OrderController extends Controller
                     });
             });
         } elseif ($actor instanceof PropertyManagerProfile) {
-            $query->where('property_id', $actor->property_id);
+            $propertyIds = $actor->accessiblePropertyIds();
+            $query->whereIn('property_id', $propertyIds ?: [0]);
         } elseif ($actor instanceof User && $actor->role?->name === 'owner') {
             $query->whereHas('property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
         }
 
         return OrderResource::collection($query->get());
+    }
+
+    public function deleted(Request $request): AnonymousResourceCollection
+    {
+        $actor = $request->user();
+
+        $query = Order::onlyTrashed()
+            ->with([
+                'property:id,li_number,title,postal_code,city,country',
+                'propertyObject:id,name,address,postal_code,city,type,reference',
+                'propertyManager:id,name,email',
+                'approvedBid.serviceProvider:id,company_name,contact_email',
+            ])
+            ->withCount('bids')
+            ->latest('deleted_at');
+
+        if ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true)) {
+            return OrderResource::collection($query->get());
+        }
+
+        if ($actor instanceof PropertyManagerProfile) {
+            $propertyIds = $actor->accessiblePropertyIds();
+
+            $query
+                ->whereIn('property_id', $propertyIds ?: [0])
+                ->where('requester_email', $actor->email);
+
+            return OrderResource::collection($query->get());
+        }
+
+        abort(403);
     }
 
     public function show(Request $request, Order $order): OrderResource
@@ -88,6 +130,8 @@ class OrderController extends Controller
             'propertyObject:id,name,address,postal_code,city,type,reference',
             'propertyManager:id,name,email',
             'bids.serviceProvider:id,company_name,contact_email',
+            'confirmedInspectionBids:id,order_id,status,workflow_meta,submitted_at,created_at,updated_at',
+            'inspectionQuoteSeedBids:id,order_id,status,line_items,workflow_meta,submitted_at,created_at,updated_at',
             'approvedBid.serviceProvider:id,company_name,contact_email',
             'providerReviews.reviewerUser:id,name',
             'providerReviews.reviewerManagerProfile:id,name,email',
@@ -106,7 +150,7 @@ class OrderController extends Controller
 
         if ($actor instanceof PropertyManagerProfile) {
             abort_unless($this->canCreateOrders($actor), 403, 'You are not allowed to create orders with this login.');
-            abort_unless($property->id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($property->id), 403);
         } else {
             abort(403, 'Admins can only review orders.');
         }
@@ -177,6 +221,7 @@ class OrderController extends Controller
                 $request->input('workflow_meta', []),
                 $actor,
             );
+            $quoteSourceExcludeProviderIds = $this->sourceQuoteProviderIdsFromWorkflowMeta($workflowMeta, $actor);
 
             $order = Order::query()->create([
                 'property_id' => $property->id,
@@ -226,7 +271,7 @@ class OrderController extends Controller
             }
 
             if ($workflowStatus === 'published_for_quotes') {
-                $notificationService->sendQuoteRequestPublished($order);
+                $notificationService->sendQuoteRequestPublished($order, $quoteSourceExcludeProviderIds);
             } elseif ($workflowStatus === 'public_inspection_open') {
                 $notificationService->sendPublicInspectionPublished($order);
             }
@@ -253,7 +298,7 @@ class OrderController extends Controller
         if ($actor instanceof PropertyManagerProfile) {
             abort_unless($this->canEditOrders($actor), 403, 'You are not allowed to edit orders with this login.');
             abort_unless(
-                $order->property_id === $actor->property_id && $order->requester_email === $actor->email,
+                $actor->canAccessProperty($order->property_id) && $order->requester_email === $actor->email,
                 403
             );
 
@@ -281,7 +326,7 @@ class OrderController extends Controller
                 ->values();
 
         if ($actor instanceof PropertyManagerProfile) {
-            abort_unless($propertyId === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($propertyId), 403);
         }
 
         if ($propertyObjectIds->isNotEmpty() && !$propertyObjectId) {
@@ -311,6 +356,11 @@ class OrderController extends Controller
             ->filter()
             ->unique()
             ->values();
+        $normalizedWorkflowMeta = $this->normalizeWorkflowMeta(
+            $request->input('workflow_meta', $order->workflow_meta ?? []),
+            $actor,
+            $order->workflow_meta ?? []
+        );
 
         $order->update([
             'property_id' => $propertyId,
@@ -337,11 +387,7 @@ class OrderController extends Controller
             'bid_priority' => $request->input('bid_priority', $order->bid_priority),
             'due_date' => $request->input('due_date', $order->due_date),
             'bid_deadline_at' => $request->input('bid_deadline_at', $order->bid_deadline_at),
-            'workflow_meta' => $this->normalizeWorkflowMeta(
-                $request->input('workflow_meta', $order->workflow_meta ?? []),
-                $actor,
-                $order->workflow_meta ?? []
-            ),
+            'workflow_meta' => $normalizedWorkflowMeta,
             'quote_items' => $request->input('quote_items', $order->quote_items),
             'requested_at' => $request->input('requested_at', $order->requested_at),
         ]);
@@ -376,7 +422,10 @@ class OrderController extends Controller
             }
 
             if ($order->workflow_status === 'published_for_quotes') {
-                $notificationService->sendQuoteRequestPublished($order);
+                $notificationService->sendQuoteRequestPublished(
+                    $order,
+                    $this->sourceQuoteProviderIdsFromWorkflowMeta($normalizedWorkflowMeta, $actor)
+                );
             } elseif ($order->workflow_status === 'public_inspection_open') {
                 $notificationService->sendPublicInspectionPublished($order);
             }
@@ -398,22 +447,52 @@ class OrderController extends Controller
         if ($actor instanceof PropertyManagerProfile) {
             abort_unless($this->canDeleteOrders($actor), 403, 'You are not allowed to delete orders with this login.');
             abort_unless(
-                $order->property_id === $actor->property_id && $order->requester_email === $actor->email,
+                $actor->canAccessProperty($order->property_id) && $order->requester_email === $actor->email,
                 403
             );
         } else {
             abort(403, 'Only property managers can delete orders.');
         }
 
-        if ($order->attachment_path) {
-            Storage::delete($order->attachment_path);
-        }
-
         $order->delete();
 
         return response()->json([
-            'message' => 'Order deleted successfully.',
+            'message' => 'Order moved to recovery list successfully.',
         ]);
+    }
+
+    public function restore(Request $request, int $orderId): OrderResource
+    {
+        $order = Order::onlyTrashed()
+            ->with([
+                'property:id,li_number,title,postal_code,city,country',
+                'propertyObject:id,name,address,postal_code,city,type,reference',
+                'propertyManager:id,name,email',
+                'bids.serviceProvider:id,company_name,contact_email',
+                'approvedBid.serviceProvider:id,company_name,contact_email',
+                'providerReviews.reviewerUser:id,name',
+                'providerReviews.reviewerManagerProfile:id,name,email',
+                'documents',
+                'analysisResults',
+            ])
+            ->withCount('bids')
+            ->findOrFail($orderId);
+
+        $this->authorizeDeletedOrderRestore($request->user(), $order);
+
+        $order->restore();
+
+        return new OrderResource($order->fresh()->load([
+            'property:id,li_number,title,postal_code,city,country',
+            'propertyObject:id,name,address,postal_code,city,type,reference',
+            'propertyManager:id,name,email',
+            'bids.serviceProvider:id,company_name,contact_email',
+            'approvedBid.serviceProvider:id,company_name,contact_email',
+            'providerReviews.reviewerUser:id,name',
+            'providerReviews.reviewerManagerProfile:id,name,email',
+            'documents',
+            'analysisResults',
+        ])->loadCount('bids'));
     }
 
     public function markCompleted(Request $request, Order $order): OrderResource
@@ -426,7 +505,7 @@ class OrderController extends Controller
                 403
             );
         } elseif ($actor instanceof PropertyManagerProfile) {
-            abort_unless($order->property_id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($order->property_id), 403);
         } else {
             abort(403, 'Only owners or property managers can complete orders.');
         }
@@ -444,6 +523,67 @@ class OrderController extends Controller
             'propertyObject:id,name,address,postal_code,city,type,reference',
             'propertyManager:id,name,email',
             'bids.serviceProvider:id,company_name,contact_email',
+            'approvedBid.serviceProvider:id,company_name,contact_email',
+            'providerReviews.reviewerUser:id,name',
+            'providerReviews.reviewerManagerProfile:id,name,email',
+            'documents',
+            'analysisResults',
+        ])->loadCount('bids'));
+    }
+
+    public function publishQuoteRequest(Request $request, Order $order, NotificationService $notificationService): OrderResource
+    {
+        $actor = $request->user();
+
+        abort_unless($actor instanceof PropertyManagerProfile, 403, 'Only property managers can publish quote requests.');
+        abort_unless($actor->canAccessProperty($order->property_id), 403);
+        abort_unless($order->workflow_type === 'inspection', 422, 'Only inspection quotes can be published this way.');
+        abort_unless($order->workflow_status === 'inspection_quote_created', 422, 'This quote is not waiting for publication.');
+
+        $requestedQuoteItems = $request->input('quote_items');
+        $quoteItems = is_array($requestedQuoteItems)
+            ? $this->sanitizeQuoteItems($requestedQuoteItems)
+            : $this->sanitizeQuoteItems($order->quote_items ?? []);
+
+        abort_unless(! empty($quoteItems), 422, 'No quote services are available to publish.');
+
+        $workflowMeta = $order->workflow_meta ?? [];
+        data_set($workflowMeta, 'assignment.award_mode', 'request_quotes');
+        data_set($workflowMeta, 'assignment.quote_item_source', 'provider');
+        data_set($workflowMeta, 'assignment.published_from_inspection_quote_at', now()->toDateTimeString());
+        data_set($workflowMeta, 'assignment.published_by_manager_profile_id', $actor->id);
+        data_set($workflowMeta, 'assignment.published_quote_item_count', count($quoteItems));
+
+        $bidDeadline = $order->bid_deadline_at && $order->bid_deadline_at->isFuture()
+            ? $order->bid_deadline_at
+            : now()->addDays(7)->endOfDay();
+
+        $sourceBidIds = $this->selectedQuoteSourceBidIds($request, $requestedQuoteItems);
+        $seedBidId = data_get($workflowMeta, 'inspection.quote_seed_bid_id');
+
+        if ($sourceBidIds->isEmpty() && $seedBidId) {
+            $sourceBidIds = collect([(int) $seedBidId]);
+        }
+
+        $excludeProviderIds = $this->quoteSeedProviderIds($order, $sourceBidIds);
+
+        $order->update([
+            'status' => 'open',
+            'workflow_status' => 'published_for_quotes',
+            'workflow_meta' => $workflowMeta,
+            'bid_deadline_at' => $bidDeadline,
+            'quote_items' => $quoteItems,
+        ]);
+
+        $notificationService->sendQuoteRequestPublished($order->fresh(), $excludeProviderIds);
+
+        return new OrderResource($order->fresh()->load([
+            'property:id,li_number,title,postal_code,city,country',
+            'propertyObject:id,name,address,postal_code,city,type,reference',
+            'propertyManager:id,name,email',
+            'bids.serviceProvider:id,company_name,contact_email',
+            'confirmedInspectionBids:id,order_id,status,workflow_meta,submitted_at,created_at,updated_at',
+            'inspectionQuoteSeedBids:id,order_id,status,line_items,workflow_meta,submitted_at,created_at,updated_at',
             'approvedBid.serviceProvider:id,company_name,contact_email',
             'providerReviews.reviewerUser:id,name',
             'providerReviews.reviewerManagerProfile:id,name,email',
@@ -477,7 +617,7 @@ class OrderController extends Controller
         }
 
         if ($actor instanceof PropertyManagerProfile) {
-            abort_unless($order->property_id === $actor->property_id, 403);
+            abort_unless($actor->canAccessProperty($order->property_id), 403);
             return;
         }
 
@@ -492,6 +632,26 @@ class OrderController extends Controller
                 && $serviceProvider->supportsServiceType($order->service_type);
 
             abort_unless($hasLinkedBid || $isVisiblePublicOrder, 403);
+            return;
+        }
+
+        abort(403);
+    }
+
+    private function authorizeDeletedOrderRestore(mixed $actor, Order $order): void
+    {
+        if ($actor instanceof User && in_array($actor->role?->name, ['admin', 'employee'], true)) {
+            return;
+        }
+
+        if ($actor instanceof PropertyManagerProfile) {
+            abort_unless(
+                $this->canDeleteOrders($actor)
+                && $actor->canAccessProperty($order->property_id)
+                && $order->requester_email === $actor->email,
+                403
+            );
+
             return;
         }
 
@@ -599,6 +759,77 @@ class OrderController extends Controller
                 'invoice_recipient' => $invoiceRecipient,
             ],
         ];
+    }
+
+    private function sanitizeQuoteItems(array $items): array
+    {
+        return collect($items)
+            ->filter(fn ($item) => filled(data_get($item, 'label')) && (float) data_get($item, 'quantity', 0) > 0)
+            ->map(function ($item) {
+                $category = data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label');
+
+                return [
+                    'category' => $category,
+                    'label' => data_get($item, 'label'),
+                    'code' => data_get($item, 'code') ?: $category,
+                    'unit' => data_get($item, 'unit'),
+                    'quantity' => (float) data_get($item, 'quantity', 0),
+                    'source' => data_get($item, 'source') ?: 'provider',
+                    'is_custom' => (bool) data_get($item, 'is_custom', true),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function selectedQuoteSourceBidIds(Request $request, mixed $requestedQuoteItems): Collection
+    {
+        return collect($request->input('quote_source_bid_ids', []))
+            ->merge(is_array($requestedQuoteItems) ? collect($requestedQuoteItems)->pluck('source_bid_id') : [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    private function quoteSeedProviderIds(Order $order, Collection $sourceBidIds): array
+    {
+        if ($sourceBidIds->isEmpty()) {
+            return [];
+        }
+
+        return $order->bids()
+            ->whereIn('id', $sourceBidIds->all())
+            ->get(['id', 'service_provider_id', 'workflow_meta'])
+            ->filter(fn ($bid) => (bool) data_get($bid->workflow_meta ?? [], 'quote_scope_seed'))
+            ->pluck('service_provider_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function sourceQuoteProviderIdsFromWorkflowMeta(array $workflowMeta, PropertyManagerProfile $actor): array
+    {
+        $sourceOrderId = (int) data_get($workflowMeta, 'assignment.source_inspection_order_id');
+        $sourceBidIds = collect(data_get($workflowMeta, 'assignment.source_inspection_quote_bid_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if (! $sourceOrderId || $sourceBidIds->isEmpty()) {
+            return [];
+        }
+
+        $sourceOrder = Order::query()->find($sourceOrderId);
+
+        if (! $sourceOrder || ! $actor->canAccessProperty($sourceOrder->property_id)) {
+            return [];
+        }
+
+        return $this->quoteSeedProviderIds($sourceOrder, $sourceBidIds);
     }
 
     private function createDirectProviderInvitations(

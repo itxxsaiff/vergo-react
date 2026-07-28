@@ -153,6 +153,9 @@ class GeminiDocumentAnalysisService
             'comparison_data' => [
                 'analysis_type' => 'document_analysis',
                 'document_use_case' => $this->getDocumentUseCase($document),
+                'document_service_type' => $document->service_type,
+                'trade_object' => $document->trade_object,
+                'trade_activity' => $document->trade_activity,
                 ...$analysisData,
             ],
         ];
@@ -172,6 +175,15 @@ class GeminiDocumentAnalysisService
         $orderContext = $document->order
             ? sprintf('Order: %s', $document->order->title)
             : 'Order: not linked';
+        $tradeContext = collect([
+            $document->service_type ? "Uploaded trade/service type: {$document->service_type}" : null,
+            $document->trade_object ? "Uploaded trade object: {$document->trade_object}" : null,
+            $document->trade_activity ? "Uploaded trade activity: {$document->trade_activity}" : null,
+        ])->filter()->implode("\n- ");
+
+        if ($tradeContext === '') {
+            $tradeContext = 'Uploaded trade metadata: not provided';
+        }
 
         $documentTask = $this->buildDocumentTask($document);
 
@@ -183,6 +195,7 @@ Review the attached document and return structured JSON only.
 Context:
 - {$propertyContext}
 - {$orderContext}
+- {$tradeContext}
 - Document title: {$document->title}
 - Document type hint: {$document->type}
 

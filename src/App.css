@@ -892,6 +892,24 @@ body {
   z-index: 1;
 }
 
+.vergo-public-actions {
+  z-index: 3100;
+}
+
+.vergo-public-language-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  left: auto;
+  min-width: 180px;
+  transform: none !important;
+  z-index: 3200;
+}
+
+.vergo-public-language-menu .dropdown-item {
+  min-height: 36px;
+}
+
 .vergo-type-auth-card {
   position: relative;
   border: 0;
@@ -1464,6 +1482,161 @@ body {
   background: rgba(47, 72, 88, 0.08);
 }
 
+.vergo-provider-bid-dialog {
+  width: min(1220px, calc(100vw - 2rem));
+  max-width: min(1220px, calc(100vw - 2rem));
+}
+
+.vergo-inspection-slot-card {
+  border: 1px solid transparent;
+}
+
+.vergo-inspection-slot-card.is-preferred {
+  border-color: rgba(183, 132, 103, 0.42);
+  background: #fffaf7 !important;
+}
+
+.vergo-inspection-slot-card.is-own {
+  border-color: rgba(42, 121, 89, 0.34);
+  background: #f3fbf7 !important;
+}
+
+.vergo-inspection-slot-preferred-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.22rem 0.46rem;
+  border-radius: 999px;
+  background: rgba(183, 132, 103, 0.14);
+  color: var(--vergo-accent-strong);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.vergo-inspection-slot-preferred-badge i {
+  font-size: 0.82rem;
+}
+
+.vergo-inspection-slot-own-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.22rem 0.46rem;
+  border-radius: 999px;
+  background: rgba(42, 121, 89, 0.13);
+  color: #2a7959;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.vergo-inspection-slot-own-badge i {
+  font-size: 0.82rem;
+}
+
+.vergo-provider-quote-line .form-label {
+  margin-bottom: 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.vergo-provider-quote-line .form-control,
+.vergo-provider-quote-line .form-select {
+  min-height: 42px;
+  padding: 0.48rem 0.62rem;
+  font-size: 0.92rem;
+}
+
+.vergo-provider-quote-line-category .btn-link {
+  display: inline-block;
+  min-height: 18px;
+  line-height: 1.2;
+}
+
+.vergo-provider-quote-line-quantity .form-control {
+  padding-right: 0.42rem;
+  padding-left: 0.42rem;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.vergo-provider-quote-line-quantity .form-control::-webkit-outer-spin-button,
+.vergo-provider-quote-line-quantity .form-control::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.vergo-provider-quote-line-remove .btn {
+  width: 44px !important;
+  min-width: 44px;
+  min-height: 42px;
+  padding: 0.45rem;
+}
+
+.vergo-provider-quote-line-subtotal {
+  min-width: 0;
+  align-self: center;
+  text-align: center;
+}
+
+.vergo-provider-quote-line-remove {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vergo-provider-quote-line-subtotal .fw-semibold {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  word-break: keep-all;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 992px) {
+  .vergo-provider-quote-line-grid {
+    --bs-gutter-x: 0;
+    display: grid;
+    grid-template-columns:
+      58px
+      minmax(150px, 1.35fr)
+      minmax(180px, 1.55fr)
+      minmax(118px, 0.9fr)
+      86px
+      128px
+      minmax(118px, 0.9fr)
+      44px;
+    column-gap: 0.75rem;
+    row-gap: 0.75rem;
+    align-items: start;
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .vergo-provider-quote-line-grid > [class*="col-"] {
+    flex: none;
+    width: auto;
+    max-width: none;
+    padding-right: 0;
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .vergo-provider-quote-line-remove {
+    padding-top: 0;
+  }
+}
+
 .vergo-dashboard-analytics-card {
   border: 1px solid #e8eef7;
   border-radius: 7px;
@@ -1978,10 +2151,91 @@ body {
   font-weight: 700;
 }
 
+.vergo-inspection-quote-option {
+  overflow: hidden;
+  padding: 1rem;
+  border: 1px solid #e8d5ca;
+  border-radius: 12px;
+  background: #fffaf7;
+}
+
+.vergo-inspection-quote-option .table {
+  --bs-table-bg: transparent;
+}
+
+.vergo-quote-select-column {
+  width: 44px;
+  text-align: center;
+}
+
+.vergo-anonymous-bid-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.vergo-anonymous-bid-card {
+  padding: 1rem;
+  border: 1px solid #e8eef7;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.vergo-anonymous-bid-card.is-recommended {
+  border-color: rgba(42, 121, 89, 0.28);
+  background: #f8fffb;
+}
+
+.vergo-anonymous-bid-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.vergo-anonymous-bid-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+
+.vergo-anonymous-bid-score-grid > div {
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.vergo-anonymous-bid-score-grid span {
+  display: block;
+  color: #7d8aa3;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.vergo-anonymous-bid-score-grid strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: #25324b;
+}
+
 .vergo-inspection-detail-subvalue,
 .vergo-inspection-empty {
   color: rgba(255, 247, 241, 0.82);
   font-size: 0.88rem;
+}
+
+@media (max-width: 767.98px) {
+  .vergo-anonymous-bid-main {
+    display: grid;
+  }
+
+  .vergo-anonymous-bid-score-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 767.98px) {
@@ -2224,19 +2478,21 @@ body {
 }
 
 .vergo-support-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1060;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    position: fixed;
+    inset: 0;
+    z-index: 3300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   padding: 1rem;
   background: rgba(15, 23, 42, 0.46);
   backdrop-filter: blur(4px);
 }
 
 .vergo-support-modal {
-  width: min(620px, 100%);
+    position: relative;
+    z-index: 1;
+    width: min(620px, 100%);
   max-height: min(92vh, 760px);
   overflow: auto;
   background: #fff;
@@ -2409,6 +2665,48 @@ body {
   background: #fffaf7;
 }
 
+.vergo-support-ticket-thread {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.vergo-support-ticket-contact {
+  padding: 0.8rem;
+  border: 1px solid rgba(159, 109, 84, 0.14);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.vergo-support-ticket-contact > span {
+  display: block;
+  margin-bottom: 0.55rem;
+  color: #7d8aa3;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vergo-support-ticket-contact dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+.vergo-support-ticket-contact dt {
+  color: #7d8aa3;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.vergo-support-ticket-contact dd {
+  margin: 0;
+  color: #25324b;
+  font-weight: 700;
+  word-break: break-word;
+}
+
 .vergo-support-ticket-message {
   padding: 0.8rem;
   border: 1px solid rgba(159, 109, 84, 0.14);
@@ -2433,12 +2731,17 @@ body {
 
 .vergo-support-ticket-edit {
   display: grid;
-  grid-template-columns: 220px minmax(260px, 1fr) auto;
+  grid-template-columns: 220px minmax(260px, 1fr);
   gap: 0.75rem;
-  align-items: end;
+  align-items: start;
+}
+
+.vergo-support-ticket-comment {
+  grid-column: 1 / -1;
 }
 
 .vergo-support-ticket-save {
+  grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
 }
@@ -2462,6 +2765,10 @@ body {
   .vergo-support-stats,
   .vergo-support-filters,
   .vergo-support-ticket-edit {
+    grid-template-columns: 1fr;
+  }
+
+  .vergo-support-ticket-contact dl {
     grid-template-columns: 1fr;
   }
 

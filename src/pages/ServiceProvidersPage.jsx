@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import PageContent from '../components/PageContent'
+import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
@@ -51,6 +52,7 @@ const SWISS_CANTONS = [
 ]
 
 function ServiceProvidersPage() {
+  const { t } = useLanguage()
   const [providers, setProviders] = useState([])
   const [companyRequests, setCompanyRequests] = useState([])
   const [form, setForm] = useState(initialForm)
@@ -201,7 +203,7 @@ function ServiceProvidersPage() {
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors)
-      setError('Bitte alle Pflichtfelder ausfüllen.')
+      setError(t('Bitte alle Pflichtfelder ausfüllen.'))
       setIsSaving(false)
       return
     }
@@ -209,14 +211,14 @@ function ServiceProvidersPage() {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailPattern.test(form.contact_email.trim())) {
       setFieldErrors({ contact_email: true })
-      setError('Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein.')
+      setError(t('Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein.'))
       setIsSaving(false)
       return
     }
 
     if (!emailPattern.test(form.order_email.trim())) {
       setFieldErrors({ order_email: true })
-      setError('Bitte geben Sie eine gültige E-Mail-Adresse für Aufträge ein.')
+      setError(t('Bitte geben Sie eine gültige E-Mail-Adresse für Aufträge ein.'))
       setIsSaving(false)
       return
     }
@@ -300,11 +302,11 @@ function ServiceProvidersPage() {
 
   return (
     <PageContent
-      title="Dienstleister"
-      subtitle="Verwalten Sie Anbieterunternehmen, die für Ausschreibungen und die Teilnahme an Aufträgen verfügbar sind."
+      title={t('Dienstleister')}
+      subtitle={t('Verwalten Sie Anbieterunternehmen, die für Ausschreibungen und die Teilnahme an Aufträgen verfügbar sind.')}
       breadcrumbs={[
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Dienstleister' },
+        { label: t('Dashboard'), href: '/dashboard' },
+        { label: t('Dienstleister') },
       ]}
     >
       <div className="card">
@@ -313,11 +315,11 @@ function ServiceProvidersPage() {
       <div className="mb-4">
         <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
           <div>
-            <h5 className="fw-semibold mb-1">Firmenanfragen</h5>
-            <p className="text-muted mb-0">Anfragen von Immobilienverwaltern, damit Vergo die Firma zentral anlegt.</p>
+            <h5 className="fw-semibold mb-1">{t('Firmenanfragen')}</h5>
+            <p className="text-muted mb-0">{t('Anfragen von Immobilienverwaltern, damit Vergo die Firma zentral anlegt.')}</p>
           </div>
           <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
-            {pendingCompanyRequests.length} offen
+            {pendingCompanyRequests.length} {t('offen')}
           </span>
         </div>
 
@@ -325,12 +327,12 @@ function ServiceProvidersPage() {
           <table className="table border-none text-nowrap customize-table mb-0 align-middle">
             <thead className="text-dark fs-4">
               <tr>
-                <th><h6 className="fs-4 fw-semibold mb-0">Firma</h6></th>
-                <th><h6 className="fs-4 fw-semibold mb-0">Kontakt</h6></th>
-                <th><h6 className="fs-4 fw-semibold mb-0">Ort</h6></th>
-                <th><h6 className="fs-4 fw-semibold mb-0">Angefragt von</h6></th>
-                <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
-                <th width="160"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">{t('Firma')}</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">{t('Kontakt')}</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">{t('Ort')}</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">{t('Angefragt von')}</h6></th>
+                <th><h6 className="fs-4 fw-semibold mb-0">{t('Status')}</h6></th>
+                <th width="160"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
               </tr>
             </thead>
             <tbody>
@@ -350,10 +352,10 @@ function ServiceProvidersPage() {
                     <div>{companyRequest.property_manager?.name || '-'}</div>
                     <div className="text-muted small">{companyRequest.property?.li_number || '-'}</div>
                   </td>
-                  <td><span className={getStatusBadgeClass(companyRequest.status)}>{formatStatusLabel(companyRequest.status)}</span></td>
+                  <td><span className={getStatusBadgeClass(companyRequest.status)}>{t(formatStatusLabel(companyRequest.status))}</span></td>
                   <td>
                     <div className="table-action-group">
-                      <button type="button" className="table-action-btn table-action-edit" onClick={() => openCreateFromRequest(companyRequest)} title="Dienstleister aus Anfrage erstellen">
+                      <button type="button" className="table-action-btn table-action-edit" onClick={() => openCreateFromRequest(companyRequest)} title={t('Dienstleister aus Anfrage erstellen')}>
                         <i className="ti ti-plus"></i>
                       </button>
                       <button
@@ -365,7 +367,7 @@ function ServiceProvidersPage() {
                             request.id === companyRequest.id ? { ...request, status: 'dismissed' } : request
                           )))
                         }}
-                        title="Anfrage ausblenden"
+                        title={t('Anfrage ausblenden')}
                       >
                         <i className="ti ti-x"></i>
                       </button>
@@ -381,27 +383,27 @@ function ServiceProvidersPage() {
 
     <div className="row g-3 mb-4 vergo-filter-bar vergo-filter-bar-compact">
       <div className="col-xl-5 col-lg-6 col-md-12">
-        <label className="form-label">Suche</label>
+        <label className="form-label">{t('Suche')}</label>
         <div className="vergo-search-input-wrap">
           <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
           <input
-            aria-label="Suche"
+            aria-label={t('Suche')}
             className="form-control"
             name="search"
             value={filters.search}
             onChange={handleFilterChange}
-            placeholder="Nach Unternehmen, Kontakt, E-Mail oder Telefon suchen"
+            placeholder={t('Nach Unternehmen, Kontakt, E-Mail oder Telefon suchen')}
           />
         </div>
       </div>
       <div className="col-xl-3 col-lg-6 col-md-6">
-        <label className="form-label">Status</label>
+        <label className="form-label">{t('Status')}</label>
         <div className="vergo-select-input-wrap">
           <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
-          <select aria-label="Status" className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-            <option value="">All Status</option>
-            <option value="active">Aktiv</option>
-            <option value="inactive">Inaktiv</option>
+          <select aria-label={t('Status')} className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+            <option value="">{t('All Status')}</option>
+            <option value="active">{t('Aktiv')}</option>
+            <option value="inactive">{t('Inaktiv')}</option>
           </select>
         </div>
       </div>
@@ -409,18 +411,18 @@ function ServiceProvidersPage() {
         <div className="d-flex align-items-end justify-content-xl-end gap-2 flex-nowrap vergo-action-buttons">
           <button type="button" className="btn btn-light-primary vergo-filter-reset-btn text-nowrap" onClick={() => setFilters({ search: '', status: '' })}>
             <i className="ti ti-refresh me-1" aria-hidden="true"></i>
-            Zurücksetzen
+            {t('Zurücksetzen')}
           </button>
           <button type="button" className="btn btn-primary text-nowrap" onClick={openCreateModal}>
             <i className="ti ti-plus me-1"></i>
-            Dienstleister erstellen
+            {t('Dienstleister erstellen')}
           </button>
         </div>
       </div>
     </div>
 
     {error && !isModalOpen ? <div className="alert alert-danger py-2">{error}</div> : null}
-    {isLoading ? <p className="text-muted mb-0">Dienstleister werden geladen...</p> : null}
+    {isLoading ? <p className="text-muted mb-0">{t('Dienstleister werden geladen...')}</p> : null}
 
     {!isLoading ? (
       <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
@@ -428,14 +430,14 @@ function ServiceProvidersPage() {
           <thead className="text-dark fs-4">
             <tr>
               <th><h6 className="fs-4 fw-semibold mb-0">Code</h6></th>
-              <th><h6 className="fs-4 fw-semibold mb-0">Unternehmen</h6></th>
-              <th><h6 className="fs-4 fw-semibold mb-0">Kontakt</h6></th>
-              <th><h6 className="fs-4 fw-semibold mb-0">Telefon</h6></th>
-              <th><h6 className="fs-4 fw-semibold mb-0">Bewertung</h6></th>
-              <th><h6 className="fs-4 fw-semibold mb-0">Abgeschlossen</h6></th>
-              <th><h6 className="fs-4 fw-semibold mb-0">Angebote</h6></th>
-              <th><h6 className="fs-4 fw-semibold mb-0">Status</h6></th>
-              <th width="110"><h6 className="fs-4 fw-semibold mb-0">Aktion</h6></th>
+              <th><h6 className="fs-4 fw-semibold mb-0">{t('Unternehmen')}</h6></th>
+              <th><h6 className="fs-4 fw-semibold mb-0">{t('Kontakt')}</h6></th>
+              <th><h6 className="fs-4 fw-semibold mb-0">{t('Telefon')}</h6></th>
+              <th><h6 className="fs-4 fw-semibold mb-0">{t('Bewertung')}</h6></th>
+              <th><h6 className="fs-4 fw-semibold mb-0">{t('Abgeschlossen')}</h6></th>
+              <th><h6 className="fs-4 fw-semibold mb-0">{t('Angebote')}</h6></th>
+              <th><h6 className="fs-4 fw-semibold mb-0">{t('Status')}</h6></th>
+              <th width="110"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
             </tr>
           </thead>
           <tbody>
@@ -451,13 +453,13 @@ function ServiceProvidersPage() {
                 <td>{provider.rating ?? '-'}</td>
                 <td>{provider.completed_jobs_count ?? 0}</td>
                 <td>{provider.bids_count ?? 0}</td>
-                <td><span className={getStatusBadgeClass(provider.status)}>{formatStatusLabel(provider.status)}</span></td>
+                <td><span className={getStatusBadgeClass(provider.status)}>{t(formatStatusLabel(provider.status))}</span></td>
                 <td>
                   <div className="table-action-group">
-                    <button type="button" className="table-action-btn table-action-edit" onClick={() => handleEdit(provider)} title="Dienstleister bearbeiten">
+                    <button type="button" className="table-action-btn table-action-edit" onClick={() => handleEdit(provider)} title={t('Dienstleister bearbeiten')}>
                       <i className="ti ti-pencil"></i>
                     </button>
-                    <button type="button" className="table-action-btn table-action-delete" onClick={() => handleDelete(provider.id)} title="Dienstleister löschen">
+                    <button type="button" className="table-action-btn table-action-delete" onClick={() => handleDelete(provider.id)} title={t('Dienstleister löschen')}>
                       <i className="ti ti-trash"></i>
                     </button>
                   </div>
@@ -465,7 +467,7 @@ function ServiceProvidersPage() {
               </tr>
             ))}
             {filteredProviders.length === 0 ? (
-              <tr><td colSpan="9" className="text-center text-muted py-4">Keine Dienstleister gefunden.</td></tr>
+              <tr><td colSpan="9" className="text-center text-muted py-4">{t('Keine Dienstleister gefunden.')}</td></tr>
             ) : null}
           </tbody>
         </table>
@@ -480,70 +482,70 @@ function ServiceProvidersPage() {
   <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
     <div className="modal-content rounded-1">
       <div className="modal-header border-bottom">
-        <h5 className="modal-title">{editingId ? 'Dienstleister bearbeiten' : 'Dienstleister erstellen'}</h5>
-        <button type="button" className="btn-close" onClick={closeModal}></button>
+        <h5 className="modal-title">{editingId ? t('Dienstleister bearbeiten') : t('Dienstleister erstellen')}</h5>
+        <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={closeModal}></button>
       </div>
       <form onSubmit={handleSubmit} noValidate>
         <div className="modal-body">
           <div className="row">
             <div className="col-md-6 mb-3">
-              <label className="form-label">Firmenname</label>
+              <label className="form-label">{t('Firmenname')}</label>
               <input className={`form-control${fieldErrors.company_name ? ' is-invalid' : ''}`} name="company_name" value={form.company_name} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label">E-Mail für Aufträge</label>
+              <label className="form-label">{t('E-Mail für Aufträge')}</label>
               <input type="email" className={`form-control${fieldErrors.order_email ? ' is-invalid' : ''}`} name="order_email" value={form.order_email} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label">Kontakt-E-Mail</label>
+              <label className="form-label">{t('Kontakt-E-Mail')}</label>
               <input type="email" className={`form-control${fieldErrors.contact_email ? ' is-invalid' : ''}`} name="contact_email" value={form.contact_email} onChange={handleChange} />
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label">Telefon</label>
+              <label className="form-label">{t('Telefon')}</label>
               <input className={`form-control${fieldErrors.phone ? ' is-invalid' : ''}`} name="phone" value={form.phone} onChange={handleChange} />
             </div>
             <div className="col-12 mb-3">
-              <label className="form-label">Adresse</label>
+              <label className="form-label">{t('Adresse')}</label>
               <input className={`form-control${fieldErrors.address ? ' is-invalid' : ''}`} name="address" value={form.address} onChange={handleChange} />
             </div>
             <div className="col-md-4 mb-3">
-              <label className="form-label">PLZ</label>
+              <label className="form-label">{t('PLZ')}</label>
               <input className={`form-control${fieldErrors.postal_code ? ' is-invalid' : ''}`} name="postal_code" value={form.postal_code} onChange={handleChange} />
             </div>
             <div className="col-md-5 mb-3">
-              <label className="form-label">Ort</label>
+              <label className="form-label">{t('Ort')}</label>
               <input className={`form-control${fieldErrors.city ? ' is-invalid' : ''}`} name="city" value={form.city} onChange={handleChange} />
             </div>
             <div className="col-md-3 mb-3">
-              <label className="form-label">Kanton</label>
+              <label className="form-label">{t('Kanton')}</label>
               <select className={`form-select${fieldErrors.canton ? ' is-invalid' : ''}`} name="canton" value={form.canton} onChange={handleChange}>
-                <option value="">Kanton wählen</option>
+                <option value="">{t('Kanton wählen')}</option>
                 {SWISS_CANTONS.map((canton) => (
                   <option key={canton.value} value={canton.value}>{canton.label}</option>
                 ))}
               </select>
             </div>
             <div className="col-12 mb-3">
-              <label className="form-label">Gewerk</label>
+              <label className="form-label">{t('Gewerk')}</label>
               <select className={`form-select${fieldErrors.trade_groups ? ' is-invalid' : ''}`} name="trade_groups" value={form.trade_groups} onChange={handleChange} multiple size="5">
                 {JOB_TYPE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.label)}
                   </option>
                 ))}
               </select>
-              <small className="text-muted">Mehrfachauswahl möglich.</small>
+              <small className="text-muted">{t('Mehrfachauswahl möglich.')}</small>
               {form.trade_groups.length > 0 ? (
                 <div className="small text-muted mt-1">
-                  {form.trade_groups.map((value) => getOptionLabel(JOB_TYPE_OPTIONS, value)).join(', ')}
+                  {form.trade_groups.map((value) => t(getOptionLabel(JOB_TYPE_OPTIONS, value))).join(', ')}
                 </div>
               ) : null}
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label">Status</label>
+              <label className="form-label">{t('Status')}</label>
               <select className="form-select" name="status" value={form.status} onChange={handleChange}>
-                <option value="active">Aktiv</option>
-                <option value="inactive">Inaktiv</option>
+                <option value="active">{t('Aktiv')}</option>
+                <option value="inactive">{t('Inaktiv')}</option>
               </select>
             </div>
             <div className="col-md-6 mb-3 d-flex align-items-end">
@@ -557,27 +559,27 @@ function ServiceProvidersPage() {
                   onChange={handleChange}
                 />
                 <label className="form-check-label fw-semibold" htmlFor="provider-vat-subject">
-                  MwSt.-pflichtig
+                  {t('MwSt.-pflichtig')}
                 </label>
-                <div className="form-text">Dienstleister kann bei Angeboten Preise inkl./exkl. MwSt. markieren.</div>
+                <div className="form-text">{t('Dienstleister kann bei Angeboten Preise inkl./exkl. MwSt. markieren.')}</div>
               </div>
             </div>
             <div className="col-md-6 mb-0">
-              <label className="form-label">Domain-Endung</label>
-              <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder="beispiel.ch" />
+              <label className="form-label">{t('Domain-Endung')}</label>
+              <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder={t('beispiel.ch')} />
             </div>
             <div className="col-12">
               <div className="alert alert-light border small mb-0">
-                Kontakt-E-Mail und Telefonnummer dienen nur als Kontaktangaben. Aufträge werden an die E-Mail für Aufträge gesendet. Ein Passwort wird nicht gesetzt.
+                {t('Kontakt-E-Mail und Telefonnummer dienen nur als Kontaktangaben. Aufträge werden an die E-Mail für Aufträge gesendet. Ein Passwort wird nicht gesetzt.')}
               </div>
             </div>
           </div>
           {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
         </div>
         <div className="modal-footer">
-          <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>Abbrechen</button>
+          <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>{t('Abbrechen')}</button>
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
-            {isSaving ? 'Wird gespeichert...' : editingId ? 'Dienstleister aktualisieren' : 'Dienstleister erstellen'}
+            {isSaving ? t('Wird gespeichert...') : editingId ? t('Dienstleister aktualisieren') : t('Dienstleister erstellen')}
           </button>
         </div>
       </form>

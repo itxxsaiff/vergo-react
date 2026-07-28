@@ -1,14 +1,31 @@
-const LOCAL_API_BASE_URL = '/api'
+const LOCAL_API_BASE_URL = 'http://localhost/laravel/vergo-react/panel/public/api'
 const REMOTE_API_BASE_URL = 'https://work.vergo.ch/panel/public/api'
+const LOCAL_API_PATH = '/laravel/vergo-react/panel/public/api'
 
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1'])
 
+function isPrivateNetworkHost(hostname) {
+  return (
+    /^10\./.test(hostname) ||
+    /^192\.168\./.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+  )
+}
+
 const isLocalHost =
 typeof window !== 'undefined' &&
-LOCAL_HOSTNAMES.has(window.location.hostname)
+(
+  LOCAL_HOSTNAMES.has(window.location.hostname) ||
+  isPrivateNetworkHost(window.location.hostname)
+)
+
+const localApiBaseUrl =
+typeof window !== 'undefined' && isLocalHost
+  ? `${window.location.protocol}//${window.location.hostname}${LOCAL_API_PATH}`
+  : LOCAL_API_BASE_URL
 
 const API_BASE_URL = isLocalHost
-  ? LOCAL_API_BASE_URL
+  ? localApiBaseUrl
   : REMOTE_API_BASE_URL
 
 let authToken = null
@@ -259,8 +276,8 @@ export const api = {
   getProperty(id) {
     return request(`/properties/${id}`)
   },
-  openPropertyPdf(id) {
-    return openPdfInNewTab(`/properties/${id}/pdf`)
+  openPropertyPdf(id, language = 'de') {
+    return openPdfInNewTab(`/properties/${id}/pdf?language=${encodeURIComponent(language)}`)
   },
   comparePropertyPrice(id) {
     return request(`/properties/${id}/compare-price`, {
@@ -287,6 +304,9 @@ export const api = {
   getOrders() {
     return request('/orders')
   },
+  getDeletedOrders() {
+    return request('/orders/deleted')
+  },
   getOrder(id) {
     return request(`/orders/${id}`)
   },
@@ -310,6 +330,12 @@ export const api = {
       method: 'POST',
     })
   },
+  publishQuoteRequest(id, data = null) {
+    return request(`/orders/${id}/publish-quote-request`, {
+      method: 'POST',
+      ...(data ? { body: JSON.stringify(data) } : {}),
+    })
+  },
   createProviderReview(orderId, data) {
     return request(`/orders/${orderId}/reviews`, {
       method: 'POST',
@@ -319,6 +345,11 @@ export const api = {
   deleteOrder(id) {
     return request(`/orders/${id}`, {
       method: 'DELETE',
+    })
+  },
+  restoreOrder(id) {
+    return request(`/orders/${id}/restore`, {
+      method: 'POST',
     })
   },
   compareOrderBids(id) {
@@ -377,6 +408,12 @@ export const api = {
   },
   createSupportTicket(data) {
     return request('/support-tickets', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  createPublicSupportTicket(data) {
+    return request('/public/support-tickets', {
       method: 'POST',
       body: JSON.stringify(data),
     })

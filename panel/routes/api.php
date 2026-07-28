@@ -42,6 +42,7 @@ Route::get('test-api', function(){
 });
 
 Route::get('/cron/run-ai-analysis', [CronController::class, 'runAiAnalysis']);
+Route::post('/public/support-tickets', [SupportTicketController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -87,11 +88,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/deleted', [OrderController::class, 'deleted']);
+    Route::post('/orders/{orderId}/restore', [OrderController::class, 'restore'])->whereNumber('orderId');
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::put('/orders/{order}', [OrderController::class, 'update']);
     Route::get('/orders/{order}/attachment', [OrderController::class, 'downloadAttachment'])->name('orders.attachment.download');
     Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
     Route::post('/orders/{order}/complete', [OrderController::class, 'markCompleted']);
+    Route::post('/orders/{order}/publish-quote-request', [OrderController::class, 'publishQuoteRequest']);
     Route::post('/orders/{order}/reviews', [ProviderReviewController::class, 'store']);
     Route::post('/orders/{order}/compare-bids', OrderComparisonController::class);
     Route::post('/orders/{order}/compare-price', [OrderComparisonController::class, 'comparePrice']);

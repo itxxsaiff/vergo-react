@@ -9,14 +9,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('access_level', 30)->default('admin')->after('status');
+            if (! Schema::hasColumn('users', 'access_level')) {
+                $table->string('access_level', 30)->default('admin')->after('status');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('access_level');
+            if (Schema::hasColumn('users', 'access_level')) {
+                $table->dropColumn('access_level');
+            }
         });
     }
 };

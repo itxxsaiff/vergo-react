@@ -3,6 +3,15 @@ export function formatStatusLabel(status) {
     return 'Unknown'
   }
 
+  const normalizedStatus = String(status).toLowerCase()
+  const statusLabels = {
+    uploaded: 'hochgeladen',
+  }
+
+  if (statusLabels[normalizedStatus]) {
+    return statusLabels[normalizedStatus]
+  }
+
   return status
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
@@ -38,6 +47,7 @@ export function getStatusBadgeClass(status) {
     'in_review',
     'open',
     'awaiting_owner_approval',
+    'inspection_quote_created',
   ].includes(normalizedStatus)) {
     return 'badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-2 px-3'
   }

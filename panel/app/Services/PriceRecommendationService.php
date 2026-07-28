@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AiAnalysisResult;
+use App\Models\Bid;
 use App\Models\Order;
 use App\Models\Property;
 use Illuminate\Support\Collection;
@@ -18,7 +19,10 @@ class PriceRecommendationService
             'property.documents.analysisResults',
         ]);
 
-        $bids = $order->bids->values();
+        $bids = $order->bids
+            ->reject(fn ($bid) => $this->isHiddenScopeSeedBid($bid))
+            ->filter(fn ($bid) => is_numeric($bid->amount) && (float) $bid->amount > 0)
+            ->values();
         $documentAnalysisResults = $order->documents
             ->flatMap(fn ($document) => $document->analysisResults)
             ->merge(
@@ -31,23 +35,36 @@ class PriceRecommendationService
             ->filter(fn ($result) => $result->status === 'analyzed')
             ->values();
 
-        $historicalBenchmarks = $this->collectRelevantBenchmarks(
+        $documentBenchmarks = $this->collectRelevantBenchmarks(
             serviceType: $order->service_type,
             propertySize: $order->property?->size,
             propertyId: $order->property_id,
             localResults: $documentAnalysisResults,
             preferredInterval: $this->resolvePreferredIntervalFromResults($documentAnalysisResults),
         );
+        $orderBenchmarks = $this->collectHistoricalOrderBenchmarks(
+            serviceType: $order->service_type,
+            propertySize: $order->property?->size,
+            propertyId: $order->property_id,
+            excludedOrderId: $order->id,
+            orderObjectIds: $this->orderObjectIds($order),
+        );
+        $historicalBenchmarks = $documentBenchmarks
+            ->merge($orderBenchmarks)
+            ->sortByDesc('match_score')
+            ->values();
 
         $estimatedAmounts = $historicalBenchmarks->pluck('amount')->values();
-        $benchmarkAmount = $estimatedAmounts->isNotEmpty() ? round($estimatedAmounts->avg(), 2) : null;
+        $benchmarkAmount = $this->weightedBenchmarkAmount($historicalBenchmarks);
+        $documentBenchmarkCount = $documentBenchmarks->count();
+        $orderBenchmarkCount = $orderBenchmarks->count();
 
         $recommendedBid = $bids->sortBy('amount')->first();
         $recommendedBidAmount = $recommendedBid ? (float) $recommendedBid->amount : null;
 
         if ($recommendedBidAmount === null && $benchmarkAmount === null) {
             return [
-                'summary' => 'No bids or analyzed document benchmarks are available yet to compare price.',
+                'summary' => 'No bids, analyzed document benchmarks, or completed order benchmarks are available yet to compare price.',
                 'score' => 0,
                 'comparison_data' => [
                     'analysis_type' => 'price_recommendation',
@@ -56,9 +73,13 @@ class PriceRecommendationService
                     'recommended_bid_amount' => null,
                     'benchmark_amount' => null,
                     'benchmark_source_count' => 0,
+                    'benchmark_scope' => 'global_all_properties',
+                    'document_benchmark_source_count' => 0,
+                    'historical_order_source_count' => 0,
+                    'benchmark_amounts' => [],
                     'document_amounts' => [],
                     'variance_percentage' => null,
-                    'reasons' => ['Upload and analyze contracts or invoices, then compare bids again.'],
+                    'reasons' => ['Upload and analyze contracts or invoices, or complete matching orders, then compare bids again.'],
                 ],
             ];
         }
@@ -79,13 +100,14 @@ class PriceRecommendationService
         }
 
         $reasons = collect([
-            $benchmarkAmount !== null ? sprintf('Average analyzed document benchmark is %s.', number_format($benchmarkAmount, 2)) : null,
+            $benchmarkAmount !== null ? sprintf('Average benchmark from analyzed documents and completed orders is %s.', number_format($benchmarkAmount, 2)) : null,
             $recommendedBid ? sprintf('Lowest bid comes from %s at %s %s.', $recommendedBid->serviceProvider?->company_name ?: 'Unknown provider', number_format($recommendedBidAmount, 2), $recommendedBid->currency) : null,
             $variancePercentage !== null ? sprintf('Variance against benchmark is %s%%.', number_format($variancePercentage, 2)) : null,
-            $historicalBenchmarks->isNotEmpty() ? sprintf('%s similar historical source(s) were used from invoices and contracts.', $historicalBenchmarks->count()) : null,
+            $historicalBenchmarks->isNotEmpty() ? sprintf('%s similar historical source(s) were used from analyzed documents and completed orders.', $historicalBenchmarks->count()) : null,
             $historicalBenchmarks->where('same_property', true)->isNotEmpty() ? 'Some benchmark sources are from the same property history.' : null,
             $historicalBenchmarks->where('size_match', true)->isNotEmpty() ? 'Benchmark includes similar property-size documents.' : null,
             $historicalBenchmarks->where('interval_match', true)->isNotEmpty() ? 'Benchmark includes similar service intervals.' : null,
+            $orderBenchmarkCount > 0 ? sprintf('%s completed/awarded order(s) were used even without an uploaded invoice.', $orderBenchmarkCount) : null,
         ])->filter()->values()->all();
 
         $summary = match ($pricingSignal) {
@@ -106,7 +128,11 @@ class PriceRecommendationService
                 'recommended_bid_currency' => $recommendedBid?->currency,
                 'benchmark_amount' => $benchmarkAmount,
                 'benchmark_source_count' => $estimatedAmounts->count(),
-                'document_amounts' => $estimatedAmounts->all(),
+                'benchmark_scope' => 'global_all_properties',
+                'document_benchmark_source_count' => $documentBenchmarkCount,
+                'historical_order_source_count' => $orderBenchmarkCount,
+                'benchmark_amounts' => $estimatedAmounts->all(),
+                'document_amounts' => $documentBenchmarks->pluck('amount')->values()->all(),
                 'benchmark_sources' => $historicalBenchmarks->take(8)->values()->all(),
                 'service_category' => $order->service_type,
                 'service_interval' => $this->resolvePreferredIntervalFromResults($documentAnalysisResults),
@@ -123,7 +149,11 @@ class PriceRecommendationService
             'documents.analysisResults',
         ]);
 
-        $bids = $property->orders->flatMap->bids->values();
+        $bids = $property->orders
+            ->flatMap->bids
+            ->reject(fn ($bid) => $this->isHiddenScopeSeedBid($bid))
+            ->filter(fn ($bid) => is_numeric($bid->amount) && (float) $bid->amount > 0)
+            ->values();
         $documentAnalysisResults = $property->documents
             ->flatMap->analysisResults
             ->filter(fn ($result) => $result->status === 'analyzed')
@@ -131,16 +161,27 @@ class PriceRecommendationService
 
         $serviceType = $this->resolvePropertyServiceType($property, $documentAnalysisResults);
         $preferredInterval = $this->resolvePreferredIntervalFromResults($documentAnalysisResults);
-        $historicalBenchmarks = $this->collectRelevantBenchmarks(
+        $documentBenchmarks = $this->collectRelevantBenchmarks(
             serviceType: $serviceType,
             propertySize: $property->size,
             propertyId: $property->id,
             localResults: $documentAnalysisResults,
             preferredInterval: $preferredInterval,
         );
+        $orderBenchmarks = $this->collectHistoricalOrderBenchmarks(
+            serviceType: $serviceType,
+            propertySize: $property->size,
+            propertyId: $property->id,
+        );
+        $historicalBenchmarks = $documentBenchmarks
+            ->merge($orderBenchmarks)
+            ->sortByDesc('match_score')
+            ->values();
 
         $estimatedAmounts = $historicalBenchmarks->pluck('amount')->values();
-        $benchmarkAmount = $estimatedAmounts->isNotEmpty() ? round($estimatedAmounts->avg(), 2) : null;
+        $benchmarkAmount = $this->weightedBenchmarkAmount($historicalBenchmarks);
+        $documentBenchmarkCount = $documentBenchmarks->count();
+        $orderBenchmarkCount = $orderBenchmarks->count();
 
         $lowestBid = $bids->sortBy('amount')->first();
         $lowestBidAmount = $lowestBid ? (float) $lowestBid->amount : null;
@@ -159,7 +200,11 @@ class PriceRecommendationService
                     'orders_count' => $property->orders->count(),
                     'document_count' => $property->documents->count(),
                     'benchmark_source_count' => 0,
-                    'reasons' => ['Upload and analyze property-level documents or collect bids from orders.'],
+                    'benchmark_scope' => 'global_all_properties',
+                    'document_benchmark_source_count' => 0,
+                    'historical_order_source_count' => 0,
+                    'benchmark_amounts' => [],
+                    'reasons' => ['Upload and analyze property-level documents or complete orders with awarded bids.'],
                 ],
             ];
         }
@@ -187,13 +232,14 @@ class PriceRecommendationService
         };
 
         $reasons = collect([
-            $benchmarkAmount !== null ? sprintf('Average analyzed property benchmark is %s.', number_format($benchmarkAmount, 2)) : null,
+            $benchmarkAmount !== null ? sprintf('Average property benchmark from analyzed documents and completed orders is %s.', number_format($benchmarkAmount, 2)) : null,
             $lowestBid ? sprintf('Lowest property-linked bid is %s %s from %s.', number_format($lowestBidAmount, 2), $lowestBid->currency, $lowestBid->serviceProvider?->company_name ?: 'Unknown provider') : null,
             $variancePercentage !== null ? sprintf('Variance against the current benchmark is %s%%.', number_format($variancePercentage, 2)) : null,
-            $historicalBenchmarks->isNotEmpty() ? sprintf('%s similar invoices/contracts were used for this benchmark.', $historicalBenchmarks->count()) : null,
+            $historicalBenchmarks->isNotEmpty() ? sprintf('%s similar documents/orders were used for this benchmark.', $historicalBenchmarks->count()) : null,
             $historicalBenchmarks->where('same_property', true)->isNotEmpty() ? 'This property already has matching historical price evidence.' : null,
             $historicalBenchmarks->where('size_match', true)->isNotEmpty() ? 'Benchmark includes properties of similar size.' : null,
             $historicalBenchmarks->where('interval_match', true)->isNotEmpty() ? 'Benchmark includes similar service intervals.' : null,
+            $orderBenchmarkCount > 0 ? sprintf('%s completed/awarded order(s) were used even without an uploaded invoice.', $orderBenchmarkCount) : null,
         ])->filter()->values()->all();
 
         return [
@@ -210,6 +256,10 @@ class PriceRecommendationService
                 'orders_count' => $property->orders->count(),
                 'document_count' => $property->documents->count(),
                 'benchmark_source_count' => $estimatedAmounts->count(),
+                'benchmark_scope' => 'global_all_properties',
+                'document_benchmark_source_count' => $documentBenchmarkCount,
+                'historical_order_source_count' => $orderBenchmarkCount,
+                'benchmark_amounts' => $estimatedAmounts->all(),
                 'benchmark_sources' => $historicalBenchmarks->take(10)->values()->all(),
                 'service_category' => $serviceType,
                 'service_interval' => $preferredInterval,
@@ -231,7 +281,7 @@ class PriceRecommendationService
         $allResults = AiAnalysisResult::query()
             ->whereNotNull('document_id')
             ->where('status', 'analyzed')
-            ->with(['document.property:id,size,city,country', 'document:id,property_id,type,title'])
+            ->with(['document.property:id,size,city,country', 'document:id,property_id,type,title,service_type,trade_object,trade_activity'])
             ->latest()
             ->get();
 
@@ -246,37 +296,43 @@ class PriceRecommendationService
                     return null;
                 }
 
-                $resultServiceCategory = (string) data_get($comparisonData, 'service_category', '');
+                $document = $result->document;
+                $resultServiceCategory = (string) (data_get($comparisonData, 'service_category') ?: $document?->service_type ?: '');
                 $resultInterval = (string) data_get($comparisonData, 'service_interval', '');
                 $resultPropertySize = $this->normalizeNumericValue(
-                    data_get($comparisonData, 'property_size', $result->document?->property?->size)
+                    data_get($comparisonData, 'property_size', $document?->property?->size)
                 );
 
-                $serviceMatch = $this->serviceCategoriesMatch($serviceType, $resultServiceCategory);
+                $serviceMatch = $this->serviceCategoriesMatch($serviceType, $resultServiceCategory)
+                    || $this->serviceCategoriesMatch($serviceType, $document?->service_type);
                 $sizeMatch = $this->isPropertySizeSimilar($propertySize, $resultPropertySize);
                 $intervalMatch = $this->serviceIntervalsMatch($preferredInterval, $resultInterval);
-                $sameProperty = (int) ($result->document?->property_id ?? 0) === $propertyId;
+                $sameProperty = (int) ($document?->property_id ?? 0) === $propertyId;
 
                 $matchScore = 0;
                 $matchScore += $sameProperty ? 4 : 0;
                 $matchScore += $serviceMatch ? 3 : 0;
                 $matchScore += $sizeMatch ? 2 : 0;
                 $matchScore += $intervalMatch ? 2 : 0;
-                $matchScore += data_get($comparisonData, 'document_use_case') === 'historical_invoice_benchmark' ? 2 : 0;
+                $matchScore += ($document?->type === 'invoice' || data_get($comparisonData, 'document_use_case') === 'historical_invoice_benchmark') ? 2 : 0;
 
                 if (! $sameProperty && ! $serviceMatch && ! $sizeMatch) {
                     return null;
                 }
 
                 return [
+                    'source_type' => $document?->type === 'invoice' ? 'invoice_analysis' : 'document_analysis',
                     'result_id' => $result->id,
                     'amount' => round((float) $amount, 2),
                     'currency' => data_get($comparisonData, 'currency', 'CHF'),
                     'service_category' => $resultServiceCategory ?: null,
+                    'document_service_type' => $document?->service_type,
+                    'trade_object' => $document?->trade_object,
+                    'trade_activity' => $document?->trade_activity,
                     'service_interval' => $resultInterval ?: null,
-                    'document_type' => $result->document?->type,
-                    'document_title' => $result->document?->title,
-                    'property_id' => $result->document?->property_id,
+                    'document_type' => $document?->type,
+                    'document_title' => $document?->title,
+                    'property_id' => $document?->property_id,
                     'same_property' => $sameProperty,
                     'service_match' => $serviceMatch,
                     'size_match' => $sizeMatch,
@@ -292,6 +348,101 @@ class PriceRecommendationService
             ->sortByDesc('match_score')
             ->take(25)
             ->values();
+    }
+
+    private function collectHistoricalOrderBenchmarks(
+        ?string $serviceType,
+        mixed $propertySize,
+        int $propertyId,
+        ?int $excludedOrderId = null,
+        ?Collection $orderObjectIds = null,
+    ): Collection {
+        return Bid::query()
+            ->whereIn('status', ['approved', 'accepted', 'completed'])
+            ->whereNotNull('amount')
+            ->where('amount', '>', 0)
+            ->when($excludedOrderId, fn ($query) => $query->where('order_id', '!=', $excludedOrderId))
+            ->whereHas('order', function ($query) use ($serviceType, $propertyId) {
+                if ($serviceType) {
+                    $query->where('service_type', $serviceType);
+                    return;
+                }
+
+                $query->where('property_id', $propertyId);
+            })
+            ->with([
+                'order:id,title,status,property_id,property_object_id,property_object_ids,service_type,due_date,completed_at',
+                'order.property:id,size,city,country',
+                'serviceProvider:id,company_name',
+            ])
+            ->latest()
+            ->get()
+            ->reject(fn ($bid) => $this->isHiddenScopeSeedBid($bid))
+            ->map(function ($bid) use ($serviceType, $propertySize, $propertyId, $orderObjectIds) {
+                $historicalOrder = $bid->order;
+
+                if (! $historicalOrder) {
+                    return null;
+                }
+
+                $sameProperty = (int) $historicalOrder->property_id === $propertyId;
+                $serviceMatch = $this->serviceCategoriesMatch($serviceType, $historicalOrder->service_type);
+                $sizeMatch = $this->isPropertySizeSimilar($propertySize, $historicalOrder->property?->size);
+                $objectMatch = $orderObjectIds?->isNotEmpty()
+                    ? $this->documentMatchesOrderObjects($historicalOrder, $orderObjectIds)
+                    : false;
+
+                if (! $sameProperty && ! $serviceMatch && ! $sizeMatch && ! $objectMatch) {
+                    return null;
+                }
+
+                $matchScore = 0;
+                $matchScore += $sameProperty ? 4 : 0;
+                $matchScore += $serviceMatch ? 3 : 0;
+                $matchScore += $objectMatch ? 2 : 0;
+                $matchScore += $sizeMatch ? 2 : 0;
+                $matchScore += $bid->status === 'completed' || $historicalOrder->status === 'completed' ? 2 : 1;
+
+                return [
+                    'source_type' => 'historical_order',
+                    'bid_id' => $bid->id,
+                    'order_id' => $historicalOrder->id,
+                    'order_title' => $historicalOrder->title,
+                    'amount' => round((float) $bid->amount, 2),
+                    'currency' => $bid->currency ?: 'CHF',
+                    'service_category' => $historicalOrder->service_type,
+                    'provider' => $bid->serviceProvider?->company_name,
+                    'property_id' => $historicalOrder->property_id,
+                    'same_property' => $sameProperty,
+                    'service_match' => $serviceMatch,
+                    'size_match' => $sizeMatch,
+                    'object_match' => $objectMatch,
+                    'interval_match' => false,
+                    'completed_at' => $historicalOrder->completed_at?->toDateTimeString(),
+                    'match_score' => $matchScore,
+                ];
+            })
+            ->filter()
+            ->sortByDesc('match_score')
+            ->take(25)
+            ->values();
+    }
+
+    private function weightedBenchmarkAmount(Collection $benchmarks): ?float
+    {
+        if ($benchmarks->isEmpty()) {
+            return null;
+        }
+
+        $weightTotal = (float) $benchmarks->sum(fn ($item) => max(1, (int) $item['match_score']));
+
+        if ($weightTotal <= 0) {
+            return round((float) $benchmarks->avg('amount'), 2);
+        }
+
+        $weightedTotal = $benchmarks->sum(fn ($item) => (float) $item['amount'] * max(1, (int) $item['match_score']));
+
+        return round($weightedTotal / $weightTotal, 2);
     }
 
     private function resolvePropertyServiceType(Property $property, Collection $documentAnalysisResults): ?string
@@ -361,5 +512,36 @@ class PriceRecommendationService
         $normalized = preg_replace('/[^0-9.]/', '', $value);
 
         return is_numeric($normalized) ? (float) $normalized : null;
+    }
+
+    private function orderObjectIds(Order $order): Collection
+    {
+        return collect($order->property_object_ids ?? [])
+            ->push($order->property_object_id)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    private function documentMatchesOrderObjects(mixed $document, Collection $orderObjectIds): bool
+    {
+        if ($orderObjectIds->isEmpty()) {
+            return false;
+        }
+
+        $documentObjectIds = collect($document->property_object_ids ?? [])
+            ->push($document->property_object_id)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        return $documentObjectIds->intersect($orderObjectIds)->isNotEmpty();
+    }
+
+    private function isHiddenScopeSeedBid(mixed $bid): bool
+    {
+        return (bool) data_get($bid->workflow_meta ?? [], 'quote_scope_seed');
     }
 }

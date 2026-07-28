@@ -67,6 +67,7 @@ class UpdateOrderRequest extends FormRequest
             'workflow_meta' => ['nullable', 'array'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,png,jpg,jpeg', 'max:10240'],
             'quote_items' => ['nullable', 'array'],
+            'quote_items.*.category' => ['required_with:quote_items', 'string', 'max:255'],
             'quote_items.*.label' => ['required_with:quote_items', 'string', 'max:255'],
             'quote_items.*.code' => ['nullable', 'string', 'max:100'],
             'quote_items.*.unit' => ['nullable', 'string', 'max:50'],

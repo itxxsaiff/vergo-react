@@ -52,6 +52,37 @@ class NotificationService
         ));
     }
 
+    public function sendInspectionQuoteCreated(Bid $bid, mixed $actor = null): void
+    {
+        $bid->loadMissing(['order.property.managerProfiles', 'serviceProvider']);
+
+        $order = $bid->order;
+
+        if (! $order?->property) {
+            return;
+        }
+
+        $providerName = $bid->serviceProvider?->company_name
+            ?: $bid->serviceProvider?->contact_name
+            ?: $bid->assigned_provider_email
+            ?: 'A provider';
+
+        $managers = $order->property->managerProfiles instanceof EloquentCollection
+            ? $order->property->managerProfiles
+            : collect();
+
+        $recipients = $managers
+            ->merge($this->adminRecipients($actor))
+            ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
+
+        Notification::send($recipients, new SystemNotification(
+            title: 'Quote Created After Site Visit',
+            message: sprintf('%s created a quote for "%s". Review the services and publish it for bidding.', $providerName, $order->title),
+            type: 'success',
+            actionUrl: "/orders/{$order->id}",
+        ));
+    }
+
     public function sendInspectionRequestAssigned(Order $order, iterable $providers): void
     {
         $recipients = $this->providerRecipients($providers);
@@ -150,9 +181,11 @@ class NotificationService
         ));
     }
 
-    public function sendQuoteRequestPublished(Order $order): void
+    public function sendQuoteRequestPublished(Order $order, array $excludeProviderIds = []): void
     {
-        $providers = $this->activeProviders();
+        $providers = $this->providersForTrade($order->service_type)
+            ->reject(fn ($provider) => in_array($provider->id, $excludeProviderIds, true))
+            ->values();
         $recipients = $this->providerRecipients($providers);
 
         Notification::send($recipients, new SystemNotification(
@@ -236,14 +269,19 @@ class NotificationService
     {
         $bid->loadMissing(['order.property', 'order.propertyObject', 'serviceProvider']);
 
-        $onsiteEmail = data_get($bid->order?->workflow_meta ?? [], 'inspection.onsite_contact.email');
+        $onsiteContact = data_get($bid->order?->workflow_meta ?? [], 'inspection.onsite_contact', []);
+        $onsiteEmail = data_get($onsiteContact, 'email');
+        $onsiteName = trim(implode(' ', array_filter([
+            data_get($onsiteContact, 'first_name'),
+            data_get($onsiteContact, 'last_name'),
+        ])));
 
         if (! $onsiteEmail) {
             return;
         }
 
         try {
-            Mail::mailer('orders')->to($onsiteEmail)->send(new InspectionAppointmentConfirmedMail($bid));
+            Mail::mailer('orders')->to($onsiteEmail, $onsiteName ?: null)->send(new InspectionAppointmentConfirmedMail($bid));
         } catch (\Throwable $exception) {
             Log::error('Vergo inspection appointment confirmation email failed', [
                 'order_id' => $bid->order_id,

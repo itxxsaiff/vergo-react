@@ -80,7 +80,7 @@ function processNode(node, language) {
     return
   }
 
-  ;['placeholder', 'title', 'aria-label'].forEach((attributeName) => processAttribute(node, attributeName, language))
+  ;['placeholder', 'title', 'aria-label', 'alt'].forEach((attributeName) => processAttribute(node, attributeName, language))
 
   node.childNodes.forEach((childNode) => processNode(childNode, language))
 }
@@ -125,7 +125,7 @@ function LanguageSynchronizer() {
         childList: true,
         characterData: true,
         attributes: true,
-        attributeFilter: ['placeholder', 'title', 'aria-label'],
+        attributeFilter: ['placeholder', 'title', 'aria-label', 'alt'],
       })
     }
 

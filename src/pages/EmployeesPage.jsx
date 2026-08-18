@@ -386,12 +386,6 @@ function EmployeesPage() {
 
                     </div>
 
-                    <div className="alert alert-light border small mt-3 mb-0">
-                      {editingEmployeeId
-                        ? 'Passwörter werden nicht manuell gesetzt. Verwenden Sie die Reset-E-Mail-Aktion in der Liste, um einen neuen Link zu senden.'
-                        : 'Das Passwort wird automatisch generiert. Nach dem Erstellen erhält der Mitarbeiter eine E-Mail, um sein eigenes Passwort festzulegen.'}
-                    </div>
-
                     {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
                   </div>
                   <div className="modal-footer">

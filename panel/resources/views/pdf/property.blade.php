@@ -224,12 +224,6 @@
             font-weight: 700;
         }
 
-        .object-muted {
-            margin-top: 3px;
-            color: #8a94a8;
-            font-size: 9px;
-        }
-
         .object-data-label {
             color: #8a94a8;
             font-size: 7px;
@@ -238,8 +232,13 @@
             text-transform: uppercase;
         }
 
+        .object-head-row td {
+            padding: 0 12px 2px;
+            border: 0;
+            background: transparent;
+        }
+
         .object-data-value {
-            margin-top: 3px;
             color: #1f2a44;
             font-size: 11px;
             font-weight: 700;
@@ -311,10 +310,15 @@
 
     <div class="section-head">
         <div class="section-title">{{ $labels['properties'] }}</div>
-        <div class="section-meta">{{ $labels['address_zip_city'] }}</div>
     </div>
 
     <table class="objects-table">
+        <tr class="object-head-row">
+            <td></td>
+            <td style="width: 52%;"><div class="object-data-label">{{ $labels['property_address'] }}</div></td>
+            <td style="width: 20%;"><div class="object-data-label">{{ $labels['zip'] }}</div></td>
+            <td style="width: 28%;"><div class="object-data-label">{{ $labels['city'] }}</div></td>
+        </tr>
         @foreach($objectCards as $index => $card)
             <tr class="object-row">
                 <td>
@@ -326,14 +330,11 @@
                 </td>
                 <td style="width: 52%;">
                     <div class="object-address">{{ $card['address'] }}</div>
-                    <div class="object-muted">{{ $labels['property_address'] }}</div>
                 </td>
                 <td style="width: 20%;">
-                    <div class="object-data-label">{{ $labels['zip'] }}</div>
                     <div class="object-data-value">{{ $card['postal_code'] }}</div>
                 </td>
                 <td style="width: 28%;">
-                    <div class="object-data-label">{{ $labels['city'] }}</div>
                     <div class="object-data-value">{{ $card['city'] }}</div>
                 </td>
             </tr>

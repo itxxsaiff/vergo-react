@@ -97,11 +97,15 @@ class EmployeeController extends Controller
 
     private function authorizeEmployeeAdminManagement(Request $request): void
     {
-        abort_unless($request->user() instanceof User, 403);
+        $user = $request->user();
 
+        abort_unless($user instanceof User, 403);
+
+        // Superusers are either a real admin account or an employee promoted to
+        // power user. Both may manage the admin/employee directory.
         abort_unless(
-            $request->user()->role?->name === 'employee'
-            && $request->user()->access_level === 'power_user',
+            $user->role?->name === 'admin'
+            || ($user->role?->name === 'employee' && $user->access_level === 'power_user'),
             403
         );
     }

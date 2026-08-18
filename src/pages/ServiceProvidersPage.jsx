@@ -568,11 +568,6 @@ function ServiceProvidersPage() {
               <label className="form-label">{t('Domain-Endung')}</label>
               <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder={t('beispiel.ch')} />
             </div>
-            <div className="col-12">
-              <div className="alert alert-light border small mb-0">
-                {t('Kontakt-E-Mail und Telefonnummer dienen nur als Kontaktangaben. Aufträge werden an die E-Mail für Aufträge gesendet. Ein Passwort wird nicht gesetzt.')}
-              </div>
-            </div>
           </div>
           {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
         </div>

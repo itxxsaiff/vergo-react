@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
-import { USER_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
@@ -19,14 +18,9 @@ function UserLoginPage() {
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [hasAccess] = useState(() => sessionStorage.getItem(USER_LOGIN_ACCESS_KEY) === 'granted')
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
-  }
-
-  if (!hasAccess) {
-    return <Navigate to="/login" replace />
   }
 
   function handleChange(event) {
@@ -44,9 +38,8 @@ function UserLoginPage() {
     setError('')
 
     try {
-      await login(form)
-      sessionStorage.removeItem(USER_LOGIN_ACCESS_KEY)
-      navigate('/dashboard', { replace: true })
+      const loggedInUser = await login(form)
+      navigate(loggedInUser?.home_path ?? '/dashboard', { replace: true })
     } catch (submitError) {
       setError(submitError.message)
     } finally {
@@ -56,12 +49,12 @@ function UserLoginPage() {
 
   return (
     <AuthShell
-      title={t('Benutzeranmeldung')}
+      title={t('Administrator-Anmeldung')}
       subtitle={t('Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.')}
-      logoHref="/user-login"
+      logoHref="/admin-login"
       backgroundStyle={backgroundStyle}
       {...immersiveAuthShellProps}
-      footer={<Link className="text-primary fw-medium" to="/login">{t('Zurück')}</Link>}
+      footer={<Link className="text-primary fw-medium" to="/type">{t('Zurück')}</Link>}
     >
       <form onSubmit={handleSubmit}>
         <div className="mb-3">

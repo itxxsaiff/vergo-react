@@ -1,10 +1,10 @@
 :root {
-  --vergo-accent: #b78467;
-  --vergo-accent-strong: #9f6d54;
+  --vergo-accent: #aa8874;
+  --vergo-accent-strong: #937160;
   --vergo-accent-soft: #efe2da;
   --vergo-accent-soft-2: #f7efea;
-  --vergo-sidebar-top: #bf8d70;
-  --vergo-sidebar-bottom: #b07c5f;
+  --vergo-sidebar-top: #b2907d;
+  --vergo-sidebar-bottom: #a3806c;
   --vergo-shell-bg: #f6f8fc;
   --vergo-card-bg: #ffffff;
   --vergo-table-head: #f4ebe6;
@@ -293,7 +293,7 @@ body {
 }
 
 .app-header .navbar.vergo-manager-header {
-  background: #9f6d54;
+  background: #937160;
   border-bottom: 1px solid rgba(233, 236, 242, 0.95);
 }
 
@@ -485,7 +485,7 @@ body {
   top: 50%;
   transform: translateY(-50%);
   font-size: 1rem;
-  color: #a48775;
+  color: #9c897d;
   pointer-events: none;
 }
 
@@ -507,7 +507,7 @@ body {
   top: 50%;
   transform: translateY(-50%);
   font-size: 1rem;
-  color: #a48775;
+  color: #9c897d;
   pointer-events: none;
   z-index: 1;
 }
@@ -633,7 +633,7 @@ body {
 
 .vergo-admin-directory-card:hover {
   transform: translateY(-3px);
-  border-color: #ddc8bb;
+  border-color: #d8c9c0;
   box-shadow:
     0 20px 42px rgba(33, 35, 43, 0.09),
     0 8px 18px rgba(183, 132, 103, 0.1);
@@ -1813,7 +1813,7 @@ body {
 
 .vergo-order-stepper-item.is-active .vergo-order-stepper-node {
   border-color: var(--vergo-accent);
-  background: linear-gradient(180deg, #d8a789 0%, #be8767 100%);
+  background: linear-gradient(180deg, #cbaa96 0%, #b08b75 100%);
   color: #ffffff;
   box-shadow: 0 12px 22px rgba(183, 132, 103, 0.24);
 }
@@ -1889,7 +1889,7 @@ body {
 
 .vergo-order-choice-check.is-selected {
   border-color: var(--vergo-accent);
-  background: linear-gradient(180deg, #d8a789 0%, #be8767 100%);
+  background: linear-gradient(180deg, #cbaa96 0%, #b08b75 100%);
   color: #ffffff;
   box-shadow: 0 10px 20px rgba(183, 132, 103, 0.22);
 }
@@ -1926,7 +1926,7 @@ body {
   flex-direction: column;
   gap: 0.7rem;
   padding: 0.95rem 1rem;
-  border: 1px solid #e8d8cf;
+  border: 1px solid #e4d9d3;
   border-radius: 18px;
   background: linear-gradient(180deg, #fffdfa 0%, #f8f1ec 100%);
   color: #2f3441;
@@ -1938,7 +1938,7 @@ body {
 .vergo-manager-order-card:hover {
   color: #2f3441;
   transform: translateY(-2px);
-  border-color: #c89b84;
+  border-color: #bd9f8f;
   background: linear-gradient(180deg, #fffaf6 0%, #f3e7df 100%);
   box-shadow: 0 18px 34px rgba(159, 109, 84, 0.16);
 }
@@ -1985,16 +1985,16 @@ body {
   justify-content: center;
   text-align: center;
   min-height: 100%;
-  border-color: #ba8870;
-  background: linear-gradient(180deg, #b37a5f 0%, #8f604b 100%);
+  border-color: #ae8c7c;
+  background: linear-gradient(180deg, #a67f6c 0%, #846456 100%);
   color: #fffaf7;
   box-shadow: 0 16px 30px rgba(143, 96, 75, 0.22);
 }
 
 .vergo-manager-order-card-more:hover {
   color: #fffaf7;
-  border-color: #8f604b;
-  background: linear-gradient(180deg, #a66f56 0%, #7d523f 100%);
+  border-color: #846456;
+  background: linear-gradient(180deg, #997463 0%, #735649 100%);
   box-shadow: 0 20px 36px rgba(143, 96, 75, 0.28);
 }
 
@@ -2033,7 +2033,7 @@ body {
 }
 
 .vergo-order-type-badge.is-job {
-  color: #8f604b;
+  color: #846456;
   background: #f3e2d8;
 }
 
@@ -2048,9 +2048,9 @@ body {
 
 .vergo-inspection-section {
   padding: 1rem;
-  border: 1px solid #e2c3b2;
+  border: 1px solid #dac5ba;
   border-radius: 20px;
-  background: linear-gradient(180deg, #c99a82 0%, #b7876d 100%);
+  background: linear-gradient(180deg, #be9e8d 0%, #ab8b79 100%);
   box-shadow: 0 14px 28px rgba(159, 109, 84, 0.16);
 }
 
@@ -2132,8 +2132,8 @@ body {
 }
 
 .vergo-quote-cta-card {
-  border: 1px solid #e2c3b2;
-  background: linear-gradient(180deg, #c99a82 0%, #b7876d 100%);
+  border: 1px solid #dac5ba;
+  background: linear-gradient(180deg, #be9e8d 0%, #ab8b79 100%);
   color: #fffaf7;
 }
 
@@ -2147,14 +2147,14 @@ body {
 }
 
 .vergo-quote-cta-card .btn-light {
-  color: #8f604b;
+  color: #846456;
   font-weight: 700;
 }
 
 .vergo-inspection-quote-option {
   overflow: hidden;
   padding: 1rem;
-  border: 1px solid #e8d5ca;
+  border: 1px solid #e3d6cf;
   border-radius: 12px;
   background: #fffaf7;
 }
@@ -2651,7 +2651,7 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 0.25rem;
-  color: #9f6d54;
+  color: #937160;
   font-size: 0.82rem;
   font-weight: 800;
 }
@@ -2788,4 +2788,10 @@ body {
     justify-content: flex-start;
     text-align: left;
   }
+}
+
+.vergo-support-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
 }

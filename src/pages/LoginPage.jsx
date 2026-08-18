@@ -2,16 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { useAuth } from '../context/AuthContext'
-import { EMAIL_OTP_LOGIN_ACCESS_KEY, USER_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
 
 const LI_STORAGE_KEY = 'vergo_manager_li_number'
-const USER_LOGIN_OVERRIDE = {
-  prefix: 'An',
-  digits: '12345',
-}
 
 function splitLiNumber(value) {
   const [prefix = '', number = ''] = value.split('-')
@@ -90,16 +85,6 @@ function LoginPage() {
     setError('')
 
     try {
-      if (
-        liPrefix.toLowerCase() === USER_LOGIN_OVERRIDE.prefix.toLowerCase()
-        && liDigits === USER_LOGIN_OVERRIDE.digits
-      ) {
-        sessionStorage.removeItem(EMAIL_OTP_LOGIN_ACCESS_KEY)
-        sessionStorage.setItem(USER_LOGIN_ACCESS_KEY, 'granted')
-        navigate('/user-login', { replace: true })
-        return
-      }
-
       const response = await api.checkManagerLi({ li_number: liNumber })
       sessionStorage.setItem(LI_STORAGE_KEY, response.data.li_number)
       setPropertyTitle(response.data.property_title ?? '')

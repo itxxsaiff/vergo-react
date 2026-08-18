@@ -350,12 +350,6 @@ function OwnersPage() {
                   </select>
                 </div>
 
-                <div className="alert alert-light border small">
-                  {form.owner_type === 'company'
-                    ? t('Firmen-Eigentümer melden sich über die Domain-Endung und einen Code an. Die E-Mail-Adresse dient hier nur als Kontaktoption. Ein Passwort wird nicht gesetzt.')
-                    : t('Privatpersonen melden sich mit genau dieser E-Mail-Adresse und einem Code per E-Mail an. Ein Passwort wird nicht gesetzt.')}
-                </div>
-
                 {error ? <div className="alert alert-danger py-2">{error}</div> : null}
 
                 <div className="d-flex gap-2">

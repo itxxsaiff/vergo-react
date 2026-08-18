@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
-import { EMAIL_OTP_LOGIN_ACCESS_KEY, USER_LOGIN_ACCESS_KEY } from '../constants/auth'
+import { EMAIL_OTP_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
@@ -38,14 +38,12 @@ function TypePage() {
     }
 
     if (selectedOption === 'email') {
-      sessionStorage.removeItem(USER_LOGIN_ACCESS_KEY)
       sessionStorage.setItem(EMAIL_OTP_LOGIN_ACCESS_KEY, 'granted')
       navigate('/email-otp-login', { replace: true })
       return
     }
 
     sessionStorage.removeItem(EMAIL_OTP_LOGIN_ACCESS_KEY)
-    sessionStorage.removeItem(USER_LOGIN_ACCESS_KEY)
     navigate('/login', { replace: true })
   }
 

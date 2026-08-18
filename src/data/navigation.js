@@ -14,6 +14,7 @@ export const navigationByRole = {
         { title: 'Eigentümer', href: '/owners' },
         { title: 'Bewirtschaftung', href: '/property-managers' },
         { title: 'Dienstleister', href: '/service-providers' },
+        { title: 'Admins', href: '/employees' },
       ],
     },
     {

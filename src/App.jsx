@@ -115,7 +115,8 @@ function App() {
       <Route path="/email-otp-login" element={<EmailOtpLoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/user-login" element={<UserLoginPage />} />
+      <Route path="/admin-login" element={<UserLoginPage />} />
+      <Route path="/user-login" element={<Navigate to="/admin-login" replace />} />
 
       <Route path="/" element={<AuthenticatedLayout />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
@@ -242,7 +243,7 @@ function App() {
         <Route
           path="employees"
           element={
-            <ProtectedRoute allowRoles={['employee']} allowNavigationRoles={['employee_power_user']}>
+            <ProtectedRoute allowRoles={['admin', 'employee']} allowNavigationRoles={['admin', 'employee_power_user']}>
               <EmployeesPage />
             </ProtectedRoute>
           }

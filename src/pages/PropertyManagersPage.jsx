@@ -630,9 +630,6 @@ function PropertyManagersPage() {
                       <label className="form-label">{t('Domain-Endung')}</label>
                       <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder={t('beispiel.ch')} />
                     </div>
-                    <div className="alert alert-light border small">
-                      {t('Immobilienverwalter melden sich über die Domain-Endung und einen Code an. Die E-Mail-Adresse dient hier nur als Kontaktoption. Ein Passwort wird nicht gesetzt.')}
-                    </div>
                     {error ? <div className="alert alert-danger py-2 mb-0">{t(error)}</div> : null}
                   </div>
                   <div className="modal-footer">

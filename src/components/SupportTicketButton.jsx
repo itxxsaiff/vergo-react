@@ -117,7 +117,25 @@ function SupportTicketButton({
       aria-label={t('Support')}
       title={t('Support')}
     >
-      <i className="ti ti-help-circle"></i>
+      <svg
+        className="vergo-support-icon"
+        viewBox="0 0 24 24"
+        width="22"
+        height="22"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        focusable="false"
+      >
+        {/* Service icon: a cog offered on an open hand, matching the Vergo support mark. */}
+        <circle cx="12" cy="6.4" r="1.9" />
+        <path d="M12 1.6l.72 1.32 1.5-.17.34 1.47 1.4.57-.62 1.37.98 1.15-1.16.96.35 1.47-1.5.17-.73 1.31-1.28-.8-1.28.8-.73-1.31-1.5-.17.35-1.47-1.16-.96.98-1.15-.62-1.37 1.4-.57.34-1.47 1.5.17z" />
+        <path d="M2.5 15.1c1.2-.85 2.5-.6 3.5.1l2.4 1.7h3.1c.83 0 1.5.6 1.5 1.35s-.67 1.35-1.5 1.35H9.1" />
+        <path d="M8.4 16.9l6.9-1.9c1.9-.53 3.6-.6 4.9.05.9.45 1 1.5.2 2.1l-5.2 3.7c-.9.64-2 .95-3.1.85l-5.2-.5c-.7-.07-1.4.1-2 .48" />
+      </svg>
     </button>
   )
 

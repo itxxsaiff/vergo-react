@@ -1,32 +1,13 @@
-const LOCAL_API_BASE_URL = 'http://localhost/laravel/vergo-react/panel/public/api'
 const REMOTE_API_BASE_URL = 'https://work.vergo.ch/panel/public/api'
-const LOCAL_API_PATH = '/laravel/vergo-react/panel/public/api'
 
-const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1'])
+// In dev the Vite server proxies /api to `php artisan serve` (see vite.config.js),
+// so a relative base URL keeps the port correct and avoids CORS entirely.
+// Set VITE_API_BASE_URL in .env.local to point at any other backend.
+const DEV_API_BASE_URL = '/api'
 
-function isPrivateNetworkHost(hostname) {
-  return (
-    /^10\./.test(hostname) ||
-    /^192\.168\./.test(hostname) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
-  )
-}
-
-const isLocalHost =
-typeof window !== 'undefined' &&
-(
-  LOCAL_HOSTNAMES.has(window.location.hostname) ||
-  isPrivateNetworkHost(window.location.hostname)
-)
-
-const localApiBaseUrl =
-typeof window !== 'undefined' && isLocalHost
-  ? `${window.location.protocol}//${window.location.hostname}${LOCAL_API_PATH}`
-  : LOCAL_API_BASE_URL
-
-const API_BASE_URL = isLocalHost
-  ? localApiBaseUrl
-  : REMOTE_API_BASE_URL
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.trim() ||
+  (import.meta.env.DEV ? DEV_API_BASE_URL : REMOTE_API_BASE_URL)
 
 let authToken = null
 

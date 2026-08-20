@@ -13,7 +13,8 @@ class OrderResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'order_number' => ($this->workflow_type === 'inspection' ? 'BS-' : 'VA-').str_pad((string) $this->id, 5, '0', STR_PAD_LEFT),
+            // Running Vergo order number, e.g. VER-2608-00001.
+            'order_number' => $this->order_number,
             'property_id' => $this->property_id,
             'property_object_id' => $this->property_object_id,
             'property_object_ids' => $this->property_object_ids ?? [],

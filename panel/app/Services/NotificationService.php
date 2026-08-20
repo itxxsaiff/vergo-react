@@ -11,6 +11,7 @@ use App\Models\ServiceProvider;
 use App\Models\User;
 use App\Mail\InspectionAppointmentConfirmedMail;
 use App\Mail\ProviderOrderNoticeMail;
+use App\Mail\QuoteScopeChangedMail;
 use App\Notifications\SystemNotification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -179,6 +180,60 @@ class NotificationService
             noticeType: 'assigned',
             loginUrl: $loginUrl,
         ));
+    }
+
+    /**
+     * Tell the providers whose priced scope no longer matches the tender that
+     * they have to quote again.
+     *
+     * @param  iterable<int, \App\Models\Bid>  $requoteBids
+     */
+    public function sendQuoteScopeChanged(Order $order, iterable $requoteBids, int $itemCount): void
+    {
+        $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+
+        foreach ($requoteBids as $bid) {
+            $provider = $bid->serviceProvider;
+
+            if (! $provider) {
+                continue;
+            }
+
+            $recipients = $this->providerRecipients(collect([$provider]));
+
+            Notification::send($recipients, new SystemNotification(
+                title: 'Auftragsvolumen geändert',
+                message: sprintf('Der Umfang von "%s" wurde angepasst. Bitte reichen Sie eine neue Offerte ein.', $order->title),
+                type: 'warning',
+                actionUrl: '/available-jobs',
+            ));
+
+            $email = $bid->assigned_provider_email ?: $provider->order_email;
+
+            if (! $email) {
+                Log::warning('Vergo requote email skipped: no address', [
+                    'order_id' => $order->id,
+                    'provider_id' => $provider->id,
+                ]);
+
+                continue;
+            }
+
+            try {
+                Mail::mailer('orders')->to($email)->send(new QuoteScopeChangedMail(
+                    order: $order,
+                    provider: $provider,
+                    itemCount: $itemCount,
+                    loginUrl: $this->providerLoginUrl($frontendBase, $provider->id, $email),
+                ));
+            } catch (\Throwable $exception) {
+                Log::error('Vergo requote email failed', [
+                    'order_id' => $order->id,
+                    'provider_id' => $provider->id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function sendQuoteRequestPublished(Order $order, array $excludeProviderIds = []): void

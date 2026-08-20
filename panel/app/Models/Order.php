@@ -8,12 +8,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'order_number',
         'property_id',
         'property_manager_profile_id',
         'property_object_id',
@@ -37,6 +40,12 @@ class Order extends Model
         'attachment_size',
         'requested_at',
         'completed_at',
+        'provider_completed_at',
+        'review_token',
+        'review_requested_at',
+        'review_last_reminded_at',
+        'review_reminder_count',
+        'reviewed_at',
     ];
 
     protected function casts(): array
@@ -49,7 +58,68 @@ class Order extends Model
             'quote_items' => 'array',
             'requested_at' => 'datetime',
             'completed_at' => 'datetime',
+            'provider_completed_at' => 'datetime',
+            'review_requested_at' => 'datetime',
+            'review_last_reminded_at' => 'datetime',
+            'reviewed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order): void {
+            if ($order->order_number) {
+                return;
+            }
+
+            [$sequence, $number] = static::reserveOrderNumber();
+
+            $order->order_sequence = $sequence;
+            $order->order_number = $number;
+        });
+    }
+
+    /**
+     * Claim the next running order number, e.g. VER-2608-00001.
+     * Locks the highest existing sequence so two concurrent creates can never
+     * take the same number. Soft-deleted orders keep their number reserved.
+     *
+     * @return array{0: int, 1: string}
+     */
+    public static function reserveOrderNumber(?Carbon $issuedAt = null): array
+    {
+        return DB::transaction(function () use ($issuedAt): array {
+            $highest = (int) static::withTrashed()
+                ->lockForUpdate()
+                ->max('order_sequence');
+
+            $sequence = $highest + 1;
+
+            return [$sequence, static::formatOrderNumber($sequence, $issuedAt)];
+        });
+    }
+
+    /**
+     * VER = Vergo, then the two-digit year and month of issue, then the
+     * five-digit running number: VER-2608-00001.
+     */
+    public static function formatOrderNumber(int $sequence, ?Carbon $issuedAt = null): string
+    {
+        return sprintf(
+            'VER-%s-%05d',
+            ($issuedAt ?? now())->format('ym'),
+            $sequence,
+        );
+    }
+
+    public function priceChangeRequests(): HasMany
+    {
+        return $this->hasMany(PriceChangeRequest::class);
+    }
+
+    public function lineItemPhotos(): HasMany
+    {
+        return $this->hasMany(BidLineItemPhoto::class);
     }
 
     public function property(): BelongsTo

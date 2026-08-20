@@ -4,6 +4,10 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AiAnalysisController;
 use App\Http\Controllers\Api\BackgroundJobController;
 use App\Http\Controllers\Api\BidController;
+use App\Http\Controllers\Api\BidPhotoController;
+use App\Http\Controllers\Api\OrderCompletionController;
+use App\Http\Controllers\Api\PriceChangeRequestController;
+use App\Http\Controllers\Api\ProviderRatingController;
 use App\Http\Controllers\Api\CronController;
 use App\Http\Controllers\Api\CompanyAdditionRequestController;
 use App\Http\Controllers\Api\DashboardController;
@@ -43,6 +47,11 @@ Route::get('test-api', function(){
 
 Route::get('/cron/run-ai-analysis', [CronController::class, 'runAiAnalysis']);
 Route::post('/public/support-tickets', [SupportTicketController::class, 'store']);
+
+// Confidential provider rating, opened from the e-mailed button. The token in
+// the link is the authorisation, so no login is required.
+Route::get('/public/provider-rating', [ProviderRatingController::class, 'show']);
+Route::post('/public/provider-rating', [ProviderRatingController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -99,6 +108,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/orders/{order}/reviews', [ProviderReviewController::class, 'store']);
     Route::post('/orders/{order}/compare-bids', OrderComparisonController::class);
     Route::post('/orders/{order}/compare-price', [OrderComparisonController::class, 'comparePrice']);
+    // Automated offer evaluation: 100-point score and ranking per offer.
+    Route::post('/orders/{order}/evaluate-offers', [OrderComparisonController::class, 'evaluateOffers']);
     Route::post('/orders/{order}/provider-assign', [BidController::class, 'assignToProvider']);
     Route::get('/company-addition-requests', [CompanyAdditionRequestController::class, 'index']);
     Route::post('/company-addition-requests', [CompanyAdditionRequestController::class, 'store']);
@@ -106,6 +117,25 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/support-tickets', [SupportTicketController::class, 'index']);
     Route::post('/support-tickets', [SupportTicketController::class, 'store']);
     Route::put('/support-tickets/{supportTicket}', [SupportTicketController::class, 'update']);
+
+    // Provider finishes the job and receives the invoicing summary.
+    Route::post('/orders/{order}/provider-complete', [OrderCompletionController::class, 'complete']);
+    Route::get('/orders/{order}/completion-summary', [OrderCompletionController::class, 'summary']);
+
+    // Price changes / added items after the job started, each with a reason.
+    Route::get('/orders/{order}/price-change-requests', [PriceChangeRequestController::class, 'index']);
+    Route::post('/orders/{order}/price-change-requests', [PriceChangeRequestController::class, 'store']);
+    Route::put('/orders/{order}/price-change-requests/{priceChangeRequest}', [PriceChangeRequestController::class, 'update']);
+
+    // Per line item photos, published to the other providers once approved.
+    Route::get('/orders/{order}/photos', [BidPhotoController::class, 'index']);
+    Route::post('/orders/{order}/photos', [BidPhotoController::class, 'store']);
+    Route::put('/orders/{order}/photos/{photo}', [BidPhotoController::class, 'update']);
+    Route::delete('/orders/{order}/photos/{photo}', [BidPhotoController::class, 'destroy']);
+    Route::get('/orders/{order}/photos/{photo}/download', [BidPhotoController::class, 'download'])->name('bid-photos.download');
+
+    // Admin view of the individual confidential ratings.
+    Route::get('/admin/provider-ratings', [ProviderRatingController::class, 'adminIndex']);
 
     Route::get('/bids', [BidController::class, 'index']);
     Route::post('/bids', [BidController::class, 'store']);

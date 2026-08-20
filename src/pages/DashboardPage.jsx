@@ -352,7 +352,6 @@ function DashboardPage({ role }) {
                     <div className="vergo-dashboard-analytics-panel h-100">
                       <div className="mb-3">
                         <h5 className="fw-semibold mb-1">{t('Auftragsübersicht')}</h5>
-                        <p className="text-muted mb-0">{t('Die wichtigsten Kennzahlen der aktuell sichtbaren Aufträge.')}</p>
                       </div>
 
                       {isAnalyticsLoading ? (
@@ -572,7 +571,6 @@ function DashboardPage({ role }) {
                         <div className="vergo-dashboard-analytics-panel h-100">
                           <div className="mb-3">
                             <h5 className="fw-semibold mb-1">{t('Auftragsübersicht')}</h5>
-                            <p className="text-muted mb-0">{t('Die wichtigsten Kennzahlen der aktuell sichtbaren Aufträge.')}</p>
                           </div>
 
                           {isAnalyticsLoading ? (

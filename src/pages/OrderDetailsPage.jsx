@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatDateDisplay, formatDateTimeDisplay, formatTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
-import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
+import { formatCurrencyAmount, getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
 function getLatestAnalysisResult(results, analysisType) {
   return [...(results ?? [])]
@@ -33,24 +33,25 @@ function isInspectionOrder(order) {
     || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
 }
 
-// Which inspection slot was accepted, so it can be highlighted green.
-// Uses the confirmed provider's selected slot; if only one option exists and the
-// inspection is confirmed, that single option is treated as accepted.
-function getAcceptedSlotIndex(order, slots) {
+// Every provider that confirmed an inspection appointment, paired with the slot
+// they picked. Slots are no longer highlighted in the options list: with two
+// companies on two different slots a single highlight is misleading, so the
+// confirmations are listed explicitly instead.
+function getConfirmedInspectionBids(order, slots) {
   const confirmedStatuses = ['inspection_confirmed', 'accepted', 'approved', 'completed']
-  const confirmedBid = (order?.bids ?? []).find((bid) => confirmedStatuses.includes(bid.status))
 
-  if (!confirmedBid) {
-    return null
-  }
+  return (order?.bids ?? [])
+    .filter((bid) => confirmedStatuses.includes(bid.status))
+    .map((bid) => {
+      const rawIndex = Number(bid.workflow_meta?.selected_slot_index)
+      const hasIndex = Number.isInteger(rawIndex) && rawIndex >= 0 && rawIndex < (slots?.length ?? 0)
 
-  const rawIndex = Number(confirmedBid.workflow_meta?.selected_slot_index)
-
-  if (Number.isInteger(rawIndex) && rawIndex >= 0 && rawIndex < (slots?.length ?? 0)) {
-    return rawIndex
-  }
-
-  return (slots?.length ?? 0) > 0 ? 0 : null
+      return {
+        bid,
+        slot: hasIndex ? slots[rawIndex] : null,
+        slotNumber: hasIndex ? rawIndex + 1 : null,
+      }
+    })
 }
 
 // A provider has submitted a priced offer after the inspection.
@@ -170,13 +171,6 @@ function OrderDetailsPage() {
   const [isComparingPrice, setIsComparingPrice] = useState(false)
   const [updatingBidId, setUpdatingBidId] = useState(null)
   const [isCompletingOrder, setIsCompletingOrder] = useState(false)
-  const [reviewForm, setReviewForm] = useState({
-    communication_rating: '',
-    punctuality_rating: '',
-    quality_rating: '',
-    comment: '',
-  })
-  const [isSavingReview, setIsSavingReview] = useState(false)
   const [selectedQuoteTaskKeys, setSelectedQuoteTaskKeys] = useState([])
   const [selectedBidDetailId, setSelectedBidDetailId] = useState(null)
   const [error, setError] = useState('')
@@ -207,6 +201,20 @@ function OrderDetailsPage() {
   useEffect(() => {
     loadOrder()
   }, [loadOrder])
+
+  useEffect(() => {
+    if (!orderId) {
+      return
+    }
+
+    api.getOrderPhotos(orderId)
+      .then((response) => setOrderPhotos(response.data ?? []))
+      .catch(() => setOrderPhotos([]))
+
+    api.getPriceChangeRequests(orderId)
+      .then((response) => setChangeRequests(response.data ?? []))
+      .catch(() => setChangeRequests([]))
+  }, [orderId])
 
   async function handleCompare() {
     setIsComparing(true)
@@ -304,35 +312,58 @@ function OrderDetailsPage() {
     }
   }
 
-  async function handleReviewSubmit(event) {
-    event.preventDefault()
-    setError('')
-
-    if (!reviewForm.communication_rating || !reviewForm.punctuality_rating || !reviewForm.quality_rating) {
-      setError('Bitte bewerten Sie Kommunikation, Pünktlichkeit und Arbeitsqualität.')
+  async function loadOrderPhotos() {
+    if (!orderId) {
       return
     }
 
-    setIsSavingReview(true)
+    try {
+      const response = await api.getOrderPhotos(orderId)
+      setOrderPhotos(response.data ?? [])
+    } catch {
+      setOrderPhotos([])
+    }
+  }
+
+  async function handleEvaluateOffers() {
+    setIsEvaluating(true)
+    setError('')
 
     try {
-      await api.createProviderReview(orderId, {
-        communication_rating: Number(reviewForm.communication_rating),
-        punctuality_rating: Number(reviewForm.punctuality_rating),
-        quality_rating: Number(reviewForm.quality_rating),
-        comment: reviewForm.comment || null,
-      })
-      setReviewForm({
-        communication_rating: '',
-        punctuality_rating: '',
-        quality_rating: '',
-        comment: '',
-      })
-      await loadOrder()
-    } catch (reviewError) {
-      setError(reviewError.message)
+      const response = await api.evaluateOffers(orderId)
+      setOfferEvaluation(response.data ?? null)
+    } catch (evaluateError) {
+      setError(evaluateError.message)
     } finally {
-      setIsSavingReview(false)
+      setIsEvaluating(false)
+    }
+  }
+
+  async function handleDecideChangeRequest(requestId, status) {
+    setDecidingRequestId(requestId)
+
+    try {
+      await api.decidePriceChangeRequest(orderId, requestId, { status })
+      const requests = await api.getPriceChangeRequests(orderId)
+      setChangeRequests(requests.data ?? [])
+      await loadOrder()
+    } catch (decideError) {
+      setError(decideError.message)
+    } finally {
+      setDecidingRequestId(null)
+    }
+  }
+
+  async function handleTogglePhotoPublished(photo) {
+    setUpdatingPhotoId(photo.id)
+
+    try {
+      await api.setOrderPhotoPublished(orderId, photo.id, !photo.is_published)
+      await loadOrderPhotos()
+    } catch (toggleError) {
+      setError(toggleError.message)
+    } finally {
+      setUpdatingPhotoId(null)
     }
   }
 
@@ -363,10 +394,7 @@ function OrderDetailsPage() {
   const canShortlistBids = user?.role === 'manager'
   const canApproveBids = user?.role === 'owner'
   const canCompleteOrder = ['manager', 'owner'].includes(user?.role) && order?.status === 'approved'
-  const canReviewProvider = ['manager', 'owner'].includes(user?.role) && order?.status === 'completed'
   const priceRecommendation = getLatestAnalysisResult(order?.analysis_results, 'price_recommendation')
-  const providerReviews = order?.provider_reviews ?? []
-  const actorReview = providerReviews.find((review) => review.reviewer_role === user?.role)
   const comparableBids = (order?.bids ?? []).filter((bid) => !bid.prices_hidden)
   const arrivalOrderedBids = [...comparableBids].sort((firstBid, secondBid) => {
     const firstDate = new Date(firstBid.submitted_at ?? firstBid.created_at ?? 0)
@@ -409,11 +437,21 @@ function OrderDetailsPage() {
   const selectedBidDetailScore = selectedBidDetail ? bidScoreMap[selectedBidDetail.id] : null
   const inspectionSlots = getInspectionSlots(order)
   const onsiteContact = getOnsiteContact(order)
+  const [isServiceItemsModalOpen, setIsServiceItemsModalOpen] = useState(false)
+  const [orderPhotos, setOrderPhotos] = useState([])
+  const [changeRequests, setChangeRequests] = useState([])
+  const [offerEvaluation, setOfferEvaluation] = useState(null)
+  const [isEvaluating, setIsEvaluating] = useState(false)
+  const [decidingRequestId, setDecidingRequestId] = useState(null)
+  const [updatingPhotoId, setUpdatingPhotoId] = useState(null)
   const isInspectionDetails = isInspectionOrder(order)
-  const acceptedSlotIndex = getAcceptedSlotIndex(order, inspectionSlots)
+  const confirmedInspectionBids = getConfirmedInspectionBids(order, inspectionSlots)
   const submittedQuoteBid = getSubmittedQuoteBid(order)
   const inspectionQuoteOptions = order?.inspection_quote_options ?? []
   const quoteServices = order?.quote_items ?? []
+  // Every service in the request, used by the "Anzahl Leistungen" counter
+  // and the overview modal at the bottom of the left column.
+  const orderServiceItems = quoteServices.length > 0 ? quoteServices : getFallbackQuoteItems(order)
   const hasQuoteToGenerate = inspectionQuoteOptions.length > 0 || (Boolean(submittedQuoteBid) && quoteServices.length > 0)
   const hasMultipleInspectionQuoteOptions = inspectionQuoteOptions.length > 1
   const selectedQuoteItems = getSelectedQuoteItems(inspectionQuoteOptions, selectedQuoteTaskKeys)
@@ -593,7 +631,7 @@ function OrderDetailsPage() {
                       <div className="row g-3">
                         {inspectionSlots.map((slot, index) => (
                           <div className="col-md-6" key={`${slot.date}-${slot.time}-${index}`}>
-                            <div className={`vergo-inspection-detail-card h-100${index === acceptedSlotIndex ? ' is-accepted-slot' : ''}`}>
+                            <div className="vergo-inspection-detail-card h-100">
                               <div className="vergo-inspection-detail-label">{t('Option')} {index + 1}</div>
                               <div className="vergo-inspection-detail-value">{formatDateDisplay(slot.date)}</div>
                               <div className="vergo-inspection-detail-subvalue">{formatTimeDisplay(slot.time)}</div>
@@ -643,42 +681,36 @@ function OrderDetailsPage() {
             <div className="col-xl-5">
               <div className="card">
                 <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
-                  <h5 className="card-title fw-semibold mb-0">{t('Dienstleister')}</h5>
-                  <span className="text-muted">{order.bids?.length ?? 0} {t('Einträge')}</span>
+                  <h5 className="card-title fw-semibold mb-0">{t('Bestätigte Termine')}</h5>
+                  <span className="text-muted">{confirmedInspectionBids.length} {t('Einträge')}</span>
                 </div>
                 <div className="card-body p-4">
-                  {(order.bids ?? []).length > 0 ? (
-                    <div className="d-flex flex-column gap-3">
-                      {order.bids.map((bid) => {
-                        const selectedSlot = inspectionSlots[Number(bid.workflow_meta?.selected_slot_index)]
+                  {confirmedInspectionBids.length > 0 ? (
+                    <div className="d-flex flex-column gap-2">
+                      {confirmedInspectionBids.map(({ bid, slot, slotNumber }) => {
                         const isAnonymousQuoteSeed = Boolean(bid.workflow_meta?.quote_scope_seed)
 
                         return (
-                          <div className="vergo-inspection-detail-card" key={bid.id}>
-                            <div className="d-flex align-items-start justify-content-between gap-3 mb-2">
-                              <div>
-                                <div className="fw-semibold">{isAnonymousQuoteSeed ? t('Anonyme Offerte') : (bid.service_provider?.company_name || '-')}</div>
-                                <div className="text-muted small">
-                                  {isAnonymousQuoteSeed ? t('Dienstleisterangaben verborgen') : (bid.assigned_provider_email || bid.service_provider?.contact_email || '-')}
-                                </div>
-                              </div>
-                              <span className={getStatusBadgeClass(bid.status)}>
-                                {t(formatStatusLabel(bid.status))}
+                          <div className="vergo-inspection-confirmed-row" key={bid.id}>
+                            <div className="d-flex align-items-center justify-content-between gap-2">
+                              <span className="fw-semibold text-truncate">
+                                {isAnonymousQuoteSeed ? t('Anonyme Offerte') : (bid.service_provider?.company_name || '-')}
+                              </span>
+                              <span className="text-muted small flex-shrink-0">
+                                {slot
+                                  ? `${slotNumber ? `${t('Option')} ${slotNumber} · ` : ''}${formatDateDisplay(slot.date)} ${formatTimeDisplay(slot.time)}`
+                                  : t('Termin offen')}
                               </span>
                             </div>
-                            <div className="vergo-inspection-detail-subvalue">
-                              {t('Gewählter Termin')}: {selectedSlot ? `${formatDateDisplay(selectedSlot.date)} ${formatTimeDisplay(selectedSlot.time)}` : '-'}
+                            <div className="text-muted small text-truncate">
+                              {isAnonymousQuoteSeed ? t('Dienstleisterangaben verborgen') : (bid.assigned_provider_email || bid.service_provider?.contact_email || '-')}
                             </div>
-                            <div className="vergo-inspection-detail-subvalue">
-                              {t('Offerte erstellen bis')}: {formatDateDisplay(selectedSlot?.quote_due_date)}
-                            </div>
-                            {bid.rejection_reason ? <div className="text-muted small mt-2">{bid.rejection_reason}</div> : null}
                           </div>
                         )
                       })}
                     </div>
                   ) : (
-                    <div className="text-muted">{t('Noch keine Dienstleister für diese Besichtigung vorhanden.')}</div>
+                    <div className="text-muted">{t('Noch hat kein Dienstleister einen Besichtigungstermin bestätigt.')}</div>
                   )}
                 </div>
               </div>
@@ -735,8 +767,11 @@ function OrderDetailsPage() {
           <div className="col-xl-4">
             <div className="card">
               <div className="card-body">
-                <h5 className="fw-semibold mb-3">{order.title}</h5>
-                <p className="text-muted mb-3">{order.description || t('Keine Beschreibung hinzugefügt.')}</p>
+                <h5 className="fw-semibold mb-3">{t('Auftragsdetails')}</h5>
+
+                <div className="mb-2">
+                  <strong>{t('Auftragsnummer')}:</strong> {order.order_number || '-'}
+                </div>
 
                 <div className="mb-2">
                   <strong>{t('Immobilie')}:</strong> {order.property?.li_number} - {order.property?.title}
@@ -769,16 +804,14 @@ function OrderDetailsPage() {
 
                 <div className="d-flex gap-2 flex-wrap">
                   {showManualAnalysisButtons ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={handleCompare}
-                        disabled={isComparing}
-                      >
-                        {isComparing ? t('Wird verglichen...') : t('Angebote vergleichen')}
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleCompare}
+                      disabled={isComparing}
+                    >
+                      {isComparing ? t('Wird verglichen...') : t('Angebote vergleichen')}
+                    </button>
                   ) : null}
 
                   <Link className="btn btn-light-primary" to="/documents">
@@ -801,151 +834,30 @@ function OrderDetailsPage() {
 
             <div className="card">
               <div className="card-body">
-                <h5 className="fw-semibold mb-3">{t('Anbieterbewertung')}</h5>
-
-                {order.approved_bid?.service_provider ? (
-                  <div className="mb-3">
-                    <div className="text-muted fs-2">{t('Genehmigter Anbieter')}</div>
-                    <div className="fw-semibold">{order.approved_bid.service_provider.company_name}</div>
-                    <div className="text-muted">{order.approved_bid.service_provider.contact_email}</div>
-                  </div>
-                ) : (
-                  <div className="text-muted mb-3">{t('Noch kein genehmigter Anbieter.')}</div>
-                )}
-
-                {providerReviews.length > 0 ? (
-                  <div className="mb-4">
-                    {providerReviews.map((review) => (
-                      <div key={review.id} className="border rounded p-3 mb-2">
-                        <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
-                          <div className="fw-semibold">{review.reviewer_name}</div>
-                          <span className="badge bg-light-primary text-primary">{review.rating}/5</span>
-                        </div>
-                        <div className="d-flex flex-wrap gap-2 mb-2">
-                          <span className="badge bg-light-secondary text-secondary">
-                            Kommunikation {review.communication_rating ?? review.rating}/5
-                          </span>
-                          <span className="badge bg-light-secondary text-secondary">
-                            Pünktlichkeit {review.punctuality_rating ?? review.rating}/5
-                          </span>
-                          <span className="badge bg-light-secondary text-secondary">
-                            Qualität {review.quality_rating ?? review.rating}/5
-                          </span>
-                        </div>
-                        <div className="text-muted small mb-1">
-                          {formatStatusLabel(review.reviewer_role)} Bewertung
-                        </div>
-                        <div>{review.comment || 'Kein Kommentar hinzugefügt.'}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                {canReviewProvider ? (
-                  actorReview ? (
-                    <div className="alert alert-light-success border mb-0">
-                      Sie haben bereits eine Bewertung für diesen abgeschlossenen Auftrag abgegeben.
-                    </div>
-                  ) : (
-                    <form onSubmit={handleReviewSubmit}>
-                      <div className="row g-3 mb-3">
-                        {[
-                          ['communication_rating', 'Kommunikation'],
-                          ['punctuality_rating', 'Pünktlichkeit'],
-                          ['quality_rating', 'Arbeitsqualität'],
-                        ].map(([field, label]) => (
-                          <div className="col-md-4" key={field}>
-                            <label className="form-label">{label}</label>
-                            <select
-                              className="form-select"
-                              value={reviewForm[field]}
-                              onChange={(event) =>
-                                setReviewForm((current) => ({ ...current, [field]: event.target.value }))
-                              }
-                            >
-                              <option value="">Bewertung auswählen</option>
-                              <option value="5">5 - Ausgezeichnet</option>
-                              <option value="4">4 - Gut</option>
-                              <option value="3">3 - Durchschnittlich</option>
-                              <option value="2">2 - Schwach</option>
-                              <option value="1">1 - Schlecht</option>
-                            </select>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">Kommentar</label>
-                        <textarea
-                          className="form-control"
-                          rows="3"
-                          value={reviewForm.comment}
-                          onChange={(event) =>
-                            setReviewForm((current) => ({ ...current, comment: event.target.value }))
-                          }
-                          placeholder="Feedback zu Qualität, Zeitplanung und Zuverlässigkeit hinzufügen"
-                        />
-                      </div>
-
-                      <button type="submit" className="btn btn-primary" disabled={isSavingReview}>
-                        {isSavingReview ? 'Bewertung wird gespeichert...' : 'Bewertung absenden'}
-                      </button>
-                    </form>
-                  )
-                ) : (
-                  <div className="text-muted mb-0">
-                    Anbieterbewertungen sind erst verfügbar, nachdem die genehmigte Arbeit als abgeschlossen markiert wurde.
-                  </div>
-                )}
+                <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Betreff')}</div>
+                <h5 className="fw-semibold mb-3">{order.title}</h5>
+                <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Auftragstext')}</div>
+                <p className="text-muted mb-0">{order.description || t('Keine Beschreibung hinzugefügt.')}</p>
               </div>
             </div>
 
-            {!managerAnonymousBidReview ? (
-              <div className="card">
-                <div className="card-body">
-                  <h5 className="fw-semibold mb-3">{t('Preisempfehlung')}</h5>
-
-                  {priceRecommendation && canShowBidPricesInline ? (
-                    <>
-                      <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
-                        <span className="text-muted">{t('Aktuelles Signal')}</span>
-                        <span className={getStatusBadgeClass(priceRecommendation.comparison_data?.pricing_signal)}>
-                          {t(formatStatusLabel(priceRecommendation.comparison_data?.pricing_signal))}
-                        </span>
-                      </div>
-
-                      <div className="mb-2">
-                        <strong>{t('Benchmark')}:</strong> {priceRecommendation.comparison_data?.benchmark_amount ?? '-'} {priceRecommendation.comparison_data?.recommended_bid_currency ?? 'CHF'}
-                      </div>
-
-                      <div className="mb-2">
-                        <strong>{t('Bestes Angebot')}:</strong> {priceRecommendation.comparison_data?.recommended_bid_amount ?? '-'} {priceRecommendation.comparison_data?.recommended_bid_currency ?? 'CHF'}
-                      </div>
-
-                      <div className="mb-2">
-                        <strong>{t('Abweichung')}:</strong> {priceRecommendation.comparison_data?.variance_percentage ?? '-'}%
-                      </div>
-
-                      <div className="mb-2">
-                        <strong>{t('Leistung')}:</strong> {getOptionLabel(JOB_TYPE_OPTIONS, priceRecommendation.comparison_data?.service_category) || priceRecommendation.comparison_data?.service_category || '-'}
-                      </div>
-
-                      <div className="mb-2">
-                        <strong>{t('Intervall')}:</strong> {priceRecommendation.comparison_data?.service_interval || '-'}
-                      </div>
-
-                      <div className="mb-0">
-                        <strong>{t('Quellen')}:</strong> {priceRecommendation.comparison_data?.benchmark_source_count ?? 0} {t('historische Quelle(n)')}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-muted">
-                      {t('Die Preisanalyse wird nach Ablauf der Angebotsfrist automatisch erstellt.')}
-                    </div>
-                  )}
+            <div className="card">
+              <div className="card-body">
+                <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                  <div className="fw-semibold">
+                    {t('Anzahl Leistungen')}: {orderServiceItems.length}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-light-primary btn-sm"
+                    onClick={() => setIsServiceItemsModalOpen(true)}
+                    disabled={orderServiceItems.length === 0}
+                  >
+                    {t('Alle Leistungen anzeigen')}
+                  </button>
                 </div>
               </div>
-            ) : null}
+            </div>
           </div>
 
           <div className="col-xl-8">
@@ -1369,11 +1281,215 @@ function OrderDetailsPage() {
             </div>
 
             <div className="card">
+              <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                <div>
+                  <h5 className="card-title fw-semibold mb-0">{t('Automatische Angebotsbewertung')}</h5>
+                  <p className="text-muted small mb-0">
+                    {t('Jedes Angebot wird mit 100 Punkten bewertet: Preis 60, Bewertungen 24, Termine 11, Objekterfahrung 5.')}
+                  </p>
+                </div>
+                <button type="button" className="btn btn-primary btn-sm" disabled={isEvaluating} onClick={handleEvaluateOffers}>
+                  {isEvaluating ? t('Wird bewertet...') : t('Angebote bewerten')}
+                </button>
+              </div>
+
+              {offerEvaluation ? (
+                <div className="card-body p-4">
+                  {(offerEvaluation.offers ?? []).length === 0 ? (
+                    <div className="text-muted">{t('Noch keine Angebote zum Bewerten vorhanden.')}</div>
+                  ) : (
+                    <>
+                      <div className="text-muted small mb-3">
+                        {t('Referenzpreis')}: <strong>{formatCurrencyAmount(Number(offerEvaluation.reference?.reference_price || 0))}</strong>
+                        {' · '}{t('Median')}: {formatCurrencyAmount(Number(offerEvaluation.reference?.median || 0))}
+                        {offerEvaluation.reference?.historical ? (
+                          <>{' · '}{t('Historisch')}: {formatCurrencyAmount(Number(offerEvaluation.reference.historical))}</>
+                        ) : null}
+                      </div>
+
+                      <div className="table-responsive">
+                        <table className="table align-middle mb-0">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '54px' }}>{t('Rang')}</th>
+                              <th>{t('Firma')}</th>
+                              <th className="text-end">{t('Betrag')}</th>
+                              <th className="text-end">{t('Preis')}</th>
+                              <th className="text-end">{t('Positionen')}</th>
+                              <th className="text-end">{t('Bewertung')}</th>
+                              <th className="text-end">{t('Termine')}</th>
+                              <th className="text-end">{t('Objekt')}</th>
+                              <th className="text-end">{t('Punkte')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {offerEvaluation.offers.map((offer) => (
+                              <tr key={offer.bid_id}>
+                                <td>
+                                  <span className={`badge rounded-pill px-3 py-2 ${offer.rank === 1 ? 'bg-light-success text-success' : 'bg-light-primary text-primary'}`}>
+                                    {offer.rank}
+                                  </span>
+                                </td>
+                                <td className="fw-semibold">{offer.company_name || '-'}</td>
+                                <td className="text-end">{formatCurrencyAmount(Number(offer.amount || 0))}</td>
+                                <td className="text-end">{offer.categories?.total_price?.points} / {offer.categories?.total_price?.max_points}</td>
+                                <td className="text-end">{offer.categories?.position_plausibility?.points} / {offer.categories?.position_plausibility?.max_points}</td>
+                                <td className="text-end">
+                                  {(Number(offer.categories?.manager_rating?.points || 0) + Number(offer.categories?.vergo_rating?.points || 0)).toFixed(1)} / 24
+                                </td>
+                                <td className="text-end">{offer.categories?.schedule?.points} / {offer.categories?.schedule?.max_points}</td>
+                                <td className="text-end">{offer.categories?.property_experience?.points} / {offer.categories?.property_experience?.max_points}</td>
+                                <td className="text-end fw-semibold">{offer.score}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {offerEvaluation.offers.some((offer) => (offer.anomalies ?? []).length > 0) ? (
+                        <div className="mt-3">
+                          <div className="fw-semibold mb-2">{t('Auffälligkeiten')}</div>
+                          {offerEvaluation.offers.flatMap((offer) => (offer.anomalies ?? []).map((anomaly, index) => (
+                            <div key={`${offer.bid_id}-${index}`} className="alert alert-warning py-2 small mb-2">
+                              <strong>{offer.company_name}</strong>{' · '}
+                              {t('Position')} {anomaly.position} „{anomaly.label}" · {t(anomaly.reason)}
+                            </div>
+                          )))}
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            {changeRequests.length > 0 ? (
+              <div className="card">
+                <div className="px-4 py-3 border-bottom">
+                  <h5 className="card-title fw-semibold mb-0">{t('Preisänderungsanträge')}</h5>
+                </div>
+                <div className="card-body p-4 d-flex flex-column gap-3">
+                  {changeRequests.map((entry) => (
+                    <div key={entry.id} className="border rounded-3 p-3">
+                      <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                        <div>
+                          <div className="fw-semibold">{entry.service_provider?.company_name || '-'}</div>
+                          <div className="text-muted small">
+                            {formatCurrencyAmount(Number(entry.original_amount || 0))} &rarr; {formatCurrencyAmount(Number(entry.requested_amount || 0))}
+                          </div>
+                        </div>
+                        <span className={`badge rounded-pill px-3 py-2 ${
+                          entry.status === 'approved' ? 'bg-light-success text-success'
+                            : entry.status === 'rejected' ? 'bg-light-danger text-danger'
+                              : 'bg-light-warning text-warning'}`}>
+                          {t(entry.status === 'approved' ? 'Genehmigt' : entry.status === 'rejected' ? 'Abgelehnt' : 'In Prüfung')}
+                        </span>
+                      </div>
+
+                      <div className="table-responsive">
+                        <table className="table table-sm align-middle mb-0">
+                          <thead>
+                            <tr>
+                              <th>{t('Leistung')}</th>
+                              <th>{t('Art')}</th>
+                              <th className="text-end">{t('Neu')}</th>
+                              <th>{t('Begründung')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(entry.items ?? []).map((item, index) => (
+                              <tr key={index}>
+                                <td>{item.label}</td>
+                                <td>
+                                  <span className="badge bg-light-primary text-primary">
+                                    {t(item.change_type === 'added' ? 'Hinzugefügt' : 'Preis geändert')}
+                                  </span>
+                                </td>
+                                <td className="text-end">{formatCurrencyAmount(Number(item.unit_price || 0))}</td>
+                                <td className="text-muted small">{item.reason}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {entry.status === 'pending' ? (
+                        <div className="d-flex gap-2 mt-3">
+                          <button
+                            type="button"
+                            className="btn btn-success btn-sm"
+                            disabled={decidingRequestId === entry.id}
+                            onClick={() => handleDecideChangeRequest(entry.id, 'approved')}
+                          >
+                            {t('Genehmigen')}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-light-danger text-danger btn-sm"
+                            disabled={decidingRequestId === entry.id}
+                            onClick={() => handleDecideChangeRequest(entry.id, 'rejected')}
+                          >
+                            {t('Ablehnen')}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="card">
               <div className="px-4 py-3 border-bottom">
                 <h5 className="card-title fw-semibold mb-0">Verknüpfte Dokumente</h5>
               </div>
 
               <div className="card-body p-4">
+                {orderPhotos.length > 0 ? (
+                  <div className="mb-4">
+                    <div className="fw-semibold mb-1">{t('Fotos der Dienstleister')}</div>
+                    <p className="text-muted small">
+                      {t('Freigegebene Fotos sind für alle anfragenden Dienstleister sichtbar.')}
+                    </p>
+
+                    <div className="d-flex flex-column gap-2">
+                      {orderPhotos.map((photo) => (
+                        <div key={photo.id} className="d-flex align-items-center justify-content-between gap-2 border rounded-3 px-3 py-2 flex-wrap">
+                          <div className="min-w-0">
+                            <div className="fw-semibold text-truncate">{photo.name}</div>
+                            <div className="text-muted small">
+                              {t('Position')} {photo.line_item_index + 1}
+                              {photo.company_name ? ` · ${photo.company_name}` : ''}
+                            </div>
+                          </div>
+                          <div className="d-flex align-items-center gap-2">
+                            <span className={`badge ${photo.is_published ? 'bg-light-success text-success' : 'bg-light-warning text-warning'} rounded-pill px-3 py-2`}>
+                              {photo.is_published ? t('Freigegeben') : t('Nicht freigegeben')}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-light-primary btn-sm"
+                              onClick={() => window.open(photo.download_url, '_blank', 'noopener')}
+                            >
+                              {t('Ansehen')}
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${photo.is_published ? 'btn-light-danger text-danger' : 'btn-primary'}`}
+                              disabled={updatingPhotoId === photo.id}
+                              onClick={() => handleTogglePhotoPublished(photo)}
+                            >
+                              {updatingPhotoId === photo.id
+                                ? t('Wird gespeichert...')
+                                : photo.is_published ? t('Freigabe zurückziehen') : t('Freigeben')}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 {(order.documents ?? []).length > 0 ? (
                   <div className="table-responsive rounded-2 mb-0">
                     <table className="table border-none text-nowrap customize-table mb-0 align-middle">
@@ -1582,7 +1698,6 @@ function OrderDetailsPage() {
               </div>
               <div className="modal-body">
                 {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-                <p className="text-muted">{t('Nach der Besichtigung erfasste Leistungen. Preise bleiben für Immobilienverwalter und andere Anbieter verborgen.')}</p>
                 {inspectionQuoteOptions.length > 0 ? (
                   <div className="d-flex flex-column gap-3">
                     {inspectionQuoteOptions.map((option, optionIndex) => (
@@ -1679,6 +1794,57 @@ function OrderDetailsPage() {
                     {t('Zur Auftragsliste')}
                   </button>
                 ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isServiceItemsModalOpen ? (
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" style={{ background: 'rgba(15, 23, 42, 0.45)' }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{t('Alle Leistungen')}</h5>
+                <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={() => setIsServiceItemsModalOpen(false)}></button>
+              </div>
+              <div className="modal-body">
+                {orderServiceItems.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="table align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '48px' }}>#</th>
+                          <th>{t('Leistung')}</th>
+                          <th>{t('Einheit')}</th>
+                          <th className="text-end">{t('Menge')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orderServiceItems.map((item, index) => (
+                          <tr key={`${item.code || item.category || 'item'}-${index}`}>
+                            <td className="text-muted">{index + 1}</td>
+                            <td>
+                              <div className="fw-semibold">{item.label || '-'}</div>
+                              {item.category ? (
+                                <div className="text-muted small">{getOptionLabel(JOB_TYPE_OPTIONS, item.category) || item.category}</div>
+                              ) : null}
+                            </td>
+                            <td>{item.unit || '-'}</td>
+                            <td className="text-end">{item.quantity ?? '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-muted">{t('Für diesen Auftrag sind keine Leistungen hinterlegt.')}</div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setIsServiceItemsModalOpen(false)}>
+                  {t('Schließen')}
+                </button>
               </div>
             </div>
           </div>

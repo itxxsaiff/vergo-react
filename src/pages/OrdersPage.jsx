@@ -269,6 +269,31 @@ function isPastDate(value) {
   return Boolean(value && value < TODAY_DATE)
 }
 
+// A time only counts as "past" relative to the date it sits on: 08:00 is fine
+// tomorrow but not if today is already 15:42.
+function isPastDateTime(dateValue, timeValue) {
+  if (!dateValue || !timeValue) {
+    return false
+  }
+
+  const [hours, minutes] = String(timeValue).split(':').map(Number)
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return false
+  }
+
+  const selected = new Date(`${dateValue}T00:00:00`)
+
+  if (Number.isNaN(selected.getTime())) {
+    return false
+  }
+
+  selected.setHours(hours, minutes, 0, 0)
+
+  return selected.getTime() < Date.now()
+}
+
+
 function getOrderFlowTypeLabel(order) {
   const isInspection = order?.workflow_type === 'inspection'
     || order?.workflow_meta?.flow_type === 'inspection'
@@ -645,6 +670,13 @@ function OrdersPage() {
       ...(name === 'trade_object'
         ? {
           trade_activity: '',
+        }
+        : {}),
+      // Switching to a public tender drops any company picked earlier, so a
+      // stale selection can never be submitted with a public request.
+      ...(name === 'inspection_request_mode' && value === 'public'
+        ? {
+          selected_provider_ids: [],
         }
         : {}),
       ...(name === 'flow_type'
@@ -1057,8 +1089,13 @@ function OrdersPage() {
       }
 
       if (managerWizard.flow_type === 'inspection') {
-        if (!managerWizard.inspection_date_1 || !managerWizard.inspection_time_1) {
-          setError(t('Bitte geben Sie mindestens eine bevorzugte Besichtigung an.'))
+        if (!managerWizard.inspection_date_1) {
+          setError(t('Bitte geben Sie das Besichtigungsdatum 1 an.'))
+          return false
+        }
+
+        if (!managerWizard.inspection_time_1) {
+          setError(t('Bitte geben Sie die Uhrzeit für Besichtigung 1 an.'))
           return false
         }
 
@@ -1072,8 +1109,13 @@ function OrdersPage() {
           return false
         }
 
-        if (managerWizard.has_second_inspection_option && (!managerWizard.inspection_date_2 || !managerWizard.inspection_time_2)) {
-          setError(t('Bitte vervollständigen Sie den zweiten Besichtigungstermin oder entfernen Sie ihn wieder.'))
+        if (managerWizard.has_second_inspection_option && !managerWizard.inspection_date_2) {
+          setError(t('Bitte geben Sie das Besichtigungsdatum 2 an.'))
+          return false
+        }
+
+        if (managerWizard.has_second_inspection_option && !managerWizard.inspection_time_2) {
+          setError(t('Bitte geben Sie die Uhrzeit für Besichtigung 2 an.'))
           return false
         }
 
@@ -1089,6 +1131,15 @@ function OrdersPage() {
 
         if (isPastDate(managerWizard.inspection_date_1) || isPastDate(managerWizard.inspection_date_2)) {
           setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
+          return false
+        }
+
+        if (
+          isPastDateTime(managerWizard.inspection_date_1, managerWizard.inspection_time_1)
+          || (managerWizard.has_second_inspection_option
+            && isPastDateTime(managerWizard.inspection_date_2, managerWizard.inspection_time_2))
+        ) {
+          setError(t('Bitte wählen Sie eine Uhrzeit in der Zukunft.'))
           return false
         }
 
@@ -1557,6 +1608,41 @@ function OrdersPage() {
       ? serviceProviders.filter((provider) => String(provider.canton || '').trim().toUpperCase() === providerCantonFilter)
       : serviceProviders
   ), [providerCantonFilter, serviceProviders])
+  // A public tender is never company-picked: either a direct order (always
+  // publicly quoted) or an inspection explicitly published to all providers.
+  const isPublicTender = managerWizard.flow_type === 'direct_order'
+    || (managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'public')
+  // How many registered companies actually see this tender. Mirrors
+  // ServiceProvider::supportsServiceType() on the backend: trade groups are
+  // matched both raw and mapped to their legacy service type, and a provider
+  // that declared no trades at all sees every tender.
+  const notifiedProviderCount = useMemo(() => {
+    const serviceType = normalizeServiceTypeForApi(managerWizard.service_type)
+
+    if (!serviceType) {
+      return 0
+    }
+
+    const target = String(serviceType).toLowerCase()
+
+    return serviceProviders.filter((provider) => {
+      if (provider.status === 'inactive') {
+        return false
+      }
+
+      const tradeGroups = provider.trade_groups ?? []
+
+      if (tradeGroups.length === 0) {
+        return true
+      }
+
+      return tradeGroups.some((tradeGroup) => {
+        const raw = String(tradeGroup).toLowerCase()
+
+        return raw === target || String(normalizeServiceTypeForApi(raw) ?? '').toLowerCase() === target
+      })
+    }).length
+  }, [serviceProviders, managerWizard.service_type])
   const managerQuoteServiceOptions = getQuoteServiceOptions(managerWizard.service_type)
   const managerQuoteUnitOptions = getTradeUnitOptions(managerWizard.service_type)
   const quoteDeadlineWarning = managerWizard.flow_type === 'direct_order'
@@ -2023,6 +2109,15 @@ function OrdersPage() {
                                     </div>
                                   </>
                                 )}
+                                {isPastDateTime(managerWizard.inspection_date_1, managerWizard.inspection_time_1)
+                                  || (managerWizard.has_second_inspection_option
+                                    && isPastDateTime(managerWizard.inspection_date_2, managerWizard.inspection_time_2)) ? (
+                                  <div className="col-12">
+                                    <div className="alert alert-danger py-2 mb-0">
+                                      {t('Die gewählte Uhrzeit liegt in der Vergangenheit. Bitte wählen Sie eine spätere Uhrzeit.')}
+                                    </div>
+                                  </div>
+                                ) : null}
                                 {isWeekendDate(managerWizard.inspection_date_1) || isWeekendDate(managerWizard.inspection_date_2) ? (
                                   <div className="col-12">
                                     <div className="alert alert-warning py-2 mb-0">
@@ -2395,13 +2490,27 @@ function OrdersPage() {
 
                         {managerStep === 5 ? (
                           <div className="row g-4">
-                            {managerWizard.flow_type === 'direct_order' ? (
+                            {isPublicTender ? (
                               <div className="col-12">
                                 <div className="alert alert-light-primary border mb-0">
-                                  <div className="fw-semibold mb-1">{t('Öffentliche Offertenanfrage')}</div>
+                                  <div className="fw-semibold mb-1">
+                                    {managerWizard.flow_type === 'direct_order'
+                                      ? t('Öffentliche Offertenanfrage')
+                                      : t('Öffentliche Besichtigungsanfrage')}
+                                  </div>
                                   <div className="small">
                                     {t('Dieser Auftrag wird öffentlich ausgeschrieben. Es kann keine einzelne Firma ausgewählt werden; alle passenden Dienstleister können ein Angebot einreichen.')}
                                   </div>
+                                  <div className="fw-semibold mt-3 mb-0">
+                                    {notifiedProviderCount === 1
+                                      ? `${t('1 Firma im Gewerk')} „${t(getOptionLabel(JOB_TYPE_OPTIONS, managerWizard.service_type))}" ${t('wird benachrichtigt.')}`
+                                      : `${notifiedProviderCount} ${t('Firmen im Gewerk')} „${t(getOptionLabel(JOB_TYPE_OPTIONS, managerWizard.service_type))}" ${t('werden benachrichtigt.')}`}
+                                  </div>
+                                  {notifiedProviderCount === 0 ? (
+                                    <div className="small text-danger mt-1">
+                                      {t('Für dieses Gewerk ist aktuell keine Firma registriert. Die Ausschreibung bleibt sichtbar, sobald sich passende Dienstleister registrieren.')}
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
                             ) : (

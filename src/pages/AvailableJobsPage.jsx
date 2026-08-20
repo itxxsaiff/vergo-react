@@ -23,6 +23,7 @@ const initialBidForm = {
   estimated_start_date: '',
   estimated_completion_date: '',
   notes: '',
+  provider_reference: '',
   attachment: null,
   selected_inspection_slot: '',
   vat_included: false,
@@ -146,6 +147,14 @@ function AvailableJobsPage() {
   const [assignmentMode, setAssignmentMode] = useState('self')
   const [targetProviderEmail, setTargetProviderEmail] = useState('')
   const [assignmentNotice, setAssignmentNotice] = useState('')
+  const [completionSummary, setCompletionSummary] = useState(null)
+  const [itemPhotos, setItemPhotos] = useState([])
+  const [isPriceChangeOpen, setIsPriceChangeOpen] = useState(false)
+  const [priceChangeRows, setPriceChangeRows] = useState([])
+  const [priceChangeRequests, setPriceChangeRequests] = useState([])
+  const [isSubmittingPriceChange, setIsSubmittingPriceChange] = useState(false)
+  const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState(null)
+  const [isCompletingJob, setIsCompletingJob] = useState(false)
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState('')
   const [error, setError] = useState('')
   const [hasOpenedInitialOrder, setHasOpenedInitialOrder] = useState(false)
@@ -255,6 +264,7 @@ function AvailableJobsPage() {
       estimated_start_date: draft?.estimated_start_date ?? providerBid?.estimated_start_date ?? '',
       estimated_completion_date: draft?.estimated_completion_date ?? providerBid?.estimated_completion_date ?? '',
       notes: draft?.notes ?? providerBid?.notes ?? '',
+      provider_reference: draft?.provider_reference ?? providerBid?.provider_reference ?? '',
       selected_inspection_slot: draft?.selected_inspection_slot ?? providerBid?.workflow_meta?.selected_slot_index ?? '',
       vat_included: Boolean(draft?.vat_included ?? providerBid?.workflow_meta?.vat_included),
       line_items: quoteItems.map((item, index) => createQuoteLineItem(tradeGroup, {
@@ -301,7 +311,10 @@ function AvailableJobsPage() {
     setAssignmentMode('self')
     setTargetProviderEmail('')
     setAssignmentNotice('')
+    setCompletionSummary(null)
     setError('')
+    loadItemPhotos(order.id)
+    loadPriceChangeRequests(order.id)
   }
 
   function closeModal() {
@@ -311,6 +324,10 @@ function AvailableJobsPage() {
     setTargetProviderEmail('')
     setAssignmentNotice('')
     setLastDraftSavedAt('')
+    setCompletionSummary(null)
+    setItemPhotos([])
+    setPriceChangeRequests([])
+    setIsPriceChangeOpen(false)
     setError('')
   }
 
@@ -478,6 +495,7 @@ function AvailableJobsPage() {
     if (bidForm.estimated_start_date) payload.append('estimated_start_date', bidForm.estimated_start_date)
     if (bidForm.estimated_completion_date) payload.append('estimated_completion_date', bidForm.estimated_completion_date)
     if (bidForm.notes) payload.append('notes', bidForm.notes)
+    if (bidForm.provider_reference) payload.append('provider_reference', bidForm.provider_reference.trim())
     if (isInspectionSignup) {
       payload.append('workflow_meta[selected_slot_index]', Number(bidForm.selected_inspection_slot))
       payload.append('workflow_meta[selected_slot][date]', selectedOrder.workflow_meta?.inspection?.preferred_slots?.[Number(bidForm.selected_inspection_slot)]?.date || '')
@@ -599,6 +617,15 @@ function AvailableJobsPage() {
   const providerLoginEmail = String(user?.provider_login_email || user?.email || '').toLowerCase()
   const activeAssignedProviderEmail = getAssignedProviderEmail(activeProviderBid)
   const isAssignedToMe = Boolean(activeAssignedProviderEmail) && activeAssignedProviderEmail === providerLoginEmail
+  // The manager published a scope that differs from what this company
+  // priced, so their old quote is parked until they send new prices.
+  const requiresRequote = Boolean(activeProviderBid?.workflow_meta?.requires_requote)
+  // The awarded provider closes the job themselves; that opens the client's
+  // confidential rating and returns the invoicing summary.
+  const canMarkJobCompleted = Boolean(selectedOrder)
+    && ['approved', 'accepted'].includes(activeProviderBid?.status)
+    && !['completed', 'closed'].includes(String(selectedOrder?.status || '').toLowerCase())
+  const requoteItemCount = Number(activeProviderBid?.workflow_meta?.requote_item_count ?? 0)
   const canSubmitCurrentOrder = selectedOrder
     ? selectedOrder.workflow_status === 'public_inspection_open' || isOrderQuoteRequest(selectedOrder)
     : false
@@ -618,6 +645,7 @@ function AvailableJobsPage() {
             estimated_start_date: bidForm.estimated_start_date,
             estimated_completion_date: bidForm.estimated_completion_date,
             notes: bidForm.notes,
+            provider_reference: bidForm.provider_reference,
             selected_inspection_slot: bidForm.selected_inspection_slot,
             line_items: bidForm.line_items,
           },
@@ -631,6 +659,192 @@ function AvailableJobsPage() {
 
     return () => window.clearInterval(intervalId)
   }, [activeProviderBid?.id, bidForm, isAssignedToMe, selectedOrder])
+
+  async function loadItemPhotos(orderId) {
+    if (!orderId) {
+      setItemPhotos([])
+      return
+    }
+
+    try {
+      const response = await api.getOrderPhotos(orderId)
+      setItemPhotos(response.data ?? [])
+    } catch {
+      // Photos are supplementary; a failure here must not block the quote form.
+      setItemPhotos([])
+    }
+  }
+
+  async function handlePhotoSelected(event, lineItemIndex) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file || !selectedOrder) {
+      return
+    }
+
+    setUploadingPhotoIndex(lineItemIndex)
+    setError('')
+
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      formData.append('line_item_index', String(lineItemIndex))
+      await api.uploadOrderPhoto(selectedOrder.id, formData)
+      await loadItemPhotos(selectedOrder.id)
+    } catch (uploadError) {
+      setError(t(uploadError.message))
+    } finally {
+      setUploadingPhotoIndex(null)
+    }
+  }
+
+  async function handleDeletePhoto(photoId) {
+    if (!selectedOrder) {
+      return
+    }
+
+    try {
+      await api.deleteOrderPhoto(selectedOrder.id, photoId)
+      await loadItemPhotos(selectedOrder.id)
+    } catch (deleteError) {
+      setError(t(deleteError.message))
+    }
+  }
+
+  async function loadPriceChangeRequests(orderId) {
+    if (!orderId) {
+      setPriceChangeRequests([])
+      return
+    }
+
+    try {
+      const response = await api.getPriceChangeRequests(orderId)
+      setPriceChangeRequests(response.data ?? [])
+    } catch {
+      setPriceChangeRequests([])
+    }
+  }
+
+  /**
+   * Seeds the change form with the items already in the awarded quote plus the
+   * items the manager dropped after the inspection, so the provider can put the
+   * omitted ones back in.
+   */
+  function openPriceChangeModal() {
+    const quoted = (activeProviderBid?.line_items ?? []).map((item) => ({
+      change_type: 'changed',
+      label: item.label ?? '',
+      unit: item.unit ?? '',
+      quantity: Number(item.quantity ?? 0),
+      original_unit_price: Number(item.unit_price ?? 0),
+      unit_price: Number(item.unit_price ?? 0),
+      reason: '',
+      include: false,
+    }))
+
+    const quotedLabels = new Set(quoted.map((row) => String(row.label).toLowerCase()))
+    const omitted = (activeProviderBid?.workflow_meta?.omitted_line_items ?? [])
+      .filter((item) => !quotedLabels.has(String(item.label ?? '').toLowerCase()))
+      .map((item) => ({
+        change_type: 'added',
+        label: item.label ?? '',
+        unit: item.unit ?? '',
+        quantity: Number(item.quantity ?? 0),
+        original_unit_price: null,
+        unit_price: Number(item.unit_price ?? 0),
+        reason: '',
+        include: false,
+      }))
+
+    setPriceChangeRows([...quoted, ...omitted])
+    setIsPriceChangeOpen(true)
+  }
+
+  function updatePriceChangeRow(index, patch) {
+    setPriceChangeRows((current) => current.map((row, rowIndex) => (
+      rowIndex === index ? { ...row, ...patch } : row
+    )))
+  }
+
+  function addPriceChangeRow() {
+    setPriceChangeRows((current) => ([
+      ...current,
+      { change_type: 'added', label: '', unit: '', quantity: 1, original_unit_price: null, unit_price: 0, reason: '', include: true },
+    ]))
+  }
+
+  async function handleSubmitPriceChange() {
+    const selectedRows = priceChangeRows.filter((row) => row.include)
+
+    if (selectedRows.length === 0) {
+      setError(t('Bitte wählen Sie mindestens eine Position aus.'))
+      return
+    }
+
+    // Every changed price and every added item needs its own reason.
+    if (selectedRows.some((row) => !String(row.reason || '').trim())) {
+      setError(t('Bitte begründen Sie jede Preisänderung und jede hinzugefügte Position.'))
+      return
+    }
+
+    if (selectedRows.some((row) => !String(row.label || '').trim())) {
+      setError(t('Bitte geben Sie für jede Position eine Bezeichnung an.'))
+      return
+    }
+
+    setIsSubmittingPriceChange(true)
+    setError('')
+
+    try {
+      const unchanged = priceChangeRows
+        .filter((row) => !row.include && row.change_type === 'changed')
+        .reduce((total, row) => total + (Number(row.quantity || 0) * Number(row.original_unit_price || 0)), 0)
+      const changed = selectedRows
+        .reduce((total, row) => total + (Number(row.quantity || 0) * Number(row.unit_price || 0)), 0)
+
+      await api.createPriceChangeRequest(selectedOrder.id, {
+        // `include` is a form-only flag and must not reach the API.
+        items: selectedRows.map((row) => ({
+          change_type: row.change_type,
+          label: row.label,
+          unit: row.unit,
+          quantity: Number(row.quantity || 0),
+          original_unit_price: row.original_unit_price === null ? null : Number(row.original_unit_price),
+          unit_price: Number(row.unit_price || 0),
+          reason: row.reason,
+        })),
+        requested_amount: Number((unchanged + changed).toFixed(2)),
+      })
+
+      setIsPriceChangeOpen(false)
+      setPriceChangeRows([])
+      await loadPriceChangeRequests(selectedOrder.id)
+    } catch (submitError) {
+      setError(t(submitError.message))
+    } finally {
+      setIsSubmittingPriceChange(false)
+    }
+  }
+
+  async function handleMarkJobCompleted() {
+    if (!selectedOrder || isCompletingJob) {
+      return
+    }
+
+    setIsCompletingJob(true)
+    setError('')
+
+    try {
+      const response = await api.completeProviderOrder(selectedOrder.id)
+      setCompletionSummary(response.data ?? null)
+      await loadOrders()
+    } catch (completeError) {
+      setError(t(completeError.message))
+    } finally {
+      setIsCompletingJob(false)
+    }
+  }
 
   async function handleSaveDraft() {
     if (!activeProviderBid?.id || !isAssignedToMe) {
@@ -648,6 +862,7 @@ function AvailableJobsPage() {
           estimated_start_date: bidForm.estimated_start_date,
           estimated_completion_date: bidForm.estimated_completion_date,
           notes: bidForm.notes,
+          provider_reference: bidForm.provider_reference,
           selected_inspection_slot: bidForm.selected_inspection_slot,
           line_items: bidForm.line_items,
         },
@@ -739,13 +954,10 @@ function AvailableJobsPage() {
     selectedOrder?.workflow_status === 'public_inspection_open'
     || ['inspection_requested', 'inspection_interest'].includes(activeProviderBid?.status)
   )
-  const canAssignWithinCompany = Boolean(activeProviderBid?.id)
-    && !isAssignedToMe
-    && ['inspection_requested', 'working', 'awarded_pending_acceptance'].includes(activeProviderBid?.status)
-  const canAssignNewQuoteJob = Boolean(selectedOrder)
-    && !selectedOrderIsInspection
-    && !activeProviderBid
-    && selectedOrder.workflow_status === 'published_for_quotes'
+  // Assignment is always available on a job that is still open to this provider:
+  // inspection or order, awarded directly or published publicly, and whether or
+  // not anyone from the company has picked it up yet.
+  const canAssignJob = Boolean(selectedOrder) && !selectedOrderCompleted
 
   return (
     <PageContent
@@ -961,6 +1173,184 @@ function AvailableJobsPage() {
                       </div>
                     </div>
 
+                    {requiresRequote ? (
+                      <div className="alert alert-warning border mb-3">
+                        <div className="fw-semibold mb-1">{t('Das Auftragsvolumen hat sich geändert')}</div>
+                        <div className="small mb-2">
+                          {requoteItemCount > 0
+                            ? `${t('Die Bewirtschaftung hat den Leistungsumfang angepasst. Bitte reichen Sie eine neue Offerte für die')} ${requoteItemCount} ${t('aktuellen Positionen ein.')}`
+                            : t('Die Bewirtschaftung hat den Leistungsumfang angepasst. Bitte reichen Sie eine neue Offerte ein.')}
+                        </div>
+                        <div className="small text-muted mb-2">
+                          {t('Mengen und Einheiten sind bereits hinterlegt - Sie müssen nur Ihre Preise eintragen.')}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => document.getElementById('vergo-bid-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        >
+                          {t('Neue Preise eingeben')}
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {canMarkJobCompleted || completionSummary ? (
+                      <div className="border rounded-3 p-3 mb-3">
+                        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                          <div>
+                            <div className="fw-semibold">{t('Auftragsstatus')}</div>
+                            <div className="text-muted small">
+                              {completionSummary
+                                ? t('Sie haben diesen Auftrag als abgeschlossen gemeldet.')
+                                : t('Der Auftrag bleibt aktiv, bis Sie ihn als abgeschlossen melden.')}
+                            </div>
+                          </div>
+                          <div className="d-flex gap-2 flex-wrap">
+                            {canMarkJobCompleted ? (
+                              <button type="button" className="btn btn-light-primary btn-sm" onClick={openPriceChangeModal}>
+                                {t('Preisänderung beantragen')}
+                              </button>
+                            ) : null}
+                            {canMarkJobCompleted && !completionSummary ? (
+                              <button type="button" className="btn btn-primary btn-sm" disabled={isCompletingJob} onClick={handleMarkJobCompleted}>
+                                {isCompletingJob ? t('Wird gemeldet...') : t('Auftrag als abgeschlossen melden')}
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {priceChangeRequests.length > 0 ? (
+                          <div className="mt-3 pt-3 border-top">
+                            <div className="fw-semibold mb-2">{t('Preisänderungsanträge')}</div>
+                            {priceChangeRequests.map((entry) => (
+                              <div key={entry.id} className="d-flex justify-content-between align-items-center gap-2 small border rounded-3 px-3 py-2 mb-2">
+                                <span>
+                                  {(entry.items ?? []).length} {t('Positionen')} · {formatCurrencyAmount(Number(entry.requested_amount || 0), 'CHF')}
+                                </span>
+                                <span className={`badge rounded-pill px-3 py-2 ${
+                                  entry.status === 'approved' ? 'bg-light-success text-success'
+                                    : entry.status === 'rejected' ? 'bg-light-danger text-danger'
+                                      : 'bg-light-warning text-warning'}`}>
+                                  {t(entry.status === 'approved' ? 'Genehmigt' : entry.status === 'rejected' ? 'Abgelehnt' : 'In Prüfung')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {completionSummary ? (
+                          <div className="mt-3 pt-3 border-top">
+                            <div className="fw-semibold mb-2">{t('Zusammenfassung für Ihre Rechnung')}</div>
+                            <div className="row g-3 small">
+                              <div className="col-md-6">
+                                <div className="text-muted">{t('Auftragsnummer')}</div>
+                                <div className="fw-semibold">
+                                  {completionSummary.order_number || '-'}
+                                  {completionSummary.provider_reference ? ` (${completionSummary.provider_reference})` : ''}
+                                </div>
+                              </div>
+                              <div className="col-md-6">
+                                <div className="text-muted">{t('Liegenschaft')}</div>
+                                <div className="fw-semibold">{completionSummary.property?.name || '-'}</div>
+                                <div className="text-muted">
+                                  {[completionSummary.property?.street, completionSummary.property?.postal_code, completionSummary.property?.city].filter(Boolean).join(', ') || '-'}
+                                </div>
+                              </div>
+                              <div className="col-md-6">
+                                <div className="text-muted">{t('Eigentümer')}</div>
+                                <div className="fw-semibold">{completionSummary.owner?.name || '-'}</div>
+                                <div className="text-muted">
+                                  {[completionSummary.owner?.address, completionSummary.owner?.postal_code, completionSummary.owner?.city].filter(Boolean).join(', ') || '-'}
+                                </div>
+                              </div>
+                              <div className="col-md-6">
+                                <div className="text-muted">{t('Bewirtschaftung')}</div>
+                                <div className="fw-semibold">{completionSummary.property_manager?.name || '-'}</div>
+                                <div className="text-muted">
+                                  {[completionSummary.property_manager?.address, completionSummary.property_manager?.postal_code, completionSummary.property_manager?.city].filter(Boolean).join(', ') || '-'}
+                                </div>
+                              </div>
+                              <div className="col-12">
+                                <div className="text-muted">{t('Rechnungsadresse')}</div>
+                                <div className="fw-semibold">{completionSummary.billing_address?.name || '-'}</div>
+                                <div className="text-muted">
+                                  {[completionSummary.billing_address?.address, completionSummary.billing_address?.postal_code, completionSummary.billing_address?.city].filter(Boolean).join(', ') || '-'}
+                                </div>
+                                {completionSummary.billing_address?.email ? (
+                                  <div className="text-muted">{completionSummary.billing_address.email}</div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {canAssignJob ? (
+                      <div className="border rounded-3 p-3 mb-3">
+                        <div className="fw-semibold mb-1">{selectedOrderIsInspection ? t('Wer übernimmt die Besichtigung?') : t('Wer übernimmt den Auftrag?')}</div>
+                        <div className="text-muted small mb-3">
+                          {activeAssignedProviderEmail
+                            ? `${t('Zugewiesen an')}: ${activeAssignedProviderEmail}`
+                            : t('Noch niemand aus Ihrer Firma bearbeitet diesen Auftrag.')}
+                          {lastDraftSavedAt ? ` · ${t('Automatisch gespeichert')}: ${lastDraftSavedAt}` : ''}
+                        </div>
+                        <div className="d-flex flex-wrap gap-3 mb-3">
+                          <label className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="assignment_mode"
+                              value="self"
+                              checked={assignmentMode === 'self'}
+                              onChange={() => setAssignmentMode('self')}
+                            />
+                            <span className="form-check-label">{t('Ich übernehme selbst')}</span>
+                          </label>
+                          <label className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="assignment_mode"
+                              value="other"
+                              checked={assignmentMode === 'other'}
+                              onChange={() => setAssignmentMode('other')}
+                            />
+                            <span className="form-check-label">{t('Andere Person in der Firma')}</span>
+                          </label>
+                        </div>
+
+                        {assignmentMode === 'other' ? (
+                          <div className="row g-2 align-items-end">
+                            <div className="col-md-8">
+                              <label className="form-label">{t('E-Mail der zuständigen Person')}</label>
+                              <input
+                                type="email"
+                                className="form-control"
+                                value={targetProviderEmail}
+                                onChange={(event) => setTargetProviderEmail(event.target.value)}
+                                placeholder="name@firma.ch"
+                              />
+                            </div>
+                            <div className="col-md-4">
+                              <button type="button" className="btn btn-primary w-100" disabled={isAssigning} onClick={handleAssignToOther}>
+                                {isAssigning ? t('Wird zugewiesen...') : t('Zuweisen und E-Mail senden')}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button type="button" className="btn btn-primary" disabled={isAssigning || isAssignedToMe} onClick={handleAssignToMe}>
+                            {isAssignedToMe ? t('Mir zugewiesen') : isAssigning ? t('Wird zugewiesen...') : t('Assign to Me')}
+                          </button>
+                        )}
+                        {assignmentNotice ? (
+                          <div className="alert alert-success py-2 mt-3 mb-0">
+                            {assignmentNotice}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     <div className="border rounded-3 p-3 mb-3">
                       <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Liegenschaft')}</div>
                       <div className="row g-3">
@@ -1072,85 +1462,7 @@ function AvailableJobsPage() {
                       </>
                     ) : null}
 
-                    <div className="alert alert-light border d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                      <div>
-                        <div className="fw-semibold">{t('Bearbeitung')}</div>
-                        <div className="text-muted small">
-                          {activeAssignedProviderEmail
-                            ? `${t('Zugewiesen an')}: ${activeAssignedProviderEmail}`
-                            : t('Noch niemand aus Ihrer Firma bearbeitet diesen Auftrag.')}
-                        </div>
-                        {lastDraftSavedAt ? (
-                          <div className="text-muted small">{t('Automatisch gespeichert')}: {lastDraftSavedAt}</div>
-                        ) : null}
-                      </div>
-                      {isAssignedToMe ? (
-                        <span className="badge bg-light-success text-success rounded-pill px-3 py-2">{t('Mir zugewiesen')}</span>
-                      ) : activeProviderBid?.status !== 'inspection_requested' ? (
-                        <button type="button" className="btn btn-primary btn-sm" disabled={isAssigning} onClick={handleAssignToMe}>
-                          {isAssigning ? t('Wird zugewiesen...') : t('Assign to Me')}
-                        </button>
-                      ) : null}
-                    </div>
-                    {canAssignWithinCompany || canAssignNewQuoteJob ? (
-                      <div className="border rounded-3 p-3 mb-3">
-                        <div className="fw-semibold mb-2">{selectedOrderIsInspection ? t('Wer übernimmt die Besichtigung?') : t('Wer übernimmt den Auftrag?')}</div>
-                        <div className="d-flex flex-wrap gap-3 mb-3">
-                          <label className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="assignment_mode"
-                              value="self"
-                              checked={assignmentMode === 'self'}
-                              onChange={() => setAssignmentMode('self')}
-                            />
-                            <span className="form-check-label">{t('Ich übernehme selbst')}</span>
-                          </label>
-                          <label className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="assignment_mode"
-                              value="other"
-                              checked={assignmentMode === 'other'}
-                              onChange={() => setAssignmentMode('other')}
-                            />
-                            <span className="form-check-label">{t('Andere Person in der Firma')}</span>
-                          </label>
-                        </div>
-
-                        {assignmentMode === 'other' ? (
-                          <div className="row g-2 align-items-end">
-                            <div className="col-md-8">
-                              <label className="form-label">{t('E-Mail der zuständigen Person')}</label>
-                              <input
-                                type="email"
-                                className="form-control"
-                                value={targetProviderEmail}
-                                onChange={(event) => setTargetProviderEmail(event.target.value)}
-                                placeholder="name@firma.ch"
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <button type="button" className="btn btn-primary w-100" disabled={isAssigning} onClick={handleAssignToOther}>
-                                {isAssigning ? t('Wird zugewiesen...') : t('Zuweisen und E-Mail senden')}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button type="button" className="btn btn-primary" disabled={isAssigning || isAssignedToMe} onClick={handleAssignToMe}>
-                            {isAssignedToMe ? t('Mir zugewiesen') : isAssigning ? t('Wird zugewiesen...') : t('Assign to Me')}
-                          </button>
-                        )}
-                        {assignmentNotice ? (
-                          <div className="alert alert-success py-2 mt-3 mb-0">
-                            {assignmentNotice}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-
+                    <div id="vergo-bid-form-anchor"></div>
                     {(!selectedOrderIsInspection || isOrderQuoteRequest(selectedOrder)) ? (
                       <div className="row">
                         {selectedOrder?.attachment_name ? (
@@ -1326,9 +1638,60 @@ function AvailableJobsPage() {
                                         </button>
                                       </div>
                                     </div>
+
+                                    <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
+                                      {/* capture="environment" opens the camera on a phone; without it
+                                          the same input is a normal file picker. */}
+                                      <label className="btn btn-light-primary btn-sm mb-0">
+                                        <i className="ti ti-camera me-1"></i>
+                                        {t('Foto aufnehmen')}
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          capture="environment"
+                                          className="d-none"
+                                          onChange={(event) => handlePhotoSelected(event, index)}
+                                        />
+                                      </label>
+                                      <label className="btn btn-light-primary btn-sm mb-0">
+                                        <i className="ti ti-upload me-1"></i>
+                                        {t('Foto hochladen')}
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="d-none"
+                                          onChange={(event) => handlePhotoSelected(event, index)}
+                                        />
+                                      </label>
+                                      {uploadingPhotoIndex === index ? (
+                                        <span className="text-muted small">{t('Wird hochgeladen...')}</span>
+                                      ) : null}
+
+                                      {itemPhotos.filter((photo) => photo.line_item_index === index).map((photo) => (
+                                        <span key={photo.id} className="badge bg-light-primary text-primary d-inline-flex align-items-center gap-2 px-2 py-2">
+                                          <i className="ti ti-photo"></i>
+                                          <span className="text-truncate" style={{ maxWidth: '140px' }}>{photo.name}</span>
+                                          {photo.is_published ? (
+                                            <i className="ti ti-eye" title={t('Von der Bewirtschaftung freigegeben')}></i>
+                                          ) : null}
+                                          <button
+                                            type="button"
+                                            className="btn-close btn-close-sm"
+                                            aria-label={t('Foto entfernen')}
+                                            onClick={() => handleDeletePhoto(photo.id)}
+                                          ></button>
+                                        </span>
+                                      ))}
+                                    </div>
                                   </div>
                                 )
                               })}
+                              <div className="px-3 pb-3">
+                                <div className="alert alert-light border small mb-0">
+                                  <i className="ti ti-alert-circle me-1"></i>
+                                  {t('Bitte laden Sie hier keine offiziellen Offerten Ihrer Firma hoch - nur Fotos zur jeweiligen Position.')}
+                                </div>
+                              </div>
                               <div className="p-3 border-bottom">
                                 <button type="button" className="btn btn-light-primary btn-sm" onClick={addLineItem}>
                                   <i className="ti ti-plus me-1"></i>
@@ -1383,6 +1746,19 @@ function AvailableJobsPage() {
                         <div className="col-md-6 mb-3">
                           <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')}</label>
                           <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || undefined} onChange={handleBidChange} />
+                        </div>
+                        <div className="col-md-6 mb-3">
+                          <label className="form-label">{t('Eigene Angebotsnummer')}</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            name="provider_reference"
+                            maxLength="64"
+                            value={bidForm.provider_reference}
+                            onChange={handleBidChange}
+                            placeholder={t('z. B. OFF-2026-042')}
+                          />
+                          <div className="form-text">{t('Optional. Nur für Sie sichtbar - Verwaltung und andere Firmen sehen diese Nummer nie.')}</div>
                         </div>
                         <div className="col-12 mb-0">
                           <label className="form-label">Notizen</label>
@@ -1441,6 +1817,113 @@ function AvailableJobsPage() {
           </div>
           <div className="modal-backdrop fade show"></div>
         </>
+      ) : null}
+
+      {isPriceChangeOpen ? (
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" style={{ background: 'rgba(15, 23, 42, 0.45)' }}>
+          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <div>
+                  <h5 className="modal-title">{t('Preisänderung beantragen')}</h5>
+                  <p className="text-muted small mb-0">
+                    {t('Für jede Preisänderung und jede hinzugefügte Position ist eine Begründung zwingend.')}
+                  </p>
+                </div>
+                <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={() => setIsPriceChangeOpen(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="table-responsive">
+                  <table className="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '40px' }}></th>
+                        <th>{t('Leistung')}</th>
+                        <th style={{ width: '90px' }}>{t('Menge')}</th>
+                        <th style={{ width: '120px' }}>{t('Bisher')}</th>
+                        <th style={{ width: '130px' }}>{t('Neu')}</th>
+                        <th>{t('Begründung')} *</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {priceChangeRows.map((row, index) => (
+                        <tr key={index} className={row.change_type === 'added' ? 'table-light' : ''}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={row.include}
+                              onChange={(event) => updatePriceChangeRow(index, { include: event.target.checked })}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className="form-control form-control-sm"
+                              value={row.label}
+                              onChange={(event) => updatePriceChangeRow(index, { label: event.target.value })}
+                            />
+                            {row.change_type === 'added' ? (
+                              <span className="badge bg-light-primary text-primary mt-1">{t('Hinzugefügt')}</span>
+                            ) : null}
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              className="form-control form-control-sm"
+                              value={row.quantity}
+                              onChange={(event) => updatePriceChangeRow(index, { quantity: event.target.value })}
+                            />
+                          </td>
+                          <td className="text-muted">
+                            {row.original_unit_price === null ? '-' : formatCurrencyAmount(Number(row.original_unit_price), 'CHF')}
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.05"
+                              className="form-control form-control-sm"
+                              value={row.unit_price}
+                              onChange={(event) => updatePriceChangeRow(index, { unit_price: event.target.value })}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className={`form-control form-control-sm${row.include && !String(row.reason || '').trim() ? ' is-invalid' : ''}`}
+                              value={row.reason}
+                              placeholder={t('Warum ändert sich das?')}
+                              onChange={(event) => updatePriceChangeRow(index, { reason: event.target.value })}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <button type="button" className="btn btn-light-primary btn-sm mt-3" onClick={addPriceChangeRow}>
+                  <i className="ti ti-plus me-1"></i>
+                  {t('Position hinzufügen')}
+                </button>
+
+                <div className="alert alert-warning border small mt-3 mb-0">
+                  {t('Eigenmächtige Preisänderungen und zusätzliche Positionen senken Ihr VERGO-Ranking.')}
+                </div>
+
+                {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setIsPriceChangeOpen(false)}>
+                  {t('Abbrechen')}
+                </button>
+                <button type="button" className="btn btn-primary" disabled={isSubmittingPriceChange} onClick={handleSubmitPriceChange}>
+                  {isSubmittingPriceChange ? t('Wird gesendet...') : t('Zur Genehmigung senden')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
     </PageContent>
   )

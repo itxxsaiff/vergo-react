@@ -2125,12 +2125,6 @@ body {
   padding: 0.9rem 0.95rem;
 }
 
-.vergo-inspection-detail-card.is-accepted-slot {
-  border-color: rgba(255, 255, 255, 0.4);
-  background: linear-gradient(180deg, #7fa877 0%, #6d9a66 100%);
-  box-shadow: 0 8px 20px rgba(74, 116, 66, 0.28);
-}
-
 .vergo-quote-cta-card {
   border: 1px solid #dac5ba;
   background: linear-gradient(180deg, #be9e8d 0%, #ab8b79 100%);
@@ -2794,4 +2788,12 @@ body {
   display: block;
   width: 22px;
   height: 22px;
+}
+
+.vergo-inspection-confirmed-row {
+  padding: 8px 12px;
+  border: 1px solid var(--vergo-table-border);
+  border-radius: 10px;
+  background: var(--vergo-input-bg);
+  line-height: 1.35;
 }

@@ -113,8 +113,13 @@ class BidController extends Controller
         }
 
         if ($existingBid && $isQuoteSubmission) {
+            // A provider flagged for re-quote submits again on purpose: the
+            // published scope no longer matches what they originally priced.
+            $needsRequote = (bool) data_get($existingBid->workflow_meta ?? [], 'requires_requote');
+
             abort_unless(
-                in_array($existingBid->status, ['working', 'inspection_interest', 'inspection_confirmed'], true),
+                $needsRequote
+                || in_array($existingBid->status, ['working', 'inspection_interest', 'inspection_confirmed'], true),
                 422,
                 'You have already submitted a bid for this order.'
             );
@@ -157,6 +162,13 @@ class BidController extends Controller
                     'benchmark' => $benchmarkWarning,
                 ], 422);
             }
+        }
+
+        if ($existingBid && data_get($existingBid->workflow_meta ?? [], 'requires_requote')) {
+            // Fresh prices for the published scope: drop the seed/re-quote flags
+            // so this becomes a normal, visible quote for the manager.
+            unset($workflowMeta['quote_scope_seed'], $workflowMeta['requires_requote']);
+            data_set($workflowMeta, 'requote_submitted_at', now()->toDateTimeString());
         }
 
         $bidPayload = [

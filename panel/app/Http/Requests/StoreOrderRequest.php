@@ -131,10 +131,25 @@ class StoreOrderRequest extends FormRequest
 
             foreach ($inspectionSlots as $slot) {
                 $date = data_get($slot, 'date');
+                $time = data_get($slot, 'time');
 
                 if ($date && $date < $today) {
                     $validator->errors()->add('workflow_meta.inspection.preferred_slots', 'Please do not select a date in the past.');
                     break;
+                }
+
+                // Today is allowed, but only at a time that has not passed yet.
+                if ($date && $time && $date === $today) {
+                    try {
+                        $slotAt = Carbon::parse($date.' '.$time);
+                    } catch (\Throwable) {
+                        continue;
+                    }
+
+                    if ($slotAt->isPast()) {
+                        $validator->errors()->add('workflow_meta.inspection.preferred_slots', 'Please do not select a time in the past.');
+                        break;
+                    }
                 }
             }
 

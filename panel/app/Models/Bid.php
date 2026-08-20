@@ -13,6 +13,7 @@ class Bid extends Model
     protected $fillable = [
         'order_id',
         'service_provider_id',
+        'provider_reference',
         'assigned_provider_email',
         'amount',
         'currency',

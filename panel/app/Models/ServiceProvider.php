@@ -54,6 +54,9 @@ class ServiceProvider extends Model
         'canton',
         'domain_suffix',
         'trade_groups',
+        'vergo_ranking_score',
+        'vergo_ranking_breakdown',
+        'vergo_ranking_updated_at',
         'phone',
         'is_vat_subject',
         'rating',
@@ -67,6 +70,8 @@ class ServiceProvider extends Model
             'rating' => 'decimal:2',
             'completed_jobs_count' => 'integer',
             'trade_groups' => 'array',
+            'vergo_ranking_breakdown' => 'array',
+            'vergo_ranking_updated_at' => 'datetime',
             'is_vat_subject' => 'boolean',
         ];
     }

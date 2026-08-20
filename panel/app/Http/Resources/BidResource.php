@@ -24,6 +24,10 @@ class BidResource extends JsonResource
             'estimated_start_date' => $this->estimated_start_date?->toDateString(),
             'estimated_completion_date' => $this->estimated_completion_date?->toDateString(),
             'notes' => $hideScopeSeedPrices ? null : $this->notes,
+            // The provider's own internal quote number. Only ever returned to
+            // the company that wrote it: managers, owners, admins and other
+            // providers never receive this field.
+            'provider_reference' => $this->when($this->isOwningProvider($request), $this->provider_reference),
             'workflow_meta' => $hideScopeSeedPrices ? $this->scopeOnlyWorkflowMeta($this->workflow_meta ?? []) : ($this->workflow_meta ?? []),
             'draft_payload' => $hideScopeSeedPrices ? null : ($this->draft_payload ?? null),
             'draft_saved_at' => $this->draft_saved_at?->toDateTimeString(),
@@ -65,19 +69,22 @@ class BidResource extends JsonResource
         ];
     }
 
+    private function isOwningProvider(Request $request): bool
+    {
+        $actor = $request->user();
+
+        return $actor instanceof User
+            && $actor->role?->name === 'provider'
+            && $actor->serviceProvider?->id === $this->service_provider_id;
+    }
+
     private function shouldHideScopeSeedPrices(Request $request): bool
     {
         if (! data_get($this->workflow_meta ?? [], 'quote_scope_seed')) {
             return false;
         }
 
-        $actor = $request->user();
-
-        return ! (
-            $actor instanceof User
-            && $actor->role?->name === 'provider'
-            && $actor->serviceProvider?->id === $this->service_provider_id
-        );
+        return ! $this->isOwningProvider($request);
     }
 
     private function scopeOnlyLineItems(array $lineItems): array

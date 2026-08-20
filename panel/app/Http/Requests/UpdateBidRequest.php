@@ -29,6 +29,7 @@ class UpdateBidRequest extends FormRequest
             'line_items.*.is_custom' => ['nullable', 'boolean'],
             'estimated_start_date' => ['nullable', 'date'],
             'estimated_completion_date' => ['nullable', 'date', 'after_or_equal:estimated_start_date'],
+            'provider_reference' => ['nullable', 'string', 'max:64'],
             'notes' => ['nullable', 'string'],
             'workflow_meta' => ['nullable', 'array'],
             'workflow_meta.vat_included' => ['nullable', 'boolean'],

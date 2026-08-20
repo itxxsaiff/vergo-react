@@ -338,6 +338,9 @@ export const api = {
       method: 'POST',
     })
   },
+  evaluateOffers(id) {
+    return request(`/orders/${id}/evaluate-offers`, { method: 'POST' })
+  },
   compareOrderPrice(id) {
     return request(`/orders/${id}/compare-price`, {
       method: 'POST',
@@ -501,6 +504,58 @@ export const api = {
   },
   downloadDocument(id, fileName) {
     return download(`/documents/${id}/download`, fileName)
+  },
+  // Provider marks the job finished and gets the invoicing summary.
+  completeProviderOrder(orderId) {
+    return request(`/orders/${orderId}/provider-complete`, { method: 'POST' })
+  },
+  getCompletionSummary(orderId) {
+    return request(`/orders/${orderId}/completion-summary`)
+  },
+  // Price changes / added items after the job started.
+  getPriceChangeRequests(orderId) {
+    return request(`/orders/${orderId}/price-change-requests`)
+  },
+  createPriceChangeRequest(orderId, data) {
+    return request(`/orders/${orderId}/price-change-requests`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  decidePriceChangeRequest(orderId, requestId, data) {
+    return request(`/orders/${orderId}/price-change-requests/${requestId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+  // Per line item photos.
+  getOrderPhotos(orderId) {
+    return request(`/orders/${orderId}/photos`)
+  },
+  uploadOrderPhoto(orderId, formData) {
+    return upload(`/orders/${orderId}/photos`, formData)
+  },
+  setOrderPhotoPublished(orderId, photoId, isPublished) {
+    return request(`/orders/${orderId}/photos/${photoId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_published: isPublished }),
+    })
+  },
+  deleteOrderPhoto(orderId, photoId) {
+    return request(`/orders/${orderId}/photos/${photoId}`, { method: 'DELETE' })
+  },
+  // Confidential rating opened from the e-mailed link (no login needed).
+  getProviderRating(token) {
+    return request(`/public/provider-rating?token=${encodeURIComponent(token)}`)
+  },
+  submitProviderRating(data) {
+    return request('/public/provider-rating', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  getAdminProviderRatings() {
+    return request('/admin/provider-ratings')
   },
   getPropertyObjects() {
     return request('/property-objects')

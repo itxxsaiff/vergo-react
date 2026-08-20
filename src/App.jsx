@@ -25,7 +25,9 @@ import PropertyDetailsPage from './pages/PropertyDetailsPage'
 import PropertyManagersPage from './pages/PropertyManagersPage'
 import PropertyObjectsPage from './pages/PropertyObjectsPage'
 import ProviderDashboardPage from './pages/ProviderDashboardPage'
+import ProviderRatingsPage from './pages/ProviderRatingsPage'
 import PropertiesPage from './pages/PropertiesPage'
+import RateProviderPage from './pages/RateProviderPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import EmployeePropertiesPage from './pages/EmployeePropertiesPage'
 import EmployeePropertyDetailsPage from './pages/EmployeePropertyDetailsPage'
@@ -115,6 +117,7 @@ function App() {
       <Route path="/email-otp-login" element={<EmailOtpLoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/rate-provider" element={<RateProviderPage />} />
       <Route path="/admin-login" element={<UserLoginPage />} />
       <Route path="/user-login" element={<Navigate to="/admin-login" replace />} />
 
@@ -253,6 +256,14 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['admin', 'employee']}>
               <PropertyManagersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="provider-ratings"
+          element={
+            <ProtectedRoute allowRoles={['admin', 'employee']} allowNavigationRoles={['admin', 'employee_power_user']}>
+              <ProviderRatingsPage />
             </ProtectedRoute>
           }
         />

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\OfferEvaluationService;
 use App\Models\AiAnalysisResult;
 use App\Models\Order;
 use App\Models\PropertyManagerProfile;
@@ -124,5 +125,17 @@ class OrderComparisonController extends Controller
         ) {
             abort(422, 'Bid comparison is available only after the submission deadline has passed.');
         }
+    }
+
+    /**
+     * Automated offer evaluation: scores every offer out of 100 and ranks them
+     * per the functional description (price 60%, ratings 24%, schedule 11%,
+     * property experience 5%).
+     */
+    public function evaluateOffers(Request $request, Order $order, OfferEvaluationService $evaluation): JsonResponse
+    {
+        $this->authorizeOrderAccess($request->user(), $order);
+
+        return response()->json(['data' => $evaluation->evaluate($order)]);
     }
 }

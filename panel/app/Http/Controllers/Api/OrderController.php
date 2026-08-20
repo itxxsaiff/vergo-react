@@ -14,6 +14,7 @@ use App\Models\PropertyObject;
 use App\Models\ServiceProvider;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\QuoteScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Collection;
@@ -531,7 +532,7 @@ class OrderController extends Controller
         ])->loadCount('bids'));
     }
 
-    public function publishQuoteRequest(Request $request, Order $order, NotificationService $notificationService): OrderResource
+    public function publishQuoteRequest(Request $request, Order $order, NotificationService $notificationService, QuoteScopeService $quoteScopeService): OrderResource
     {
         $actor = $request->user();
 
@@ -575,7 +576,33 @@ class OrderController extends Controller
             'quote_items' => $quoteItems,
         ]);
 
-        $notificationService->sendQuoteRequestPublished($order->fresh(), $excludeProviderIds);
+        // Decide per provider whether their inspection quote still matches the
+        // published scope. Untouched scope keeps its prices and shows as a real
+        // quote immediately; anything else has to be re-priced first.
+        $scopeOutcome = $quoteScopeService->applyPublishedScope($order->fresh(), $quoteItems);
+
+        $freshOrder = $order->fresh();
+
+        if ($scopeOutcome['requote']->isNotEmpty()) {
+            $notificationService->sendQuoteScopeChanged(
+                $freshOrder,
+                $scopeOutcome['requote']->load('serviceProvider'),
+                count($quoteItems),
+            );
+        }
+
+        // Providers that keep their quote must not also get the "new request"
+        // mail; providers asked to re-quote already got their own mail above.
+        $excludeProviderIds = collect($excludeProviderIds)
+            ->merge($scopeOutcome['preserved']->pluck('service_provider_id'))
+            ->merge($scopeOutcome['requote']->pluck('service_provider_id'))
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $notificationService->sendQuoteRequestPublished($freshOrder, $excludeProviderIds);
 
         return new OrderResource($order->fresh()->load([
             'property:id,li_number,title,postal_code,city,country',

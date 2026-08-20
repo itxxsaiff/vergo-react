@@ -15,6 +15,7 @@ export const navigationByRole = {
         { title: 'Bewirtschaftung', href: '/property-managers' },
         { title: 'Dienstleister', href: '/service-providers' },
         { title: 'Admins', href: '/employees' },
+        { title: 'Bewertungen', href: '/provider-ratings' },
       ],
     },
     {
@@ -81,6 +82,7 @@ export const navigationByRole = {
         { title: 'Bewirtschaftung', href: '/property-managers' },
         { title: 'Dienstleister', href: '/service-providers' },
         { title: 'Admins', href: '/employees' },
+        { title: 'Bewertungen', href: '/provider-ratings' },
       ],
     },
     {

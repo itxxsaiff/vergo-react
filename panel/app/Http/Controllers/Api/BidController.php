@@ -152,16 +152,19 @@ class BidController extends Controller
         if ($isQuoteSubmission) {
             abort_unless($amount !== null && $amount > 0, 422, 'Please enter a valid bid amount.');
 
+            // The benchmark is recorded for the evaluation and for the
+            // manager's analysis, but is never surfaced to the provider: they
+            // submit a price and it is assessed afterwards. Telling them their
+            // price sits below or above the benchmark would let them tune it.
             $benchmarkWarning = $this->getBenchmarkWarning($order, $amount);
-            $warningAlreadyAccepted = (bool) data_get($workflowMeta, 'benchmark_warning_acknowledged');
 
-            if ($benchmarkWarning && ! $warningAlreadyAccepted) {
-                return response()->json([
-                    'message' => 'Your price is below the benchmark for this service.',
-                    'requires_confirmation' => true,
-                    'benchmark' => $benchmarkWarning,
-                ], 422);
+            if ($benchmarkWarning) {
+                data_set($workflowMeta, 'benchmark_warning', $benchmarkWarning);
             }
+
+            // Nothing the provider sent about the old confirmation dialog is
+            // meaningful any more.
+            unset($workflowMeta['benchmark_warning_acknowledged']);
         }
 
         if ($existingBid && data_get($existingBid->workflow_meta ?? [], 'requires_requote')) {

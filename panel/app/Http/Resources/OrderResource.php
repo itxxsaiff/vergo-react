@@ -50,6 +50,10 @@ class OrderResource extends JsonResource
                 ->all(),
             'requested_at' => $this->requested_at?->toDateTimeString(),
             'completed_at' => $this->completed_at?->toDateTimeString(),
+            'cancelled_at' => $this->cancelled_at?->toDateTimeString(),
+            'cancellation_reason' => $this->cancellation_reason,
+            'duplicate_of_order_id' => $this->duplicate_of_order_id,
+            'duplicate_explanation' => $this->duplicate_explanation,
             'deleted_at' => $this->deleted_at?->toDateTimeString(),
             'is_approved' => $this->relationLoaded('approvedBid') ? $this->approvedBid !== null : null,
             'property' => $this->whenLoaded('property', fn () => [

@@ -435,6 +435,9 @@ function OrdersPage() {
   const [restoringOrderId, setRestoringOrderId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [duplicatePrompt, setDuplicatePrompt] = useState(null)
+  const [duplicateExplanation, setDuplicateExplanation] = useState('')
+  const [isSavingDuplicate, setIsSavingDuplicate] = useState(false)
 
   const canCreateOrders = Boolean(user?.permissions?.orders?.create)
   const canEditOrders = Boolean(user?.permissions?.orders?.edit)
@@ -1391,7 +1394,45 @@ function OrdersPage() {
       return [response.data, ...nextOrders]
     })
 
+    // The system checks whether this repeats a cancelled job or splits work
+    // that is already out to tender on the same property.
+    try {
+      const check = await api.checkOrderDuplicates(response.data.id)
+
+      if (check.data?.requires_explanation) {
+        setDuplicatePrompt({ order: response.data, matches: check.data.matches ?? [] })
+      }
+    } catch {
+      // A failed check must never block saving the order.
+    }
+
     return response.data
+  }
+
+  async function handleSubmitDuplicateExplanation() {
+    if (!duplicatePrompt || duplicateExplanation.trim().length < 5) {
+      return
+    }
+
+    setIsSavingDuplicate(true)
+
+    try {
+      const best = duplicatePrompt.matches[0]
+
+      await api.explainOrderDuplicate(duplicatePrompt.order.id, {
+        duplicate_of_order_id: best.order_id,
+        similarity: best.similarity,
+        reason: best.reason,
+        explanation: duplicateExplanation.trim(),
+      })
+
+      setDuplicatePrompt(null)
+      setDuplicateExplanation('')
+    } catch (explainError) {
+      setError(t(explainError.message))
+    } finally {
+      setIsSavingDuplicate(false)
+    }
   }
 
   async function handleSaveManagerDraft() {
@@ -2805,6 +2846,63 @@ function OrdersPage() {
           {isModalOpen ? <div className="modal-backdrop fade show"></div> : null}
           {isCompanyRequestModalOpen ? <div className="modal-backdrop fade show"></div> : null}
         </>
+      ) : null}
+
+      {duplicatePrompt ? (
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" style={{ background: 'rgba(15, 23, 42, 0.45)' }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <div>
+                  <h5 className="modal-title">{t('Möglicher doppelter Auftrag')}</h5>
+                  <p className="text-muted small mb-0">
+                    {t('Für diese Liegenschaft existiert bereits ein sehr ähnlicher Auftrag. Bitte begründen Sie, warum ein separater Auftrag nötig ist.')}
+                  </p>
+                </div>
+              </div>
+              <div className="modal-body">
+                {duplicatePrompt.matches.map((match) => (
+                  <div key={match.order_id} className="border rounded-3 p-3 mb-2">
+                    <div className="d-flex justify-content-between gap-2 flex-wrap">
+                      <div>
+                        <div className="fw-semibold">{match.order_number} · {match.title}</div>
+                        <div className="text-muted small">
+                          {t(match.reason === 'cancelled_recreated' ? 'Nach Absage neu erstellt' : 'Ähnlicher laufender Auftrag')}
+                          {match.cancellation_reason ? ` · ${match.cancellation_reason}` : ''}
+                        </div>
+                      </div>
+                      <span className="badge bg-light-warning text-warning rounded-pill px-3 py-2 align-self-start">
+                        {Math.round(match.similarity * 100)}% {t('Ähnlichkeit')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                <label className="form-label mt-2">{t('Begründung')} *</label>
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  value={duplicateExplanation}
+                  placeholder={t('Warum wurde dies nicht in einem Auftrag zusammengefasst?')}
+                  onChange={(event) => setDuplicateExplanation(event.target.value)}
+                ></textarea>
+                <div className="form-text">
+                  {t('Der Eigentümer kann diese Begründung einsehen.')}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={isSavingDuplicate || duplicateExplanation.trim().length < 5}
+                  onClick={handleSubmitDuplicateExplanation}
+                >
+                  {isSavingDuplicate ? t('Wird gespeichert...') : t('Begründung speichern')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
     </PageContent>
   )

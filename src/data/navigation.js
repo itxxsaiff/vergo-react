@@ -142,6 +142,8 @@ export const navigationByRole = {
         { title: 'Immobilienobjekte', href: '/property-objects' },
         { title: 'Bestellungen', href: '/orders' },
         { title: 'Preisvergleich', href: '/price-comparison' },
+        { title: 'Auswertungen', href: '/owner-analytics' },
+        { title: 'Erkannte Duplikate', href: '/owner-duplicates' },
         { title: 'Unterlagen', href: '/documents' },
       ],
     },
@@ -153,11 +155,11 @@ export const navigationByRole = {
       href: '/dashboard',
     },
     {
-      title: 'Bieten',
+      title: 'Aufträge',
       icon: 'ti ti-briefcase',
       children: [
-        { title: 'Verfügbare Jobs', href: '/available-jobs' },
-        { title: 'Abgegebene Gebote', href: '/submitted-bids' },
+        { title: 'Verfügbar', href: '/available-jobs' },
+        { title: 'Abgegeben', href: '/submitted-bids' },
       ],
     },
   ],

@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\BackgroundJobController;
 use App\Http\Controllers\Api\BidController;
 use App\Http\Controllers\Api\BidPhotoController;
 use App\Http\Controllers\Api\OrderCompletionController;
+use App\Http\Controllers\Api\OrderLifecycleController;
+use App\Http\Controllers\Api\OwnerAnalyticsController;
 use App\Http\Controllers\Api\PriceChangeRequestController;
 use App\Http\Controllers\Api\ProviderRatingController;
 use App\Http\Controllers\Api\CronController;
@@ -136,6 +138,17 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     // Admin view of the individual confidential ratings.
     Route::get('/admin/provider-ratings', [ProviderRatingController::class, 'adminIndex']);
+
+    // Owner portfolio analytics and the duplicates the system flagged.
+    Route::get('/owner/analytics', [OwnerAnalyticsController::class, 'analytics']);
+    Route::get('/owner/duplicates', [OwnerAnalyticsController::class, 'duplicates']);
+
+    // Cancellation, duplicate detection and sequential bid disclosure.
+    Route::post('/orders/{order}/cancel', [OrderLifecycleController::class, 'cancel']);
+    Route::get('/orders/{order}/duplicate-check', [OrderLifecycleController::class, 'duplicateCheck']);
+    Route::post('/orders/{order}/duplicate-explanation', [OrderLifecycleController::class, 'acknowledgeDuplicate']);
+    Route::get('/orders/{order}/bid-disclosure', [OrderLifecycleController::class, 'disclosure']);
+    Route::post('/orders/{order}/bids/{bid}/reject', [OrderLifecycleController::class, 'rejectBid']);
 
     Route::get('/bids', [BidController::class, 'index']);
     Route::post('/bids', [BidController::class, 'store']);

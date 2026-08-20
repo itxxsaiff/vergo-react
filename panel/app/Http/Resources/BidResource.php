@@ -28,7 +28,9 @@ class BidResource extends JsonResource
             // the company that wrote it: managers, owners, admins and other
             // providers never receive this field.
             'provider_reference' => $this->when($this->isOwningProvider($request), $this->provider_reference),
-            'workflow_meta' => $hideScopeSeedPrices ? $this->scopeOnlyWorkflowMeta($this->workflow_meta ?? []) : ($this->workflow_meta ?? []),
+            'workflow_meta' => $hideScopeSeedPrices
+                ? $this->scopeOnlyWorkflowMeta($this->workflow_meta ?? [])
+                : $this->withoutProviderOnlySecrets($this->workflow_meta ?? [], $request),
             'draft_payload' => $hideScopeSeedPrices ? null : ($this->draft_payload ?? null),
             'draft_saved_at' => $this->draft_saved_at?->toDateTimeString(),
             'attachment_name' => $hideScopeSeedPrices ? null : $this->attachment_name,
@@ -76,6 +78,26 @@ class BidResource extends JsonResource
         return $actor instanceof User
             && $actor->role?->name === 'provider'
             && $actor->serviceProvider?->id === $this->service_provider_id;
+    }
+
+    /**
+     * Providers must never learn how their price compares with the benchmark -
+     * knowing it would let them tune the number instead of quoting honestly.
+     * Managers, owners and admins still get it for their analysis.
+     *
+     * @param  array<string, mixed>  $workflowMeta
+     * @return array<string, mixed>
+     */
+    private function withoutProviderOnlySecrets(array $workflowMeta, Request $request): array
+    {
+        $actor = $request->user();
+
+        if ($actor instanceof User && $actor->role?->name === 'provider') {
+            data_forget($workflowMeta, 'benchmark_warning');
+            data_forget($workflowMeta, 'benchmark_warning_acknowledged');
+        }
+
+        return $workflowMeta;
     }
 
     private function shouldHideScopeSeedPrices(Request $request): bool

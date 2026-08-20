@@ -441,7 +441,7 @@ function AvailableJobsPage() {
     }
   }
 
-  async function submitBid(acknowledgeBenchmarkWarning = false) {
+  async function submitBid() {
     const isInspectionSignup = selectedOrder.workflow_status === 'public_inspection_open'
     const isQuoteRequest = isOrderQuoteRequest(selectedOrder)
 
@@ -480,10 +480,6 @@ function AvailableJobsPage() {
         payload.append(`line_items[${index}][unit_price]`, Number(item.unit_price || 0))
         payload.append(`line_items[${index}][is_custom]`, item.is_custom ? '1' : '0')
       })
-
-      if (acknowledgeBenchmarkWarning) {
-        payload.append('workflow_meta[benchmark_warning_acknowledged]', '1')
-      }
 
       if (providerIsVatSubject) {
         payload.append('workflow_meta[vat_included]', bidForm.vat_included ? '1' : '0')
@@ -572,34 +568,6 @@ function AvailableJobsPage() {
       )))
       closeModal()
     } catch (saveError) {
-      if (saveError.payload?.requires_confirmation) {
-        const shouldSubmit = window.confirm(saveError.message)
-
-        if (shouldSubmit) {
-          try {
-            const hadExistingBid = Boolean(providerBidByOrderId[selectedOrder.id])
-            const response = await submitBid(true)
-            const savedBid = response.data
-            setSubmittedBids((current) => [
-              ...current.filter((bid) => bid.order_id !== selectedOrder.id),
-              savedBid,
-            ])
-            setOrders((current) => current.map((order) => (
-              order.id === selectedOrder.id
-                ? { ...order, bids_count: hadExistingBid ? order.bids_count : (order.bids_count ?? 0) + 1 }
-                : order
-            )))
-            closeModal()
-          } catch (confirmedError) {
-            setError(t(confirmedError.message))
-          } finally {
-            setIsSaving(false)
-          }
-
-          return
-        }
-      }
-
       setError(t(saveError.message))
     } finally {
       setIsSaving(false)

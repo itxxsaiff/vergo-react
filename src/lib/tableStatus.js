@@ -20,7 +20,7 @@ export function formatStatusLabel(status) {
 export function getStatusBadgeClass(status) {
   const normalizedStatus = String(status || '').toLowerCase()
 
-  if (['active', 'approved', 'ready', 'paid', 'analyzed', 'fair', 'inspection_confirmed', 'accepted'].includes(normalizedStatus)) {
+  if (['active', 'approved', 'ready', 'paid', 'analyzed', 'fair', 'inspection_confirmed', 'accepted', 'completed'].includes(normalizedStatus)) {
     return 'badge bg-light-success text-success fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 
@@ -37,6 +37,7 @@ export function getStatusBadgeClass(status) {
     'inspection_interest',
     'awarded_pending_acceptance',
     'working',
+    'in_review',
   ].includes(normalizedStatus)) {
     return 'badge bg-light-warning text-warning fw-semibold fs-2 rounded-3 py-2 px-3'
   }
@@ -44,19 +45,17 @@ export function getStatusBadgeClass(status) {
   if ([
     'submitted',
     'shortlisted',
-    'in_review',
-    'open',
     'awaiting_owner_approval',
     'inspection_quote_created',
   ].includes(normalizedStatus)) {
     return 'badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 
-  if (['completed', 'archived', 'closed', 'refunded'].includes(normalizedStatus)) {
+  if (['archived', 'closed', 'refunded'].includes(normalizedStatus)) {
     return 'badge bg-light-primary text-primary fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 
-  if (['cancel', 'cancelled', 'inactive', 'rejected', 'inspection_rejected', 'failed', 'too_high'].includes(normalizedStatus)) {
+  if (['cancel', 'cancelled', 'inactive', 'rejected', 'inspection_rejected', 'failed', 'too_high', 'open'].includes(normalizedStatus)) {
     return 'badge bg-light-danger text-danger fw-semibold fs-2 rounded-3 py-2 px-3'
   }
 

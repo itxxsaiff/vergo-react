@@ -325,6 +325,66 @@ function OrderDetailsPage() {
     }
   }
 
+  async function handleLoadDisclosure() {
+    setIsDisclosing(true)
+    setError('')
+
+    try {
+      const response = await api.getBidDisclosure(orderId)
+      setDisclosure(response.data ?? null)
+    } catch (disclosureError) {
+      setError(disclosureError.message)
+    } finally {
+      setIsDisclosing(false)
+    }
+  }
+
+  async function handleRejectDisclosedBid() {
+    if (!disclosure?.disclosed) {
+      return
+    }
+
+    if (rejectReason.trim().length < 5) {
+      setError(t('Bitte begründen Sie die Ablehnung.'))
+      return
+    }
+
+    setIsDisclosing(true)
+    setError('')
+
+    try {
+      const response = await api.rejectDisclosedBid(orderId, disclosure.disclosed.bid_id, rejectReason.trim())
+      setDisclosure(response.data ?? null)
+      setRejectReason('')
+      await loadOrder()
+    } catch (rejectError) {
+      setError(rejectError.message)
+    } finally {
+      setIsDisclosing(false)
+    }
+  }
+
+  async function handleCancelOrder() {
+    if (cancelReason.trim().length < 5) {
+      setError(t('Bitte begründen Sie die Absage.'))
+      return
+    }
+
+    setIsCancelling(true)
+    setError('')
+
+    try {
+      await api.cancelOrder(orderId, cancelReason.trim())
+      setIsCancelOpen(false)
+      setCancelReason('')
+      await loadOrder()
+    } catch (cancelError) {
+      setError(cancelError.message)
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
   async function handleEvaluateOffers() {
     setIsEvaluating(true)
     setError('')
@@ -441,6 +501,12 @@ function OrderDetailsPage() {
   const [orderPhotos, setOrderPhotos] = useState([])
   const [changeRequests, setChangeRequests] = useState([])
   const [offerEvaluation, setOfferEvaluation] = useState(null)
+  const [disclosure, setDisclosure] = useState(null)
+  const [isDisclosing, setIsDisclosing] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
+  const [isCancelOpen, setIsCancelOpen] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [decidingRequestId, setDecidingRequestId] = useState(null)
   const [updatingPhotoId, setUpdatingPhotoId] = useState(null)
@@ -828,7 +894,49 @@ function OrderDetailsPage() {
                       {isCompletingOrder ? 'Wird als abgeschlossen markiert...' : 'Als abgeschlossen markieren'}
                     </button>
                   ) : null}
+
+                  {!order.cancelled_at && !['completed', 'closed'].includes(String(order.status || '').toLowerCase()) ? (
+                    <button type="button" className="btn btn-light-danger text-danger" onClick={() => setIsCancelOpen(true)}>
+                      {t('Auftrag absagen')}
+                    </button>
+                  ) : null}
                 </div>
+
+                {order.cancelled_at ? (
+                  <div className="alert alert-light-danger border mt-3 mb-0">
+                    <div className="fw-semibold mb-1">{t('Auftrag abgesagt')}</div>
+                    <div className="small">{order.cancellation_reason || '-'}</div>
+                  </div>
+                ) : null}
+
+                {isCancelOpen ? (
+                  <div className="border rounded-3 p-3 mt-3">
+                    <div className="fw-semibold mb-1">{t('Auftrag absagen')}</div>
+                    <p className="text-muted small">
+                      {t('Eine Begründung ist Pflicht. Alle Dienstleister mit einem Angebot werden per E-Mail informiert.')}
+                    </p>
+                    <textarea
+                      className="form-control mb-2"
+                      rows="3"
+                      value={cancelReason}
+                      placeholder={t('Warum wird der Auftrag abgesagt?')}
+                      onChange={(event) => setCancelReason(event.target.value)}
+                    ></textarea>
+                    <div className="d-flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm"
+                        disabled={isCancelling || cancelReason.trim().length < 5}
+                        onClick={handleCancelOrder}
+                      >
+                        {isCancelling ? t('Wird abgesagt...') : t('Absage bestätigen')}
+                      </button>
+                      <button type="button" className="btn btn-light border btn-sm" onClick={() => setIsCancelOpen(false)}>
+                        {t('Abbrechen')}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1278,6 +1386,95 @@ function OrderDetailsPage() {
                 </div>
                 )}
               </div>
+            </div>
+
+            <div className="card">
+              <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                <div>
+                  <h5 className="card-title fw-semibold mb-0">{t('Bestes Angebot')}</h5>
+                  <p className="text-muted small mb-0">
+                    {t('Es ist immer nur das bestbewertete Angebot einsehbar. Erst nach einer begründeten Ablehnung wird das nächste freigegeben.')}
+                  </p>
+                </div>
+                <button type="button" className="btn btn-primary btn-sm" disabled={isDisclosing} onClick={handleLoadDisclosure}>
+                  {isDisclosing ? t('Wird geladen...') : t('Bestes Angebot öffnen')}
+                </button>
+              </div>
+
+              {disclosure ? (
+                <div className="card-body p-4">
+                  {disclosure.disclosed ? (
+                    <>
+                      <div className="border rounded-3 p-3 mb-3">
+                        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                          <div>
+                            <div className="fw-semibold fs-5">{disclosure.disclosed.company_name || '-'}</div>
+                            <div className="text-muted small">{disclosure.disclosed.contact_email || ''}</div>
+                          </div>
+                          <div className="text-end">
+                            <div className="fw-semibold fs-5">{formatCurrencyAmount(Number(disclosure.disclosed.amount || 0))}</div>
+                            <div className="text-muted small">{t('Rang')} {disclosure.disclosed.rank} · {disclosure.disclosed.score} {t('Punkte')}</div>
+                          </div>
+                        </div>
+                        <div className="row g-3 small">
+                          <div className="col-md-6">
+                            <div className="text-muted">{t('Voraussichtliches Startdatum')}</div>
+                            <div className="fw-semibold">{disclosure.disclosed.estimated_start_date || '-'}</div>
+                          </div>
+                          <div className="col-md-6">
+                            <div className="text-muted">{t('Voraussichtliches Fertigstellungsdatum')}</div>
+                            <div className="fw-semibold">{disclosure.disclosed.estimated_completion_date || '-'}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-2 fw-semibold">{t('Angebot ablehnen')}</div>
+                      <div className="row g-2 align-items-end">
+                        <div className="col-md-9">
+                          <input
+                            className="form-control"
+                            value={rejectReason}
+                            placeholder={t('Begründung der Ablehnung (Pflicht)')}
+                            onChange={(event) => setRejectReason(event.target.value)}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <button
+                            type="button"
+                            className="btn btn-light-danger text-danger w-100"
+                            disabled={isDisclosing || rejectReason.trim().length < 5}
+                            onClick={handleRejectDisclosedBid}
+                          >
+                            {t('Ablehnen')}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="form-text">
+                        {disclosure.remaining_count > 0
+                          ? `${t('Danach wird das nächste Angebot freigegeben. Noch gesperrt')}: ${disclosure.remaining_count}`
+                          : t('Es gibt kein weiteres Angebot mehr.')}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-muted">{t('Es ist kein offenes Angebot mehr vorhanden.')}</div>
+                  )}
+
+                  {(disclosure.rejected ?? []).length > 0 ? (
+                    <div className="mt-4">
+                      <div className="fw-semibold mb-2">{t('Abgelehnte Angebote')}</div>
+                      {disclosure.rejected.map((entry) => (
+                        <div key={entry.bid_id} className="border rounded-3 px-3 py-2 mb-2 small">
+                          <div className="d-flex justify-content-between gap-2 flex-wrap">
+                            <span className="fw-semibold">{entry.company_name}</span>
+                            <span>{formatCurrencyAmount(Number(entry.amount || 0))}</span>
+                          </div>
+                          <div className="text-muted">{t('Begründung')}: {entry.rejection_reason || '-'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="card">

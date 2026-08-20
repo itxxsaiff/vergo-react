@@ -19,6 +19,8 @@ import TypePage from './pages/TypePage'
 import OrdersPage from './pages/OrdersPage'
 import EmployeeOrdersPage from './pages/EmployeeOrdersPage'
 import OrderDetailsPage from './pages/OrderDetailsPage'
+import OwnerAnalyticsPage from './pages/OwnerAnalyticsPage'
+import OwnerDuplicatesPage from './pages/OwnerDuplicatesPage'
 import OwnersPage from './pages/OwnersPage'
 import PriceComparisonPage from './pages/PriceComparisonPage'
 import PropertyDetailsPage from './pages/PropertyDetailsPage'
@@ -184,6 +186,22 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['admin', 'owner', 'manager']}>
               <OrderDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="owner-analytics"
+          element={
+            <ProtectedRoute allowRoles={['owner']}>
+              <OwnerAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="owner-duplicates"
+          element={
+            <ProtectedRoute allowRoles={['owner']}>
+              <OwnerDuplicatesPage />
             </ProtectedRoute>
           }
         />

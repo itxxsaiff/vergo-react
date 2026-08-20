@@ -46,6 +46,15 @@ class Order extends Model
         'review_last_reminded_at',
         'review_reminder_count',
         'reviewed_at',
+        'cancelled_at',
+        'cancellation_reason',
+        'cancelled_by_type',
+        'cancelled_by_id',
+        'duplicate_of_order_id',
+        'duplicate_similarity',
+        'duplicate_reason',
+        'duplicate_explanation',
+        'duplicate_acknowledged_at',
     ];
 
     protected function casts(): array
@@ -62,6 +71,8 @@ class Order extends Model
             'review_requested_at' => 'datetime',
             'review_last_reminded_at' => 'datetime',
             'reviewed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'duplicate_acknowledged_at' => 'datetime',
         ];
     }
 
@@ -112,6 +123,11 @@ class Order extends Model
         );
     }
 
+    public function duplicateOfOrder(): BelongsTo
+    {
+        return $this->belongsTo(Order::class, 'duplicate_of_order_id')->withTrashed();
+    }
+
     public function priceChangeRequests(): HasMany
     {
         return $this->hasMany(PriceChangeRequest::class);
@@ -156,7 +172,15 @@ class Order extends Model
 
     public function approvedBid(): HasOne
     {
-        return $this->hasOne(Bid::class)->whereIn('status', ['approved', 'accepted', 'completed', 'awarded_pending_acceptance'])->latestOfMany();
+        // The status filter has to live inside ofMany(): with latestOfMany()
+        // the MAX() subquery ignores constraints added afterwards, so it picks
+        // the newest bid of any status and the outer filter then removes it,
+        // leaving the relation empty even though an awarded bid exists.
+        // Ordering by id keeps it deterministic when bids share a timestamp.
+        return $this->hasOne(Bid::class)->ofMany(
+            ['id' => 'max'],
+            fn ($query) => $query->whereIn('status', ['approved', 'accepted', 'completed', 'awarded_pending_acceptance']),
+        );
     }
 
     public function documents(): HasMany

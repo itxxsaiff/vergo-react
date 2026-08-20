@@ -557,6 +557,38 @@ export const api = {
   getAdminProviderRatings() {
     return request('/admin/provider-ratings')
   },
+  // Owner portfolio analytics + flagged duplicates.
+  getOwnerAnalytics() {
+    return request('/owner/analytics')
+  },
+  getOwnerDuplicates() {
+    return request('/owner/duplicates')
+  },
+  // Cancellation, duplicate detection, sequential bid disclosure.
+  cancelOrder(id, reason) {
+    return request(`/orders/${id}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    })
+  },
+  checkOrderDuplicates(id) {
+    return request(`/orders/${id}/duplicate-check`)
+  },
+  explainOrderDuplicate(id, data) {
+    return request(`/orders/${id}/duplicate-explanation`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  getBidDisclosure(id) {
+    return request(`/orders/${id}/bid-disclosure`)
+  },
+  rejectDisclosedBid(orderId, bidId, reason) {
+    return request(`/orders/${orderId}/bids/${bidId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    })
+  },
   getPropertyObjects() {
     return request('/property-objects')
   },

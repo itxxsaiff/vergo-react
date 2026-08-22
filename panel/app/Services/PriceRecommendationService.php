@@ -316,6 +316,16 @@ class PriceRecommendationService
                 $matchScore += $intervalMatch ? 2 : 0;
                 $matchScore += ($document?->type === 'invoice' || data_get($comparisonData, 'document_use_case') === 'historical_invoice_benchmark') ? 2 : 0;
 
+                // Historical data must be filtered by trade: a bathroom
+                // renovation on the same property is not a valid benchmark for a
+                // painting job. Only fall back to the looser rule when the
+                // document carries no trade information at all.
+                $hasServiceInformation = $resultServiceCategory !== '' || filled($document?->service_type);
+
+                if ($serviceType && $hasServiceInformation && ! $serviceMatch) {
+                    return null;
+                }
+
                 if (! $sameProperty && ! $serviceMatch && ! $sizeMatch) {
                     return null;
                 }
@@ -470,6 +480,15 @@ class PriceRecommendationService
 
         if ($expected === '' || $actual === '') {
             return false;
+        }
+
+        // A document tagged with the trade group "maler" describes the same work
+        // as an order stored as "painting"; normalise both before comparing.
+        $expectedCanonical = \App\Models\ServiceProvider::normalizeServiceType($expected);
+        $actualCanonical = \App\Models\ServiceProvider::normalizeServiceType($actual);
+
+        if ($expectedCanonical === $actualCanonical) {
+            return true;
         }
 
         return Str::contains($actual, $expected) || Str::contains($expected, $actual);

@@ -157,6 +157,21 @@ class ServiceProvider extends Model
             ->exists();
     }
 
+    /**
+     * Normalises a trade value to its canonical service type.
+     *
+     * The same trade appears in two spellings across the system: the trade
+     * group a company or document is tagged with (e.g. "maler") and the legacy
+     * service type an order stores (e.g. "painting"). Comparing the two
+     * directly silently fails, so always normalise both sides first.
+     */
+    public static function normalizeServiceType(?string $value): string
+    {
+        $normalized = strtolower(trim((string) $value));
+
+        return self::TRADE_GROUP_SERVICE_TYPE_MAP[$normalized] ?? $normalized;
+    }
+
     public function supportedServiceTypes(): array
     {
         return collect($this->trade_groups ?? [])

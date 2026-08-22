@@ -29,6 +29,7 @@ class SeedDemoData extends Command
 {
     protected $signature = 'vergo:demo-data
                             {--domain=vergo-demo.ch : Email domain used for every generated account}
+                            {--inbox= : Route every demo address to one real inbox using plus-addressing, e.g. you@gmail.com}
                             {--fresh : Remove previously generated demo data first}
                             {--force : Allow running outside the local environment}';
 
@@ -76,6 +77,45 @@ class SeedDemoData extends Command
     /**
      * @return array<int, User>
      */
+    /**
+     * Builds the address used for a demo account.
+     *
+     * With --inbox every account becomes you+label@yourdomain, so all OTP and
+     * notification mail lands in one real inbox that you can actually open
+     * while recording. Without it the plain demo domain is used, which is fine
+     * for data but will not receive mail.
+     */
+    private function accountEmail(string $label, string $domain): string
+    {
+        $inbox = trim((string) $this->option('inbox'));
+
+        if ($inbox === '' || ! str_contains($inbox, '@')) {
+            return $label.'@'.$domain;
+        }
+
+        [$local, $inboxDomain] = explode('@', $inbox, 2);
+        // Strip any existing +tag so re-running does not stack them.
+        $local = explode('+', $local, 2)[0];
+
+        return $local.'+'.$label.'@'.$inboxDomain;
+    }
+
+    /**
+     * The domain used for matching logins. With --inbox everything shares the
+     * inbox domain; owner and provider logins still resolve correctly because
+     * both forms require the ETM / DLS customer number.
+     */
+    private function matchDomain(string $domain): string
+    {
+        $inbox = trim((string) $this->option('inbox'));
+
+        if ($inbox === '' || ! str_contains($inbox, '@')) {
+            return $domain;
+        }
+
+        return explode('@', $inbox, 2)[1];
+    }
+
     private function createOwners(string $domain): array
     {
         $ownerRole = Role::query()->firstOrCreate(['name' => 'owner'], ['label' => 'Owner']);
@@ -87,14 +127,14 @@ class SeedDemoData extends Command
         $owners = [];
 
         foreach ($rows as $index => [$name, $type, $slug]) {
-            $email = $slug.'.owner@'.$domain;
+            $email = $this->accountEmail($slug.'.owner', $domain);
             $owner = User::query()->updateOrCreate(['email' => $email], [
                 'role_id' => $ownerRole->id,
                 'name' => self::TAG.' '.$name,
                 'company_name' => $type === 'company' ? $name : null,
                 'owner_type' => $type,
                 'login_email' => $email,
-                'domain_suffix' => $type === 'company' ? $domain : null,
+                'domain_suffix' => $type === 'company' ? $this->matchDomain($domain) : null,
                 'address' => 'Eigentümerweg '.($index + 1),
                 'postal_code' => '800'.($index + 1),
                 'city' => 'Zürich',
@@ -117,7 +157,7 @@ class SeedDemoData extends Command
         $managers = [];
 
         foreach ($rows as $index => [$name, $slug]) {
-            $email = $slug.'.manager@'.$domain;
+            $email = $this->accountEmail($slug.'.manager', $domain);
             $managers[] = PropertyManagerProfile::query()->updateOrCreate(['email' => $email], [
                 'name' => self::TAG.' '.$name,
                 'phone' => '04412345'.$index,
@@ -125,7 +165,7 @@ class SeedDemoData extends Command
                 'postal_code' => '800'.($index + 1),
                 'city' => 'Zürich',
                 'canton' => 'ZH',
-                'domain_suffix' => $domain,
+                'domain_suffix' => $this->matchDomain($domain),
                 'invoice_email' => 'rechnung.'.$slug.'@'.$domain,
                 'invoice_company_name' => $name.' AG',
                 'invoice_address' => 'Rechnungsweg '.($index + 1),
@@ -158,8 +198,8 @@ class SeedDemoData extends Command
         $providers = [];
 
         foreach ($rows as $index => [$company, $slug, $trades, $canton]) {
-            $providerDomain = $slug.'.'.$domain;
-            $email = 'kontakt@'.$providerDomain;
+            $providerDomain = $this->matchDomain($domain) === $domain ? $slug.'.'.$domain : $this->matchDomain($domain);
+            $email = $this->accountEmail($slug.'.kontakt', $domain);
 
             $user = User::query()->updateOrCreate(['email' => $email], [
                 'role_id' => $providerRole->id,
@@ -173,7 +213,7 @@ class SeedDemoData extends Command
                 'company_name' => self::TAG.' '.$company,
                 'contact_name' => 'Kontakt '.$company,
                 'contact_email' => $email,
-                'order_email' => 'auftrag@'.$providerDomain,
+                'order_email' => $this->accountEmail($slug.'.auftrag', $domain),
                 'domain_suffix' => $providerDomain,
                 'trade_groups' => $trades,
                 'address' => 'Gewerbestrasse '.($index + 1),
@@ -186,7 +226,7 @@ class SeedDemoData extends Command
             ]);
 
             $providers[] = $provider;
-            $this->line('  provider DLS-'.str_pad((string) $provider->id, 5, '0', STR_PAD_LEFT).'  auftrag@'.$providerDomain);
+            $this->line('  provider DLS-'.str_pad((string) $provider->id, 5, '0', STR_PAD_LEFT).'  '.$provider->order_email);
         }
 
         return $providers;
@@ -370,12 +410,12 @@ class SeedDemoData extends Command
     {
         foreach ($properties as $property) {
             PropertyManagerDomain::query()->updateOrCreate(
-                ['property_id' => $property->id, 'domain' => $domain],
+                ['property_id' => $property->id, 'domain' => $this->matchDomain($domain)],
                 ['label' => self::TAG.' Demo-Domain']
             );
         }
 
-        $this->line('  domains  '.$domain.' allowed on '.count($properties).' properties');
+        $this->line('  domains  '.$this->matchDomain($domain).' allowed on '.count($properties).' properties');
     }
 
     /**

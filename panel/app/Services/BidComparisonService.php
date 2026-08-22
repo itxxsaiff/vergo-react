@@ -397,6 +397,15 @@ class BidComparisonService
             return false;
         }
 
+        // A document tagged with the trade group "maler" describes the same work
+        // as an order stored as "painting"; normalise both before comparing.
+        $expectedCanonical = \App\Models\ServiceProvider::normalizeServiceType($expected);
+        $actualCanonical = \App\Models\ServiceProvider::normalizeServiceType($actual);
+
+        if ($expectedCanonical === $actualCanonical) {
+            return true;
+        }
+
         return Str::contains($actual, $expected) || Str::contains($expected, $actual);
     }
 

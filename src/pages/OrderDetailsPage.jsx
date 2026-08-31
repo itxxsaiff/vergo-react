@@ -39,9 +39,21 @@ function isInspectionOrder(order) {
 // confirmations are listed explicitly instead.
 function getConfirmedInspectionBids(order, slots) {
   const confirmedStatuses = ['inspection_confirmed', 'accepted', 'approved', 'completed']
+  // A provider that later submits a quote moves to `submitted`, but the
+  // appointment they confirmed still happened - keep showing it. Anyone who
+  // recorded a slot stays listed unless they were rejected or withdrew.
+  const withdrawnStatuses = ['rejected', 'inspection_rejected', 'cancelled', 'declined']
 
   return (order?.bids ?? [])
-    .filter((bid) => confirmedStatuses.includes(bid.status))
+    .filter((bid) => {
+      if (withdrawnStatuses.includes(bid.status)) {
+        return false
+      }
+
+      const hasConfirmedSlot = Number.isInteger(Number(bid.workflow_meta?.selected_slot_index))
+
+      return confirmedStatuses.includes(bid.status) || hasConfirmedSlot
+    })
     .map((bid) => {
       const rawIndex = Number(bid.workflow_meta?.selected_slot_index)
       const hasIndex = Number.isInteger(rawIndex) && rawIndex >= 0 && rawIndex < (slots?.length ?? 0)
@@ -186,7 +198,7 @@ function OrderDetailsPage() {
       const bidComparisonResult = getLatestAnalysisResult(orderData?.analysis_results, 'bid_comparison')
       setComparison(bidComparisonResult)
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -226,7 +238,7 @@ function OrderDetailsPage() {
       setComparison(analysis)
       await loadOrder()
     } catch (compareError) {
-      setError(compareError.message)
+      setError(t(compareError.message))
     } finally {
       setIsComparing(false)
     }
@@ -256,7 +268,7 @@ function OrderDetailsPage() {
       await loadOrder()
       return true
     } catch (updateError) {
-      setError(updateError.message)
+      setError(t(updateError.message))
       return false
     } finally {
       setUpdatingBidId(null)
@@ -279,7 +291,7 @@ function OrderDetailsPage() {
       await api.completeOrder(orderId)
       await loadOrder()
     } catch (completeError) {
-      setError(completeError.message)
+      setError(t(completeError.message))
     } finally {
       setIsCompletingOrder(false)
     }
@@ -333,7 +345,7 @@ function OrderDetailsPage() {
       const response = await api.getBidDisclosure(orderId)
       setDisclosure(response.data ?? null)
     } catch (disclosureError) {
-      setError(disclosureError.message)
+      setError(t(disclosureError.message))
     } finally {
       setIsDisclosing(false)
     }
@@ -358,7 +370,7 @@ function OrderDetailsPage() {
       setRejectReason('')
       await loadOrder()
     } catch (rejectError) {
-      setError(rejectError.message)
+      setError(t(rejectError.message))
     } finally {
       setIsDisclosing(false)
     }
@@ -379,7 +391,7 @@ function OrderDetailsPage() {
       setCancelReason('')
       await loadOrder()
     } catch (cancelError) {
-      setError(cancelError.message)
+      setError(t(cancelError.message))
     } finally {
       setIsCancelling(false)
     }
@@ -393,7 +405,7 @@ function OrderDetailsPage() {
       const response = await api.evaluateOffers(orderId)
       setOfferEvaluation(response.data ?? null)
     } catch (evaluateError) {
-      setError(evaluateError.message)
+      setError(t(evaluateError.message))
     } finally {
       setIsEvaluating(false)
     }
@@ -408,7 +420,7 @@ function OrderDetailsPage() {
       setChangeRequests(requests.data ?? [])
       await loadOrder()
     } catch (decideError) {
-      setError(decideError.message)
+      setError(t(decideError.message))
     } finally {
       setDecidingRequestId(null)
     }
@@ -421,7 +433,7 @@ function OrderDetailsPage() {
       await api.setOrderPhotoPublished(orderId, photo.id, !photo.is_published)
       await loadOrderPhotos()
     } catch (toggleError) {
-      setError(toggleError.message)
+      setError(t(toggleError.message))
     } finally {
       setUpdatingPhotoId(null)
     }
@@ -568,7 +580,7 @@ function OrderDetailsPage() {
         }
       } catch (compareError) {
         if (!cancelled) {
-          setError(compareError.message)
+          setError(t(compareError.message))
         }
       } finally {
         if (!cancelled) {
@@ -616,7 +628,7 @@ function OrderDetailsPage() {
         }
       } catch (compareError) {
         if (!cancelled) {
-          setError(compareError.message)
+          setError(t(compareError.message))
         }
       } finally {
         if (!cancelled) {

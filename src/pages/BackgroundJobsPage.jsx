@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import PageContent from '../components/PageContent'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { DOCUMENT_TYPE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
 function BackgroundJobsPage() {
+  const { t } = useLanguage()
   const [jobs, setJobs] = useState([])
   const [filters, setFilters] = useState({ search: '', status: '' })
   const [isLoading, setIsLoading] = useState(true)
@@ -22,7 +24,7 @@ function BackgroundJobsPage() {
       const response = await api.getBackgroundJobs()
       setJobs(response.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }

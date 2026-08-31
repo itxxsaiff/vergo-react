@@ -62,7 +62,7 @@ function OwnerAnalyticsPage() {
   useEffect(() => {
     api.getOwnerAnalytics()
       .then((response) => setData(response.data ?? null))
-      .catch((loadError) => setError(loadError.message))
+      .catch((loadError) => setError(t(loadError.message)))
       .finally(() => setIsLoading(false))
   }, [])
 

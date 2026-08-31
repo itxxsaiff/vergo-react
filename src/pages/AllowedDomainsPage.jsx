@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PageContent from '../components/PageContent'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
@@ -11,6 +12,7 @@ const initialForm = {
 }
 
 function AllowedDomainsPage() {
+  const { t } = useLanguage()
   const [domains, setDomains] = useState([])
   const [properties, setProperties] = useState([])
   const [form, setForm] = useState(initialForm)
@@ -52,7 +54,7 @@ function AllowedDomainsPage() {
       setDomains(domainsResponse.data ?? [])
       setProperties(propertiesResponse.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -127,7 +129,7 @@ function AllowedDomainsPage() {
 
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -143,7 +145,7 @@ function AllowedDomainsPage() {
       showDeleteSuccess('allowed domain')
       if (editingId === domainId) closeModal()
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 

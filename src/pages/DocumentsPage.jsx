@@ -86,7 +86,7 @@ function DocumentsPage() {
       setPropertyObjects(propertyObjectsResponse.data ?? [])
       setServiceProviders(serviceProvidersResponse.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -188,7 +188,7 @@ function DocumentsPage() {
       setDocuments((current) => [response.data, ...current])
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -220,7 +220,7 @@ function DocumentsPage() {
       setDocuments((current) => current.filter((document) => document.id !== documentId))
       showDeleteSuccess('document')
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 

@@ -94,7 +94,7 @@ function PropertyManagersPage() {
       const managersResponse = await api.getPropertyManagers()
       setManagers(managersResponse.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -269,7 +269,7 @@ function PropertyManagersPage() {
 
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -285,7 +285,7 @@ function PropertyManagersPage() {
       showDeleteSuccess('property manager')
       if (editingManager?.id === managerId) closeModal()
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 

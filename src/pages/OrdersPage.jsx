@@ -469,7 +469,7 @@ function OrdersPage() {
       setObjects(objectsResponse.data ?? [])
       setServiceProviders(serviceProvidersResponse.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -487,7 +487,7 @@ function OrdersPage() {
       const response = await api.getDeletedOrders()
       setDeletedOrders(response.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoadingDeletedOrders(false)
     }
@@ -1564,7 +1564,7 @@ function OrdersPage() {
 
       handleCloseModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -1604,7 +1604,7 @@ function OrdersPage() {
         handleCloseModal()
       }
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 
@@ -1617,7 +1617,7 @@ function OrdersPage() {
       setDeletedOrders((current) => current.filter((order) => order.id !== orderId))
       setOrders((current) => [response.data, ...current])
     } catch (restoreError) {
-      setError(restoreError.message)
+      setError(t(restoreError.message))
     } finally {
       setRestoringOrderId(null)
     }

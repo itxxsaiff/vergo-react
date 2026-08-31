@@ -55,7 +55,7 @@ function OwnersPage() {
       const response = await api.getOwners()
       setOwners(response.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -187,7 +187,7 @@ function OwnersPage() {
       setForm(initialForm)
       setEditingOwnerId(null)
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -235,7 +235,7 @@ function OwnersPage() {
         handleCancelEdit()
       }
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 

@@ -43,7 +43,7 @@ function ResetPasswordPage() {
         navigate('/user-login', { replace: true })
       }, 1200)
     } catch (submitError) {
-      setError(submitError.message)
+      setError(t(submitError.message))
     } finally {
       setIsSubmitting(false)
     }

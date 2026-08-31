@@ -48,7 +48,7 @@ function PriceComparisonPage() {
         setSelectedOrderId(nextOrders[0].id)
       }
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoadingOrders(false)
     }
@@ -62,7 +62,7 @@ function PriceComparisonPage() {
       const response = await api.getOrder(orderId)
       setSelectedOrder(response.data ?? null)
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoadingOrder(false)
     }
@@ -76,7 +76,7 @@ function PriceComparisonPage() {
       await api.compareOrderBids(orderId)
       await Promise.all([loadOrders(), loadOrder(orderId)])
     } catch (compareError) {
-      setError(compareError.message)
+      setError(t(compareError.message))
     } finally {
       setIsComparing(false)
     }

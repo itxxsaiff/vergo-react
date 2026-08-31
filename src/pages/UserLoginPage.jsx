@@ -41,7 +41,7 @@ function UserLoginPage() {
       const loggedInUser = await login(form)
       navigate(loggedInUser?.home_path ?? '/dashboard', { replace: true })
     } catch (submitError) {
-      setError(submitError.message)
+      setError(t(submitError.message))
     } finally {
       setIsSubmitting(false)
     }

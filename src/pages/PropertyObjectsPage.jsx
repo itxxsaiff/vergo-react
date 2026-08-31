@@ -54,7 +54,7 @@ function PropertyObjectsPage() {
         setObjects(objectsResponse.data ?? [])
         setProperties(propertiesResponse?.data ?? [])
       } catch (loadError) {
-        setError(loadError.message)
+        setError(t(loadError.message))
       } finally {
         setIsLoading(false)
       }
@@ -170,7 +170,7 @@ function PropertyObjectsPage() {
 
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -213,7 +213,7 @@ function PropertyObjectsPage() {
         closeModal()
       }
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 

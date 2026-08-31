@@ -33,7 +33,7 @@ function RateProviderPage() {
         setDetails(response.data ?? null)
         setIsDone(Boolean(response.data?.already_rated))
       })
-      .catch((loadError) => setError(loadError.message))
+      .catch((loadError) => setError(t(loadError.message)))
       .finally(() => setIsLoading(false))
   }, [token, t])
 
@@ -59,7 +59,7 @@ function RateProviderPage() {
       await api.submitProviderRating({ token, rating, reason: reason.trim() || null })
       setIsDone(true)
     } catch (submitError) {
-      setError(submitError.message)
+      setError(t(submitError.message))
     } finally {
       setIsSubmitting(false)
     }

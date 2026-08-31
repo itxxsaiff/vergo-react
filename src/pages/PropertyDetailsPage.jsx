@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatDateDisplay, formatDateTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
 function PropertyDetailsPage() {
+  const { t } = useLanguage()
   const { user } = useAuth()
   const { propertyId } = useParams()
   const [property, setProperty] = useState(null)
@@ -28,7 +30,7 @@ function PropertyDetailsPage() {
       const response = await api.getProperty(propertyId)
       setProperty(response.data ?? null)
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -43,7 +45,7 @@ function PropertyDetailsPage() {
       setLatestPropertyAnalysis(response.data?.analysis ?? null)
       await loadProperty()
     } catch (compareError) {
-      setError(compareError.message)
+      setError(t(compareError.message))
     } finally {
       setIsComparingPrice(false)
     }

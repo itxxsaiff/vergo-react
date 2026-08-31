@@ -80,7 +80,7 @@ function EmailOtpLoginPage() {
       setOtpSentMessage(`${t('Wir haben einen Anmeldecode an')} ${response.data?.email ?? normalizedEmail}${sentSuffix === '.' ? '.' : ` ${sentSuffix}`}`)
       setStep('otp')
     } catch (submitError) {
-      setError(submitError.message)
+      setError(t(submitError.message))
     } finally {
       setIsSubmitting(false)
     }
@@ -105,7 +105,7 @@ function EmailOtpLoginPage() {
       sessionStorage.removeItem(EMAIL_OTP_LOGIN_ACCESS_KEY)
       navigate(loggedInUser?.home_path ?? '/orders', { replace: true })
     } catch (submitError) {
-      setError(submitError.message)
+      setError(t(submitError.message))
     } finally {
       setIsSubmitting(false)
     }

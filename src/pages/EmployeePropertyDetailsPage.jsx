@@ -65,7 +65,7 @@ function EmployeePropertyDetailsPage() {
       const response = await api.getProperty(propertyId)
       setProperty(response.data ?? null)
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -164,7 +164,7 @@ function EmployeePropertyDetailsPage() {
 
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }

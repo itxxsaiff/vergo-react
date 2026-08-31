@@ -13,7 +13,7 @@ function OwnerDuplicatesPage() {
   useEffect(() => {
     api.getOwnerDuplicates()
       .then((response) => setRows(response.data ?? []))
-      .catch((loadError) => setError(loadError.message))
+      .catch((loadError) => setError(t(loadError.message)))
       .finally(() => setIsLoading(false))
   }, [])
 

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { DOCUMENT_TYPE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
 
 function AiAnalysisPage() {
+  const { t } = useLanguage()
   const { user } = useAuth()
   const [analyses, setAnalyses] = useState([])
   const [documents, setDocuments] = useState([])
@@ -37,7 +39,7 @@ function AiAnalysisPage() {
         setSelectedAnalysisId(nextAnalyses[0].id)
       }
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -63,7 +65,7 @@ function AiAnalysisPage() {
       )))
       setSelectedAnalysisId(result.id)
     } catch (analysisError) {
-      setError(analysisError.message)
+      setError(t(analysisError.message))
     } finally {
       setRunningDocumentId(null)
     }

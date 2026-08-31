@@ -802,6 +802,10 @@ class OrderController extends Controller
                     'unit' => data_get($item, 'unit'),
                     'quantity' => (float) data_get($item, 'quantity', 0),
                     'source' => data_get($item, 'source') ?: 'provider',
+                    // Must survive sanitising: the publish step uses it to tell
+                    // which provider each selected item came from, and therefore
+                    // whose quote can be kept as-is instead of re-priced.
+                    'source_bid_id' => data_get($item, 'source_bid_id') ? (int) data_get($item, 'source_bid_id') : null,
                     'is_custom' => (bool) data_get($item, 'is_custom', true),
                 ];
             })

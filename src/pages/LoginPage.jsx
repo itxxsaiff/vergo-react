@@ -91,7 +91,7 @@ function LoginPage() {
       setOtpSentMessage('')
       setStep('email')
     } catch (submitError) {
-      setError(submitError.message)
+      setError(t(submitError.message))
     } finally {
       setIsSubmitting(false)
     }
@@ -112,7 +112,7 @@ function LoginPage() {
       setOtpSentMessage(`${t('Wir haben einen Anmeldecode an')} ${response.data?.email ?? email.trim().toLowerCase()}${sentSuffix === '.' ? '.' : ` ${sentSuffix}`}`)
       setStep('otp')
     } catch (submitError) {
-      setError(submitError.message)
+      setError(t(submitError.message))
     } finally {
       setIsSubmitting(false)
     }
@@ -132,7 +132,7 @@ function LoginPage() {
       sessionStorage.removeItem(LI_STORAGE_KEY)
       navigate(loggedInUser?.home_path ?? '/dashboard', { replace: true })
     } catch (submitError) {
-      setError(submitError.message)
+      setError(t(submitError.message))
     } finally {
       setIsSubmitting(false)
     }

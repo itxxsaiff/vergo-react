@@ -190,14 +190,6 @@ function getOrderFlowTypeLabel(order) {
   return isInspectionOrder(order) ? 'Besichtigung' : 'Auftrag'
 }
 
-function getDocumentContext(document) {
-  if (document?.property?.li_number || document?.property?.title) {
-    return [document.property?.li_number, document.property?.title].filter(Boolean).join(' - ')
-  }
-
-  return document?.order?.title || '-'
-}
-
 function DashboardPage({ role }) {
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -211,7 +203,6 @@ function DashboardPage({ role }) {
     service_providers: 0,
   })
   const [orders, setOrders] = useState([])
-  const [documents, setDocuments] = useState([])
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(true)
   const [analyticsError, setAnalyticsError] = useState('')
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()))
@@ -222,8 +213,7 @@ function DashboardPage({ role }) {
     Promise.allSettled([
       isInternalDashboard ? api.getDashboardOverview() : Promise.resolve({ data: {} }),
       api.getOrders(),
-      isInternalDashboard ? api.getDocuments() : Promise.resolve({ data: [] }),
-    ]).then(([overviewResult, ordersResult, documentsResult]) => {
+    ]).then(([overviewResult, ordersResult]) => {
       if (!isMounted) {
         return
       }
@@ -236,10 +226,6 @@ function DashboardPage({ role }) {
         setOrders(ordersResult.value.data ?? [])
       } else {
         setAnalyticsError(ordersResult.reason?.message ?? t('Die Auftragsanalyse konnte nicht geladen werden.'))
-      }
-
-      if (documentsResult.status === 'fulfilled') {
-        setDocuments(documentsResult.value.data ?? [])
       }
 
       setIsAnalyticsLoading(false)
@@ -312,11 +298,6 @@ function DashboardPage({ role }) {
   const activeOrders = useMemo(() => orders.filter((order) => isActiveOrder(order.status)), [orders])
   const activeOrderPreview = useMemo(() => activeOrders.slice(0, 3), [activeOrders])
   const remainingActiveOrders = Math.max(activeOrders.length - activeOrderPreview.length, 0)
-  const contracts = useMemo(
-    () => documents.filter((document) => String(document.type || '').toLowerCase() === 'contract'),
-    [documents]
-  )
-  const contractPreview = useMemo(() => contracts.slice(0, 6), [contracts])
   const translatedMonthLabels = MONTH_LABELS.map((month) => t(month))
 
   return (
@@ -661,57 +642,6 @@ function DashboardPage({ role }) {
             </div>
           </div>
 
-          <div className="row">
-            <div className="col-12">
-              <div className="card overflow-hidden">
-                <div className="card-body p-4">
-                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-                    <div>
-                      <h4 className="fw-semibold mb-1">{t('Vertragsübersicht')}</h4>
-                      <p className="text-muted mb-0">{t('Alle hochgeladenen Verträge im Überblick für interne Vergo-Benutzer.')}</p>
-                    </div>
-                    <Link to="/documents?type=invoice" className="btn btn-light-primary text-nowrap">
-                      {t('Alle Verträge anzeigen')}
-                    </Link>
-                  </div>
-
-                  {isAnalyticsLoading ? (
-                    <p className="text-muted mb-0">{t('Verträge werden geladen...')}</p>
-                  ) : contractPreview.length > 0 ? (
-                    <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
-                      <table className="table border-none text-nowrap customize-table mb-0 align-middle">
-                        <thead className="text-dark fs-4">
-                          <tr>
-                            <th><h6 className="fs-4 fw-semibold mb-0">{t('Titel')}</h6></th>
-                            <th><h6 className="fs-4 fw-semibold mb-0">{t('Liegenschaft')}</h6></th>
-                            <th><h6 className="fs-4 fw-semibold mb-0">{t('Status')}</h6></th>
-                            <th><h6 className="fs-4 fw-semibold mb-0">{t('Datei')}</h6></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {contractPreview.map((document) => (
-                            <tr key={document.id}>
-                              <td className="fw-semibold">{document.title || '-'}</td>
-                              <td>{getDocumentContext(document)}</td>
-                              <td>{document.status ? t(document.status) : '-'}</td>
-                              <td>{document.file_name || '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="vergo-dashboard-chart-empty">
-                      <div>
-                        <div className="fw-semibold mb-1">{t('Keine Verträge vorhanden')}</div>
-                        <div>{t('Derzeit sind noch keine Verträge für die Übersicht verfügbar.')}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
         </>
       ) : null}
     </PageContent>

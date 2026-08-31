@@ -13,7 +13,7 @@ function ProviderRatingsPage() {
   useEffect(() => {
     api.getAdminProviderRatings()
       .then((response) => setRatings(response.data ?? []))
-      .catch((loadError) => setError(loadError.message))
+      .catch((loadError) => setError(t(loadError.message)))
       .finally(() => setIsLoading(false))
   }, [])
 

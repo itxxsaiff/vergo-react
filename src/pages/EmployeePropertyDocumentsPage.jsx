@@ -211,7 +211,7 @@ function EmployeePropertyDocumentsPage() {
       const response = await api.getProperty(propertyId)
       setProperty(response.data ?? null)
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -340,7 +340,7 @@ function EmployeePropertyDocumentsPage() {
       await loadProperty()
       setAnalysisNotice('Dokument gespeichert. Sie können jetzt unten auf Analyse klicken.')
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -358,7 +358,7 @@ function EmployeePropertyDocumentsPage() {
       await loadProperty()
       showDeleteSuccess('document')
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 
@@ -372,7 +372,7 @@ function EmployeePropertyDocumentsPage() {
       await loadProperty()
       setAnalysisNotice('Dokumentanalyse gestartet oder aktualisiert. Prüfen Sie Status und Analyseergebnis auf dieser Seite.')
     } catch (analysisError) {
-      setError(analysisError.message)
+      setError(t(analysisError.message))
     } finally {
       setActiveDocumentId(null)
     }
@@ -408,7 +408,7 @@ function EmployeePropertyDocumentsPage() {
           : 'Analyse konnte nicht abgeschlossen werden. Prüfen Sie die Dokumentdaten und versuchen Sie es erneut.',
       )
     } catch (analysisError) {
-      setError(analysisError.message)
+      setError(t(analysisError.message))
     } finally {
       setIsAnalyzing(false)
     }

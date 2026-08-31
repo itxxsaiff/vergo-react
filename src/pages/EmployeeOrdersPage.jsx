@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import PageContent from '../components/PageContent'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
@@ -35,6 +36,7 @@ function getOrderNumber(order) {
 }
 
 function EmployeeOrdersPage() {
+  const { t } = useLanguage()
   const [orders, setOrders] = useState([])
   const [filters, setFilters] = useState({ search: '' })
   const [isLoading, setIsLoading] = useState(true)
@@ -49,7 +51,7 @@ function EmployeeOrdersPage() {
         const response = await api.getOrders()
         setOrders(response.data ?? [])
       } catch (loadError) {
-        setError(loadError.message)
+        setError(t(loadError.message))
       } finally {
         setIsLoading(false)
       }

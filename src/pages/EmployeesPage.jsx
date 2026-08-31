@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PageContent from '../components/PageContent'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
@@ -13,6 +14,7 @@ const initialForm = {
 }
 
 function EmployeesPage() {
+  const { t } = useLanguage()
   const [employees, setEmployees] = useState([])
   const [form, setForm] = useState(initialForm)
   const [filters, setFilters] = useState({
@@ -34,7 +36,7 @@ function EmployeesPage() {
       const response = await api.getEmployees()
       setEmployees(response.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -147,7 +149,7 @@ function EmployeesPage() {
 
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -183,7 +185,7 @@ function EmployeesPage() {
         closeModal()
       }
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 
@@ -192,7 +194,7 @@ function EmployeesPage() {
       await api.sendEmployeePasswordReset(employeeId)
       setError('')
     } catch (sendError) {
-      setError(sendError.message)
+      setError(t(sendError.message))
     }
   }
 

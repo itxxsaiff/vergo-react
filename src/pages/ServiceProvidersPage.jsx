@@ -96,7 +96,7 @@ function ServiceProvidersPage() {
       setProviders(providersResponse.data ?? [])
       setCompanyRequests(requestsResponse.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -256,7 +256,7 @@ function ServiceProvidersPage() {
 
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -272,7 +272,7 @@ function ServiceProvidersPage() {
       showDeleteSuccess('service provider')
       if (editingId === providerId) closeModal()
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 

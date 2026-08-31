@@ -26,11 +26,6 @@ export const navigationByRole = {
       ],
     },
     {
-      title: 'Datenbank-Backups',
-      icon: 'ti ti-database',
-      href: '/database-backups',
-    },
-    {
       title: 'Support-Tickets',
       icon: 'ti ti-ticket',
       href: '/support-tickets',

@@ -56,7 +56,7 @@ function BidsPage() {
       const response = await api.getBids()
       setBids(response.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -121,7 +121,7 @@ function BidsPage() {
       setBids((current) => current.map((bid) => (bid.id === editingBid.id ? response.data : bid)))
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -137,7 +137,7 @@ function BidsPage() {
       showDeleteSuccess('bid')
       if (editingBid?.id === bidId) closeModal()
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 
@@ -149,7 +149,7 @@ function BidsPage() {
       const response = await api.updateBid(bidId, { status })
       setBids((current) => current.map((bid) => (bid.id === bidId ? response.data : bid)))
     } catch (actionError) {
-      setError(actionError.message)
+      setError(t(actionError.message))
     } finally {
       setIsSaving(false)
     }

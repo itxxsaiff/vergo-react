@@ -68,7 +68,7 @@ function PropertiesPage() {
         setOwners(ownersResponse?.data ?? [])
         setPropertyManagers(propertyManagersResponse?.data ?? [])
       } catch (loadError) {
-        setError(loadError.message)
+        setError(t(loadError.message))
       } finally {
         setIsLoading(false)
       }
@@ -261,7 +261,7 @@ function PropertiesPage() {
 
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -283,7 +283,7 @@ function PropertiesPage() {
         closeModal()
       }
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 
@@ -294,7 +294,7 @@ function PropertiesPage() {
     try {
       await api.openPropertyPdf(propertyId, language)
     } catch (pdfError) {
-      setError(pdfError.message)
+      setError(t(pdfError.message))
     } finally {
       setPdfGeneratingId(null)
     }

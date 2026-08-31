@@ -36,7 +36,7 @@ function DatabaseBackupsPage() {
       const response = await api.getDatabaseBackups()
       setBackups(response.data ?? [])
     } catch (loadError) {
-      setError(loadError.message)
+      setError(t(loadError.message))
     } finally {
       setIsLoading(false)
     }
@@ -48,7 +48,7 @@ function DatabaseBackupsPage() {
     try {
       await api.downloadDatabaseBackup(fileName)
     } catch (downloadError) {
-      setError(downloadError.message)
+      setError(t(downloadError.message))
     }
   }
 
@@ -66,7 +66,7 @@ function DatabaseBackupsPage() {
       await api.deleteDatabaseBackup(fileName)
       await loadBackups()
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     } finally {
       setIsWorking(false)
     }

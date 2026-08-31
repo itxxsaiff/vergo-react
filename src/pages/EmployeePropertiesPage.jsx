@@ -58,7 +58,7 @@ function EmployeePropertiesPage() {
         setOwners(ownersResponse.data ?? [])
         setPropertyManagers(propertyManagersResponse.data ?? [])
       } catch (loadError) {
-        setError(loadError.message)
+        setError(t(loadError.message))
       } finally {
         setIsLoading(false)
       }
@@ -256,7 +256,7 @@ function EmployeePropertiesPage() {
 
       closeModal()
     } catch (saveError) {
-      setError(saveError.message)
+      setError(t(saveError.message))
     } finally {
       setIsSaving(false)
     }
@@ -278,7 +278,7 @@ function EmployeePropertiesPage() {
         closeModal()
       }
     } catch (deleteError) {
-      setError(deleteError.message)
+      setError(t(deleteError.message))
     }
   }
 

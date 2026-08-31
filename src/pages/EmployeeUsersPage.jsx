@@ -1,6 +1,7 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import PageContent from '../components/PageContent'
+import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
@@ -22,6 +23,7 @@ const CATEGORY_CONFIG = {
 }
 
 function EmployeeUsersPage() {
+  const { t } = useLanguage()
   const { category = 'owners' } = useParams()
   const [items, setItems] = useState([])
   const [filters, setFilters] = useState({ search: '' })
@@ -52,7 +54,7 @@ function EmployeeUsersPage() {
 
         setItems(response.data ?? [])
       } catch (loadError) {
-        setError(loadError.message)
+        setError(t(loadError.message))
       } finally {
         setIsLoading(false)
       }

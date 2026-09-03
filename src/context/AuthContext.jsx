@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from 'react'
-import { api, setAuthToken } from '../lib/api'
+import { api, setAuthToken, setUnauthorizedHandler } from '../lib/api'
 
 const TOKEN_STORAGE_KEY = 'vergo_auth_token'
 
@@ -32,6 +32,44 @@ export function AuthProvider({ children }) {
     return storedToken
   })
   const [isBooting, setIsBooting] = useState(() => Boolean(localStorage.getItem(TOKEN_STORAGE_KEY)))
+
+  // Drop the local session whenever the backend says the token is dead, so a
+  // logout in another tab surfaces as a clean redirect to the login instead of
+  // an "Unauthenticated." error on the next click.
+  useEffect(() => {
+    function clearSession() {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+      setAuthToken(null)
+      setToken(null)
+      setUser(null)
+      setIsBooting(false)
+    }
+
+    setUnauthorizedHandler(clearSession)
+
+    // Another tab in this browser logged in or out: follow it immediately
+    // rather than waiting for the next request to fail.
+    function handleStorage(event) {
+      if (event.key !== TOKEN_STORAGE_KEY) {
+        return
+      }
+
+      if (!event.newValue) {
+        clearSession()
+        return
+      }
+
+      setAuthToken(event.newValue)
+      setToken(event.newValue)
+    }
+
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      setUnauthorizedHandler(null)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [])
 
   useEffect(() => {
     if (!token || user) {

@@ -57,7 +57,20 @@ class OrderController extends Controller
                                     }
                                 })
                                 ->orWhere(function ($inspectionQuery) use ($supportedServiceTypes) {
-                                    $inspectionQuery->whereIn('workflow_status', ['public_inspection_open', 'inspection_signup_closed']);
+                                    // Only still-open sign-ups are advertised. A
+                                    // provider that already signed up keeps seeing
+                                    // the order through the bids branch below.
+                                    $inspectionQuery->where('workflow_status', 'public_inspection_open');
+
+                                    // Once the manager's provider limit is reached
+                                    // the appointment disappears for everyone who
+                                    // has not signed up yet.
+                                    $inspectionQuery->whereRaw(
+                                        "(select count(*) from bids
+                                            where bids.order_id = orders.id
+                                              and bids.status in ('inspection_interest', 'inspection_confirmed')
+                                         ) < greatest(1, coalesce(cast(json_unquote(json_extract(orders.workflow_meta, '$.inspection.public_provider_limit')) as unsigned), 3))"
+                                    );
 
                                     if (! empty($supportedServiceTypes)) {
                                         $inspectionQuery->whereIn('service_type', $supportedServiceTypes);

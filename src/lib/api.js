@@ -10,9 +10,28 @@ const API_BASE_URL =
   (import.meta.env.DEV ? DEV_API_BASE_URL : REMOTE_API_BASE_URL)
 
 let authToken = null
+// Called whenever the backend rejects our token, so the app can drop the dead
+// session instead of surfacing a raw "Unauthenticated." error.
+let onUnauthorized = null
 
 export function setAuthToken(token) {
   authToken = token
+}
+
+export function setUnauthorizedHandler(handler) {
+  onUnauthorized = handler
+}
+
+/**
+ * The session died somewhere else - another tab logged out, or the token was
+ * revoked server side. Clear it once and let the app redirect to the login.
+ */
+function handleUnauthorized() {
+  authToken = null
+
+  if (typeof onUnauthorized === 'function') {
+    onUnauthorized()
+  }
 }
 
 async function request(path, options = {}) {
@@ -35,6 +54,10 @@ async function request(path, options = {}) {
   })
 
   const payload = await response.json().catch(() => ({}))
+
+  if (response.status === 401) {
+    handleUnauthorized()
+  }
 
   if (!response.ok) {
     const firstValidationMessage = payload.errors
@@ -59,6 +82,10 @@ async function download(path, fallbackFileName = 'document') {
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+
+  if (response.status === 401) {
+    handleUnauthorized()
+  }
 
   if (!response.ok) {
     throw new Error('Document download failed')
@@ -90,6 +117,10 @@ async function openPdfInNewTab(path) {
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+
+  if (response.status === 401) {
+    handleUnauthorized()
+  }
 
   if (!response.ok) {
     throw new Error('PDF could not be generated')
@@ -582,6 +613,9 @@ export const api = {
   },
   getBidDisclosure(id) {
     return request(`/orders/${id}/bid-disclosure`)
+  },
+  reportNoShow(orderId, bidId) {
+    return request(`/orders/${orderId}/bids/${bidId}/no-show`, { method: 'POST' })
   },
   rejectDisclosedBid(orderId, bidId, reason) {
     return request(`/orders/${orderId}/bids/${bidId}/reject`, {

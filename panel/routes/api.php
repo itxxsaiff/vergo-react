@@ -149,6 +149,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/orders/{order}/duplicate-explanation', [OrderLifecycleController::class, 'acknowledgeDuplicate']);
     Route::get('/orders/{order}/bid-disclosure', [OrderLifecycleController::class, 'disclosure']);
     Route::post('/orders/{order}/bids/{bid}/reject', [OrderLifecycleController::class, 'rejectBid']);
+    // Provider confirmed an inspection appointment but did not attend.
+    Route::post('/orders/{order}/bids/{bid}/no-show', [OrderLifecycleController::class, 'reportNoShow']);
 
     Route::get('/bids', [BidController::class, 'index']);
     Route::post('/bids', [BidController::class, 'store']);

@@ -37,6 +37,24 @@ function isInspectionOrder(order) {
 // they picked. Slots are no longer highlighted in the options list: with two
 // companies on two different slots a single highlight is misleading, so the
 // confirmations are listed explicitly instead.
+// The "nicht erschienen" button only becomes active half an hour after the
+// appointment was due to start.
+const NO_SHOW_GRACE_MINUTES = 30
+
+function slotStartedLongEnoughAgo(slot) {
+  if (!slot?.date) {
+    return false
+  }
+
+  const started = new Date(`${slot.date}T${slot.time || '00:00'}:00`)
+
+  if (Number.isNaN(started.getTime())) {
+    return false
+  }
+
+  return Date.now() >= started.getTime() + (NO_SHOW_GRACE_MINUTES * 60 * 1000)
+}
+
 function getConfirmedInspectionBids(order, slots) {
   const confirmedStatuses = ['inspection_confirmed', 'accepted', 'approved', 'completed']
   // A provider that later submits a quote moves to `submitted`, but the
@@ -411,6 +429,20 @@ function OrderDetailsPage() {
     }
   }
 
+  async function handleReportNoShow(bidId) {
+    setReportingNoShowBidId(bidId)
+    setError('')
+
+    try {
+      await api.reportNoShow(orderId, bidId)
+      await loadOrder()
+    } catch (noShowError) {
+      setError(t(noShowError.message))
+    } finally {
+      setReportingNoShowBidId(null)
+    }
+  }
+
   async function handleDecideChangeRequest(requestId, status) {
     setDecidingRequestId(requestId)
 
@@ -521,6 +553,7 @@ function OrderDetailsPage() {
   const [isCancelling, setIsCancelling] = useState(false)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [decidingRequestId, setDecidingRequestId] = useState(null)
+  const [reportingNoShowBidId, setReportingNoShowBidId] = useState(null)
   const [updatingPhotoId, setUpdatingPhotoId] = useState(null)
   const isInspectionDetails = isInspectionOrder(order)
   const confirmedInspectionBids = getConfirmedInspectionBids(order, inspectionSlots)
@@ -770,18 +803,43 @@ function OrderDetailsPage() {
 
                         return (
                           <div className="vergo-inspection-confirmed-row" key={bid.id}>
-                            <div className="d-flex align-items-center justify-content-between gap-2">
-                              <span className="fw-semibold text-truncate">
-                                {isAnonymousQuoteSeed ? t('Anonyme Offerte') : (bid.service_provider?.company_name || '-')}
-                              </span>
-                              <span className="text-muted small flex-shrink-0">
-                                {slot
-                                  ? `${slotNumber ? `${t('Option')} ${slotNumber} · ` : ''}${formatDateDisplay(slot.date)} ${formatTimeDisplay(slot.time)}`
-                                  : t('Termin offen')}
-                              </span>
-                            </div>
-                            <div className="text-muted small text-truncate">
-                              {isAnonymousQuoteSeed ? t('Dienstleisterangaben verborgen') : (bid.assigned_provider_email || bid.service_provider?.contact_email || '-')}
+                            <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="fw-semibold fs-5 text-truncate">
+                                  {isAnonymousQuoteSeed ? t('Anonyme Offerte') : (bid.service_provider?.company_name || '-')}
+                                </div>
+                                <div className="text-muted text-truncate">
+                                  {isAnonymousQuoteSeed ? t('Dienstleisterangaben verborgen') : (bid.assigned_provider_email || bid.service_provider?.contact_email || '-')}
+                                </div>
+                              </div>
+
+                              <div className="d-flex align-items-center gap-3 flex-shrink-0">
+                                <div className="text-end">
+                                  {slotNumber ? (
+                                    <div className="text-muted small text-uppercase fw-semibold">{t('Option')} {slotNumber}</div>
+                                  ) : null}
+                                  <div className="fw-semibold fs-5">
+                                    {slot
+                                      ? `${formatDateDisplay(slot.date)} ${formatTimeDisplay(slot.time)}`
+                                      : t('Termin offen')}
+                                  </div>
+                                </div>
+
+                                {bid.no_show_at ? (
+                                  <span className="badge bg-light-danger text-danger rounded-pill px-3 py-2">
+                                    {t('Nicht erschienen')}
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-light-danger text-danger btn-sm text-nowrap"
+                                    disabled={!slotStartedLongEnoughAgo(slot) || reportingNoShowBidId === bid.id}
+                                    onClick={() => handleReportNoShow(bid.id)}
+                                  >
+                                    {reportingNoShowBidId === bid.id ? t('Wird gemeldet...') : t('Nicht erschienen')}
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )

@@ -245,14 +245,22 @@ class VergoRankingService
                 ->count()
         );
 
+        // Missed inspection appointments the provider had confirmed.
+        $noShows = Bid::query()
+            ->where('service_provider_id', $provider->id)
+            ->whereNotNull('no_show_at')
+            ->count();
+
         $total = ($requests->count() * (float) $config['penalties']['price_change_request'])
-            + ($addedItems * (float) $config['penalties']['added_item']);
+            + ($addedItems * (float) $config['penalties']['added_item'])
+            + ($noShows * (float) ($config['penalties']['inspection_no_show'] ?? 0));
 
         $total = min($total, (float) $config['penalties']['max_penalty']);
 
         return [
             'price_change_requests' => $requests->count(),
             'added_items' => $addedItems,
+            'inspection_no_shows' => $noShows,
             'total' => round($total, 2),
         ];
     }

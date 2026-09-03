@@ -2384,6 +2384,18 @@ const supplementalTranslations = {
 }
 
 Object.assign(supplementalTranslations.de, {
+  'Nicht erschienen': 'Nicht erschienen',
+  'This appointment is already marked as not attended.': 'Dieser Termin ist bereits als nicht wahrgenommen markiert.',
+  'This provider has no confirmed appointment.': 'Dieser Dienstleister hat keinen bestätigten Termin.',
+  'This appointment can only be marked as not attended 30 minutes after it started.': 'Dieser Termin kann erst 30 Minuten nach Beginn als nicht wahrgenommen markiert werden.',
+  'The provider was informed that the appointment was not attended.': 'Der Dienstleister wurde über den nicht wahrgenommenen Termin informiert.',
+  'New Bid Submitted': 'Neues Angebot eingereicht',
+  'Order Created': 'Auftrag erstellt',
+  'Provider Response Confirmed': 'Dienstleister hat bestätigt',
+  'Provider Response Declined': 'Dienstleister hat abgelehnt',
+  'Quote Created After Site Visit': 'Offerte nach Besichtigung erstellt',
+  'Unauthenticated.': 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
+  'This action is unauthorized.': 'Für diese Aktion fehlt Ihnen die Berechtigung.',
   'Bids remain hidden until the submission deadline passes.': 'Die Angebote bleiben bis zum Ablauf der Angebotsfrist verborgen.',
   'Bid comparison is available only after the submission deadline has passed.': 'Der Angebotsvergleich ist erst nach Ablauf der Angebotsfrist verfügbar.',
   'A rejection reason is required.': 'Eine Begründung für die Ablehnung ist erforderlich.',
@@ -2738,6 +2750,18 @@ Object.assign(supplementalTranslations.de, {
 })
 
 Object.assign(supplementalTranslations.en, {
+  'Nicht erschienen': 'Did not show up',
+  'This appointment is already marked as not attended.': 'This appointment is already marked as not attended.',
+  'This provider has no confirmed appointment.': 'This provider has no confirmed appointment.',
+  'This appointment can only be marked as not attended 30 minutes after it started.': 'This appointment can only be marked as not attended 30 minutes after it started.',
+  'The provider was informed that the appointment was not attended.': 'The provider was informed that the appointment was not attended.',
+  'New Bid Submitted': 'New bid submitted',
+  'Order Created': 'Order created',
+  'Provider Response Confirmed': 'Provider response confirmed',
+  'Provider Response Declined': 'Provider response declined',
+  'Quote Created After Site Visit': 'Quote created after site visit',
+  'Unauthenticated.': 'Your session has expired. Please sign in again.',
+  'This action is unauthorized.': 'You are not allowed to perform this action.',
   'Bids remain hidden until the submission deadline passes.': 'Bids remain hidden until the submission deadline passes.',
   'Bid comparison is available only after the submission deadline has passed.': 'Bid comparison is available only after the submission deadline has passed.',
   'A rejection reason is required.': 'A rejection reason is required.',
@@ -3116,6 +3140,18 @@ Object.assign(supplementalTranslations.en, {
 })
 
 Object.assign(supplementalTranslations.it, {
+  'Nicht erschienen': 'Non presentato',
+  'This appointment is already marked as not attended.': 'Questo appuntamento è già segnato come non rispettato.',
+  'This provider has no confirmed appointment.': 'Questo fornitore non ha un appuntamento confermato.',
+  'This appointment can only be marked as not attended 30 minutes after it started.': 'Questo appuntamento può essere segnato come non rispettato solo 30 minuti dopo l’inizio.',
+  'The provider was informed that the appointment was not attended.': 'Il fornitore è stato informato del mancato appuntamento.',
+  'New Bid Submitted': 'Nuova offerta inviata',
+  'Order Created': 'Ordine creato',
+  'Provider Response Confirmed': 'Fornitore ha confermato',
+  'Provider Response Declined': 'Fornitore ha rifiutato',
+  'Quote Created After Site Visit': 'Preventivo creato dopo il sopralluogo',
+  'Unauthenticated.': 'La tua sessione è scaduta. Accedi di nuovo.',
+  'This action is unauthorized.': 'Non hai i permessi per questa azione.',
   'Bids remain hidden until the submission deadline passes.': 'Le offerte restano nascoste fino alla scadenza del termine.',
   'Bid comparison is available only after the submission deadline has passed.': 'Il confronto delle offerte è disponibile solo dopo la scadenza del termine.',
   'A rejection reason is required.': 'È richiesta una motivazione per il rifiuto.',
@@ -3494,6 +3530,18 @@ Object.assign(supplementalTranslations.it, {
 })
 
 Object.assign(supplementalTranslations.fr, {
+  'Nicht erschienen': 'Ne s’est pas présenté',
+  'This appointment is already marked as not attended.': 'Ce rendez-vous est déjà marqué comme non honoré.',
+  'This provider has no confirmed appointment.': 'Ce prestataire n’a aucun rendez-vous confirmé.',
+  'This appointment can only be marked as not attended 30 minutes after it started.': 'Ce rendez-vous ne peut être marqué comme non honoré que 30 minutes après son début.',
+  'The provider was informed that the appointment was not attended.': 'Le prestataire a été informé du rendez-vous non honoré.',
+  'New Bid Submitted': 'Nouvelle offre soumise',
+  'Order Created': 'Commande créée',
+  'Provider Response Confirmed': 'Le prestataire a confirmé',
+  'Provider Response Declined': 'Le prestataire a refusé',
+  'Quote Created After Site Visit': 'Offre créée après la visite',
+  'Unauthenticated.': 'Votre session a expiré. Veuillez vous reconnecter.',
+  'This action is unauthorized.': 'Vous n’êtes pas autorisé à effectuer cette action.',
   'Bids remain hidden until the submission deadline passes.': 'Les offres restent masquées jusqu’à l’expiration du délai.',
   'Bid comparison is available only after the submission deadline has passed.': 'La comparaison des offres n’est disponible qu’après l’expiration du délai.',
   'A rejection reason is required.': 'Un motif de refus est obligatoire.',
@@ -4774,6 +4822,66 @@ function supportStatusLabel(status, lang) {
 }
 
 const patternTranslations = [
+  {
+    // "X submitted a bid for "Y"."
+    pattern: /^(.+) submitted a bid for "(.+)"\.$/,
+    translate: (match, lang) => ({
+      de: `${match[1]} hat ein Angebot für „${match[2]}" eingereicht.`,
+      en: `${match[1]} submitted a bid for "${match[2]}".`,
+      it: `${match[1]} ha inviato un'offerta per "${match[2]}".`,
+      fr: `${match[1]} a soumis une offre pour « ${match[2]} ».`,
+    }[lang] ?? match[0]),
+  },
+  {
+    // "X has confirmed the viewing for "Y"."
+    pattern: /^(.+) has confirmed the viewing for "(.+)"\.$/,
+    translate: (match, lang) => ({
+      de: `${match[1]} hat den Besichtigungstermin für „${match[2]}" bestätigt.`,
+      en: `${match[1]} has confirmed the viewing for "${match[2]}".`,
+      it: `${match[1]} ha confermato il sopralluogo per "${match[2]}".`,
+      fr: `${match[1]} a confirmé la visite pour « ${match[2]} ».`,
+    }[lang] ?? match[0]),
+  },
+  {
+    // "X has declined "Y"."
+    pattern: /^(.+) has declined "(.+)"\.$/,
+    translate: (match, lang) => ({
+      de: `${match[1]} hat „${match[2]}" abgelehnt.`,
+      en: `${match[1]} has declined "${match[2]}".`,
+      it: `${match[1]} ha rifiutato "${match[2]}".`,
+      fr: `${match[1]} a refusé « ${match[2]} ».`,
+    }[lang] ?? match[0]),
+  },
+  {
+    // "X has accepted the order "Y"."
+    pattern: /^(.+) has accepted the order "(.+)"\.$/,
+    translate: (match, lang) => ({
+      de: `${match[1]} hat den Auftrag „${match[2]}" angenommen.`,
+      en: `${match[1]} has accepted the order "${match[2]}".`,
+      it: `${match[1]} ha accettato l'ordine "${match[2]}".`,
+      fr: `${match[1]} a accepté la commande « ${match[2]} ».`,
+    }[lang] ?? match[0]),
+  },
+  {
+    // "X responded to "Y"."
+    pattern: /^(.+) responded to "(.+)"\.$/,
+    translate: (match, lang) => ({
+      de: `${match[1]} hat auf „${match[2]}" geantwortet.`,
+      en: `${match[1]} responded to "${match[2]}".`,
+      it: `${match[1]} ha risposto a "${match[2]}".`,
+      fr: `${match[1]} a répondu à « ${match[2]} ».`,
+    }[lang] ?? match[0]),
+  },
+  {
+    // "X created a quote for "Y". Review the services and publish it for bidding."
+    pattern: /^(.+) created a quote for "(.+)"\. Review the services and publish it for bidding\.$/,
+    translate: (match, lang) => ({
+      de: `${match[1]} hat eine Offerte für „${match[2]}" erstellt. Prüfen Sie die Leistungen und veröffentlichen Sie die Ausschreibung.`,
+      en: `${match[1]} created a quote for "${match[2]}". Review the services and publish it for bidding.`,
+      it: `${match[1]} ha creato un preventivo per "${match[2]}". Controlla le prestazioni e pubblica il bando.`,
+      fr: `${match[1]} a créé une offre pour « ${match[2]} ». Vérifiez les prestations et publiez l'appel d'offres.`,
+    }[lang] ?? match[0]),
+  },
   {
     pattern: /^The status of your support ticket (SUP-\d+) changed from (.+) to (.+)\.$/,
     translate: (match, lang) => {

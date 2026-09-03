@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\InspectionNoShowMail;
 use App\Mail\OrderCancelledMail;
 use App\Models\Bid;
 use App\Models\Order;
@@ -10,13 +11,18 @@ use App\Models\PropertyManagerProfile;
 use App\Models\User;
 use App\Services\BidDisclosureService;
 use App\Services\DuplicateOrderService;
+use App\Services\VergoRankingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class OrderLifecycleController extends Controller
 {
+    /** An appointment can only be flagged this long after it started. */
+    private const NO_SHOW_GRACE_MINUTES = 30;
+
     /**
      * Cancel a job. A reason is mandatory and every provider that already bid
      * is told the job is off, and why.
@@ -131,6 +137,92 @@ class OrderLifecycleController extends Controller
             'message' => 'Offer rejected. The next-ranked offer is now available.',
             'data' => $disclosure->build($order->fresh()),
         ]);
+    }
+
+    /**
+     * The manager records that a provider did not attend the inspection they
+     * confirmed. Only allowed once the appointment is at least half an hour in
+     * the past, which is also enforced in the UI.
+     */
+    public function reportNoShow(Request $request, Order $order, Bid $bid, VergoRankingService $ranking): JsonResponse
+    {
+        $this->authorizeManagerSide($request, $order);
+        abort_unless($bid->order_id === $order->id, 404);
+        abort_if($bid->no_show_at !== null, 422, 'This appointment is already marked as not attended.');
+
+        $slot = $this->confirmedSlot($order, $bid);
+        abort_unless($slot, 422, 'This provider has no confirmed appointment.');
+
+        abort_unless(
+            $slot->copy()->addMinutes(self::NO_SHOW_GRACE_MINUTES)->isPast(),
+            422,
+            'This appointment can only be marked as not attended 30 minutes after it started.'
+        );
+
+        $actor = $request->user();
+
+        $bid->forceFill([
+            'no_show_at' => now(),
+            'no_show_reported_by_type' => $actor instanceof PropertyManagerProfile ? 'manager' : 'user',
+            'no_show_reported_by_id' => $actor->id,
+        ])->save();
+
+        $this->notifyNoShow($bid->fresh()->load(['order', 'serviceProvider']), $slot);
+
+        if ($bid->serviceProvider) {
+            $ranking->recalculate($bid->serviceProvider);
+        }
+
+        return response()->json(['message' => 'The provider was informed that the appointment was not attended.']);
+    }
+
+    /**
+     * The appointment the provider actually confirmed, as a date-time.
+     */
+    private function confirmedSlot(Order $order, Bid $bid): ?Carbon
+    {
+        $index = data_get($bid->workflow_meta ?? [], 'selected_slot_index');
+
+        if (! is_numeric($index)) {
+            return null;
+        }
+
+        $slot = data_get($order->workflow_meta ?? [], 'inspection.preferred_slots.'.(int) $index);
+        $date = data_get($slot, 'date');
+        $time = data_get($slot, 'time');
+
+        if (! $date) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse(trim($date.' '.($time ?: '00:00')));
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function notifyNoShow(Bid $bid, Carbon $slot): void
+    {
+        $provider = $bid->serviceProvider;
+        // The primary contact address, not the orders inbox.
+        $email = $provider?->contact_email ?: $provider?->order_email ?: $bid->assigned_provider_email;
+
+        if (! $provider || ! $email) {
+            return;
+        }
+
+        try {
+            Mail::mailer('orders')->to($email)->send(
+                new InspectionNoShowMail($bid, $slot->format('d.m.Y H:i'))
+            );
+        } catch (\Throwable $exception) {
+            Log::error('Vergo no-show email failed', [
+                'order_id' => $bid->order_id,
+                'bid_id' => $bid->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function notifyProviders(Order $order, string $reason): void

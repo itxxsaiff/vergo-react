@@ -104,6 +104,7 @@ class OrderResource extends JsonResource
                     'notes' => $hideScopeSeedPrices ? null : $bid->notes,
                     'workflow_meta' => $hideScopeSeedPrices ? $this->scopeOnlyWorkflowMeta($bid->workflow_meta ?? []) : ($bid->workflow_meta ?? []),
                     'rejection_reason' => $bid->rejection_reason,
+                    'no_show_at' => $bid->no_show_at?->toDateTimeString(),
                     'attachment_name' => $hideScopeSeedPrices ? null : $bid->attachment_name,
                     'attachment_mime_type' => $hideScopeSeedPrices ? null : $bid->attachment_mime_type,
                     'attachment_size' => $hideScopeSeedPrices ? null : $bid->attachment_size,

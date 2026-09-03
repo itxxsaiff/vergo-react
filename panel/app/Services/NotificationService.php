@@ -23,9 +23,7 @@ class NotificationService
 {
     public function sendOrderCreated(Order $order, mixed $actor = null): void
     {
-        $order->loadMissing(['property.owners', 'property.managerProfiles']);
-
-        $recipients = $this->basePropertyRecipients($order->property, $actor)
+        $recipients = $this->orderRecipients($order, $actor)
             ->merge($this->adminRecipients($actor))
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
@@ -39,9 +37,7 @@ class NotificationService
 
     public function sendBidSubmitted(Order $order, string $providerName, mixed $actor = null): void
     {
-        $order->loadMissing(['property.owners', 'property.managerProfiles']);
-
-        $recipients = $this->basePropertyRecipients($order->property, $actor)
+        $recipients = $this->orderRecipients($order, $actor)
             ->merge($this->adminRecipients($actor))
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
@@ -55,7 +51,13 @@ class NotificationService
 
     public function sendInspectionQuoteCreated(Bid $bid, mixed $actor = null): void
     {
-        $bid->loadMissing(['order.property.managerProfiles', 'serviceProvider']);
+        $bid->loadMissing([
+            'order.property.managerProfiles',
+            'order.property.assignedManagerProfile',
+            'order.property.owners',
+            'order.propertyManager',
+            'serviceProvider',
+        ]);
 
         $order = $bid->order;
 
@@ -68,11 +70,7 @@ class NotificationService
             ?: $bid->assigned_provider_email
             ?: 'A provider';
 
-        $managers = $order->property->managerProfiles instanceof EloquentCollection
-            ? $order->property->managerProfiles
-            : collect();
-
-        $recipients = $managers
+        $recipients = $this->orderRecipients($order, $actor)
             ->merge($this->adminRecipients($actor))
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
@@ -286,7 +284,13 @@ class NotificationService
 
     public function sendProviderResponse(Bid $bid, string $status): void
     {
-        $bid->loadMissing(['order.property.owners', 'order.property.managerProfiles', 'serviceProvider']);
+        $bid->loadMissing([
+            'order.property.owners',
+            'order.property.managerProfiles',
+            'order.property.assignedManagerProfile',
+            'order.propertyManager',
+            'serviceProvider',
+        ]);
 
         $order = $bid->order;
 
@@ -308,7 +312,7 @@ class NotificationService
             default => sprintf('%s responded to "%s".', $providerName, $order->title),
         };
 
-        $recipients = $this->basePropertyRecipients($order->property)
+        $recipients = $this->orderRecipients($order)
             ->merge($this->adminRecipients())
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
@@ -365,6 +369,34 @@ class NotificationService
         ));
     }
 
+    /**
+     * Everyone who should be told about activity on an order: the property
+     * owners, the managers linked to the property, and the manager who raised
+     * the order itself.
+     */
+    private function orderRecipients(Order $order, mixed $actor = null): Collection
+    {
+        // Load here rather than relying on every caller to remember: a missing
+        // relation silently drops the manager from the recipient list.
+        $order->loadMissing([
+            'property.owners',
+            'property.managerProfiles',
+            'property.assignedManagerProfile',
+            'propertyManager',
+        ]);
+
+        $recipients = $this->basePropertyRecipients($order->property, $actor);
+
+        if ($order->propertyManager) {
+            $recipients = $recipients->concat([$order->propertyManager]);
+        }
+
+        return $recipients
+            ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey())
+            ->filter(fn ($recipient) => ! $this->isSameRecipient($recipient, $actor))
+            ->values();
+    }
+
     private function basePropertyRecipients(?Property $property, mixed $actor = null): Collection
     {
         if (! $property) {
@@ -374,8 +406,19 @@ class NotificationService
         $owners = $property->owners instanceof EloquentCollection ? $property->owners : collect();
         $managers = $property->managerProfiles instanceof EloquentCollection ? $property->managerProfiles : collect();
 
+        // Manager profiles are deduplicated by e-mail, so their property_id only
+        // points at the property they first signed in through. The manager
+        // actually assigned to this property must be added explicitly or they
+        // never get notified.
+        $property->loadMissing('assignedManagerProfile');
+
+        if ($property->assignedManagerProfile) {
+            $managers = $managers->concat([$property->assignedManagerProfile]);
+        }
+
         return $owners
             ->concat($managers)
+            ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey())
             ->filter(fn ($recipient) => ! $this->isSameRecipient($recipient, $actor));
     }
 

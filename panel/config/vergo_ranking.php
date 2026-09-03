@@ -26,6 +26,8 @@ return [
     'penalties' => [
         'price_change_request' => 4.0,
         'added_item' => 2.0,
+        // Confirmed an inspection appointment and did not attend.
+        'inspection_no_show' => 8.0,
         'max_penalty' => 30.0,
     ],
 

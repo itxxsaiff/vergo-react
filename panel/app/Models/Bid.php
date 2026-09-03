@@ -14,6 +14,9 @@ class Bid extends Model
         'order_id',
         'service_provider_id',
         'provider_reference',
+        'no_show_at',
+        'no_show_reported_by_type',
+        'no_show_reported_by_id',
         'assigned_provider_email',
         'amount',
         'currency',
@@ -36,6 +39,7 @@ class Bid extends Model
     protected function casts(): array
     {
         return [
+            'no_show_at' => 'datetime',
             'amount' => 'decimal:2',
             'line_items' => 'array',
             'estimated_start_date' => 'date',

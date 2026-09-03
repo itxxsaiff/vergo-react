@@ -116,13 +116,29 @@ class OrderComparisonController extends Controller
         abort(403);
     }
 
+    /**
+     * Who may open the full evaluation: the owner of the property, Vergo admins
+     * and employee power users. Never the property manager.
+     */
+    private function abortUnlessDetailedEvaluationAllowed(mixed $actor): void
+    {
+        if ($actor instanceof PropertyManagerProfile) {
+            abort(403, 'The detailed offer evaluation is not available for property managers.');
+        }
+
+        $allowed = $actor instanceof User
+            && (
+                $actor->role?->name === 'admin'
+                || $actor->role?->name === 'owner'
+                || ($actor->role?->name === 'employee' && $actor->access_level === 'power_user')
+            );
+
+        abort_unless($allowed, 403, 'The detailed offer evaluation is not available for this account.');
+    }
+
     private function abortIfBiddingStillOpen(Order $order): void
     {
-        if (
-            in_array($order->workflow_status, ['published_for_quotes', 'inspection_signup_closed'], true)
-            && $order->bid_deadline_at
-            && now()->lte($order->bid_deadline_at)
-        ) {
+        if ($order->isBiddingStillOpen()) {
             abort(422, 'Bid comparison is available only after the submission deadline has passed.');
         }
     }
@@ -135,6 +151,13 @@ class OrderComparisonController extends Controller
     public function evaluateOffers(Request $request, Order $order, OfferEvaluationService $evaluation): JsonResponse
     {
         $this->authorizeOrderAccess($request->user(), $order);
+        // The detailed evaluation names every bidder and their per-category
+        // scores. Owners and Vergo power users may see it; property managers
+        // may not - they award from the sequential best-offer view instead.
+        $this->abortUnlessDetailedEvaluationAllowed($request->user());
+        // The ranking exposes every company and price, so it stays closed until
+        // the deadline like the rest of the bid data.
+        $this->abortIfBiddingStillOpen($order);
 
         return response()->json(['data' => $evaluation->evaluate($order)]);
     }

@@ -17,6 +17,12 @@ class Bid extends Model
         'no_show_at',
         'no_show_reported_by_type',
         'no_show_reported_by_id',
+        'awarded_at',
+        'provider_accepted_at',
+        'provider_declined_at',
+        'provider_decline_reason',
+        'cancelled_at',
+        'cancellation_reason',
         'assigned_provider_email',
         'amount',
         'currency',
@@ -40,6 +46,10 @@ class Bid extends Model
     {
         return [
             'no_show_at' => 'datetime',
+            'awarded_at' => 'datetime',
+            'provider_accepted_at' => 'datetime',
+            'provider_declined_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'amount' => 'decimal:2',
             'line_items' => 'array',
             'estimated_start_date' => 'date',

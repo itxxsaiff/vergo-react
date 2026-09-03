@@ -55,6 +55,7 @@ class Order extends Model
         'duplicate_reason',
         'duplicate_explanation',
         'duplicate_acknowledged_at',
+        'award_audit',
     ];
 
     protected function casts(): array
@@ -73,6 +74,7 @@ class Order extends Model
             'reviewed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'duplicate_acknowledged_at' => 'datetime',
+            'award_audit' => 'array',
         ];
     }
 
@@ -136,6 +138,20 @@ class Order extends Model
     public function lineItemPhotos(): HasMany
     {
         return $this->hasMany(BidLineItemPhoto::class);
+    }
+
+    /**
+     * True while the bidding round is still running.
+     *
+     * Nobody on the awarding side may see who bid or for how much until the
+     * deadline has passed - not through the comparison, the automated
+     * evaluation, or the best-offer disclosure.
+     */
+    public function isBiddingStillOpen(): bool
+    {
+        return in_array($this->workflow_status, ['published_for_quotes', 'inspection_signup_closed'], true)
+            && $this->bid_deadline_at
+            && now()->lte($this->bid_deadline_at);
     }
 
     public function property(): BelongsTo

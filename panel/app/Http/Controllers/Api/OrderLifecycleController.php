@@ -11,6 +11,8 @@ use App\Models\PropertyManagerProfile;
 use App\Models\User;
 use App\Services\BidDisclosureService;
 use App\Services\DuplicateOrderService;
+use App\Services\NotificationService as NotificationServiceAlias;
+use App\Services\OfferAwardService;
 use App\Services\VergoRankingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
@@ -113,6 +115,7 @@ class OrderLifecycleController extends Controller
     public function disclosure(Request $request, Order $order, BidDisclosureService $disclosure): JsonResponse
     {
         $this->authorizeManagerSide($request, $order);
+        $this->abortIfBiddingStillOpen($order);
 
         return response()->json(['data' => $disclosure->build($order)]);
     }
@@ -123,6 +126,7 @@ class OrderLifecycleController extends Controller
     public function rejectBid(Request $request, Order $order, Bid $bid, BidDisclosureService $disclosure): JsonResponse
     {
         $this->authorizeManagerSide($request, $order);
+        $this->abortIfBiddingStillOpen($order);
         abort_unless($bid->order_id === $order->id, 404);
 
         $validated = $request->validate([
@@ -246,6 +250,135 @@ class OrderLifecycleController extends Controller
                     'error' => $exception->getMessage(),
                 ]);
             }
+        }
+    }
+
+    /**
+     * Offers stay sealed until the submission deadline passes.
+     */
+    /**
+     * Manager accepts the disclosed offer. The provider must still confirm.
+     */
+    public function acceptBid(Request $request, Order $order, Bid $bid, OfferAwardService $award): JsonResponse
+    {
+        $this->authorizeManagerSide($request, $order);
+        $this->abortIfBiddingStillOpen($order);
+        abort_unless($bid->order_id === $order->id, 404);
+        abort_if($bid->status === 'rejected', 422, 'This offer has already been rejected.');
+
+        $validated = $request->validate([
+            // Whether Vergo tells the company, or the manager does it themselves.
+            'notify_via' => ['required', 'in:vergo,self'],
+        ]);
+
+        $award->accept($order, $bid);
+        $award->appendAudit($order, 'offer_accepted', [
+            'company' => $bid->serviceProvider?->company_name,
+            'notify_via' => $validated['notify_via'],
+        ]);
+
+        if ($validated['notify_via'] === 'vergo') {
+            app(NotificationServiceAlias::class)->sendDirectAwardAssigned(
+                $order->fresh(),
+                collect([$bid->serviceProvider])->filter(),
+            );
+        }
+
+        return response()->json([
+            'message' => 'Offer accepted.',
+            // Always returned so the manager can copy it if they notify manually.
+            'data' => $award->awardSummary($order->fresh(), $bid->fresh()),
+        ]);
+    }
+
+    /**
+     * Manager rejects the disclosed offer; the next-best one opens up.
+     */
+    public function rejectOffer(Request $request, Order $order, Bid $bid, OfferAwardService $award, BidDisclosureService $disclosure): JsonResponse
+    {
+        $this->authorizeManagerSide($request, $order);
+        $this->abortIfBiddingStillOpen($order);
+        abort_unless($bid->order_id === $order->id, 404);
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'min:5', 'max:2000'],
+        ], [
+            'reason.required' => 'Please state why this offer is being rejected.',
+        ]);
+
+        $award->reject($order, $bid, $validated['reason']);
+        $award->appendAudit($order, 'offer_rejected', [
+            'company' => $bid->serviceProvider?->company_name,
+            'reason' => $validated['reason'],
+        ]);
+
+        return response()->json([
+            'message' => 'Offer rejected. The next-ranked offer is now available.',
+            'data' => $disclosure->build($order->fresh()),
+        ]);
+    }
+
+    /**
+     * Records that a session ended while an offer was open, so the owner can
+     * see it later.
+     */
+    public function recordOpenOfferExit(Request $request, Order $order, OfferAwardService $award): JsonResponse
+    {
+        $this->authorizeManagerSide($request, $order);
+
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:64'],
+        ]);
+
+        $award->appendAudit($order, 'left_with_open_offer', [
+            'via' => $validated['reason'] ?? 'unknown',
+        ]);
+
+        return response()->json(['message' => 'Recorded.']);
+    }
+
+    /**
+     * No usable offers left. Re-opens the tender and e-mails every provider in
+     * the trade again, except those who declined or cancelled this job.
+     */
+    public function refreshTender(Request $request, Order $order, NotificationServiceAlias $notifications, OfferAwardService $award): JsonResponse
+    {
+        $this->authorizeManagerSide($request, $order);
+
+        $validated = $request->validate([
+            'bid_deadline_at' => ['required', 'date', 'after:today'],
+        ], [
+            'bid_deadline_at.after' => 'Please select a bid deadline after today.',
+        ]);
+
+        // Anyone who turned this job down or walked away is not invited back.
+        $excluded = $order->bids()
+            ->where(function ($query): void {
+                $query->whereNotNull('provider_declined_at')->orWhereNotNull('cancelled_at');
+            })
+            ->pluck('service_provider_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $order->forceFill([
+            'status' => 'open',
+            'workflow_status' => 'published_for_quotes',
+            'bid_deadline_at' => $validated['bid_deadline_at'],
+        ])->save();
+
+        $award->appendAudit($order, 'tender_refreshed', ['excluded_provider_ids' => $excluded]);
+        $notifications->sendQuoteRequestPublished($order->fresh(), $excluded);
+
+        return response()->json(['message' => 'The tender was reopened and the providers were notified.']);
+    }
+
+    private function abortIfBiddingStillOpen(Order $order): void
+    {
+        if ($order->isBiddingStillOpen()) {
+            abort(422, 'Bids remain hidden until the submission deadline passes.');
         }
     }
 

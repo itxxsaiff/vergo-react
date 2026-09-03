@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../lib/api'
+import { clearOpenOffer, getOpenOfferOrderId } from '../../lib/openOfferGuard'
 import { toggleSidebar } from '../../lib/sidebarLayout'
 import VergoLogo from '../../../public/VERGO.png'
 import SupportTicketButton from '../../components/SupportTicketButton'
@@ -45,6 +46,28 @@ function Header({ user, showSidebarToggle = true }) {
   }
 
   async function handleLogout() {
+    // An opened offer has to be decided. Warn, and if they leave anyway, record
+    // it so the owner can see the offer was abandoned.
+    const openOfferOrderId = getOpenOfferOrderId()
+
+    if (openOfferOrderId) {
+      const confirmed = window.confirm(
+        t('Sie haben ein geöffnetes Angebot. Wenn Sie sich jetzt abmelden, wird dies vermerkt. Trotzdem abmelden?')
+      )
+
+      if (!confirmed) {
+        return
+      }
+
+      try {
+        await api.recordOpenOfferExit(openOfferOrderId, 'logout')
+      } catch {
+        // Never block the logout because logging failed.
+      }
+
+      clearOpenOffer()
+    }
+
     await logout()
   }
 

@@ -4,6 +4,7 @@ import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
+import { clearOpenOffer, setOpenOffer } from '../lib/openOfferGuard'
 import { formatDateDisplay, formatDateTimeDisplay, formatTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { formatCurrencyAmount, getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
@@ -369,6 +370,27 @@ function OrderDetailsPage() {
     }
   }
 
+  async function handleAcceptOffer() {
+    if (!disclosure?.disclosed) {
+      return
+    }
+
+    setIsAwarding(true)
+    setError('')
+
+    try {
+      const response = await api.acceptBid(orderId, disclosure.disclosed.bid_id, notifyVia)
+      // Always kept: the manager may want to copy it even when Vergo mailed it.
+      setAwardSummary(response.data ?? null)
+      await loadOrder()
+      await handleLoadDisclosure()
+    } catch (acceptError) {
+      setError(t(acceptError.message))
+    } finally {
+      setIsAwarding(false)
+    }
+  }
+
   async function handleRejectDisclosedBid() {
     if (!disclosure?.disclosed) {
       return
@@ -383,7 +405,7 @@ function OrderDetailsPage() {
     setError('')
 
     try {
-      const response = await api.rejectDisclosedBid(orderId, disclosure.disclosed.bid_id, rejectReason.trim())
+      const response = await api.rejectOffer(orderId, disclosure.disclosed.bid_id, rejectReason.trim())
       setDisclosure(response.data ?? null)
       setRejectReason('')
       await loadOrder()
@@ -554,6 +576,57 @@ function OrderDetailsPage() {
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [decidingRequestId, setDecidingRequestId] = useState(null)
   const [reportingNoShowBidId, setReportingNoShowBidId] = useState(null)
+  const [awardSummary, setAwardSummary] = useState(null)
+  const [notifyVia, setNotifyVia] = useState('vergo')
+  const [isAwarding, setIsAwarding] = useState(false)
+
+  // An opened offer must be decided. Warn before the tab closes, and record the
+  // exit so the owner can see it was left open.
+  useEffect(() => {
+    if (!disclosure?.disclosed) {
+      return undefined
+    }
+
+    function handleBeforeUnload(event) {
+      // Browsers show their own wording; returnValue just has to be set.
+      event.preventDefault()
+      event.returnValue = ''
+
+      try {
+        // Fire-and-forget so it survives the page going away.
+        navigator.sendBeacon?.(
+          `${window.location.origin}/api/orders/${orderId}/open-offer-exit`,
+          new Blob([JSON.stringify({ reason: 'tab_closed' })], { type: 'application/json' })
+        )
+      } catch {
+        // Never block the unload because logging failed.
+      }
+
+      return ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    // Also tell the header, so logging out warns the same way.
+    setOpenOffer(orderId)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      clearOpenOffer()
+    }
+  }, [disclosure, orderId])
+
+  // Offers stay sealed until the submission deadline passes. Mirrors
+  // Order::isBiddingStillOpen() on the backend, which is the real guard.
+  // Owners and Vergo power users see the full evaluation with every bidder and
+  // their category scores. Property managers award from the sequential
+  // best-offer view instead and must not see the field.
+  const canSeeDetailedEvaluation = ['owner', 'admin'].includes(user?.role)
+    || (user?.role === 'employee' && (user?.navigationRole ?? user?.navigation_role) === 'employee_power_user')
+  const isBiddingStillOpen = Boolean(
+    ['published_for_quotes', 'inspection_signup_closed'].includes(order?.workflow_status)
+    && order?.bid_deadline_at
+    && new Date(order.bid_deadline_at).getTime() >= Date.now()
+  )
   const [updatingPhotoId, setUpdatingPhotoId] = useState(null)
   const isInspectionDetails = isInspectionOrder(order)
   const confirmedInspectionBids = getConfirmedInspectionBids(order, inspectionSlots)
@@ -1201,16 +1274,43 @@ function OrderDetailsPage() {
 
                 {shouldHideBidPrices ? (
                   <div className="row g-3 mb-4">
-                    {arrivalOrderedBids.map((bid, index) => (
+                    {arrivalOrderedBids.map((bid, index) => {
+                      const isRejected = bid.status === 'rejected'
+                      // The first offer still in play is the one that can be opened.
+                      const isNextToOpen = !isBiddingStillOpen
+                        && !isRejected
+                        && arrivalOrderedBids.findIndex((entry) => entry.status !== 'rejected') === index
+
+                      return (
                       <div className="col-md-4 col-lg-3" key={bid.id}>
-                        <div className="border rounded-3 p-4 text-center h-100 bg-light">
-                          <div className="fw-semibold fs-5">{t('Angebot')} {index + 1}</div>
-                          <div className="text-muted small mt-2">
-                            {t('Eingegangen')}: {formatDateTimeDisplay(bid.submitted_at ?? bid.created_at)}
+                        <div className={`border rounded-3 p-4 text-center h-100 ${
+                          isRejected ? 'bg-light-danger border-danger' : isNextToOpen ? 'bg-light-success border-success' : 'bg-light'}`}>
+                          {/* Only the count is disclosed before the deadline - not
+                              the arrival time, which would hint at who bid when. */}
+                          <div className="fw-semibold fs-5">
+                            {isNextToOpen ? t('Bestes Angebot') : `${t('Angebot')} ${index + 1}`}
                           </div>
+
+                          {isRejected ? (
+                            <span className="badge bg-light-danger text-danger rounded-pill px-3 py-2 mt-2">
+                              {t('Abgelehnt')}
+                            </span>
+                          ) : null}
+
+                          {isNextToOpen ? (
+                            <button
+                              type="button"
+                              className="btn btn-success btn-sm w-100 mt-2"
+                              disabled={isDisclosing}
+                              onClick={handleLoadDisclosure}
+                            >
+                              {isDisclosing ? t('Wird geladen...') : t('Öffnen')}
+                            </button>
+                          ) : null}
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                     {comparableBids.length === 0 ? (
                       <div className="col-12">
                         <div className="border rounded-3 p-4 text-muted">
@@ -1463,10 +1563,12 @@ function OrderDetailsPage() {
                 <div>
                   <h5 className="card-title fw-semibold mb-0">{t('Bestes Angebot')}</h5>
                   <p className="text-muted small mb-0">
-                    {t('Es ist immer nur das bestbewertete Angebot einsehbar. Erst nach einer begründeten Ablehnung wird das nächste freigegeben.')}
+                    {isBiddingStillOpen
+                      ? t('Die Angebote bleiben bis zum Ablauf der Angebotsfrist verborgen.')
+                      : t('Es ist immer nur das bestbewertete Angebot einsehbar. Erst nach einer begründeten Ablehnung wird das nächste freigegeben.')}
                   </p>
                 </div>
-                <button type="button" className="btn btn-primary btn-sm" disabled={isDisclosing} onClick={handleLoadDisclosure}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={isDisclosing || isBiddingStillOpen} onClick={handleLoadDisclosure}>
                   {isDisclosing ? t('Wird geladen...') : t('Bestes Angebot öffnen')}
                 </button>
               </div>
@@ -1498,6 +1600,40 @@ function OrderDetailsPage() {
                         </div>
                       </div>
 
+                      <div className="border rounded-3 p-3 mb-3">
+                        <div className="fw-semibold mb-2">{t('Angebot annehmen')}</div>
+                        <div className="d-flex flex-wrap gap-3 mb-3">
+                          <label className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="notify_via"
+                              checked={notifyVia === 'vergo'}
+                              onChange={() => setNotifyVia('vergo')}
+                            />
+                            <span className="form-check-label">{t('Firma über Vergo benachrichtigen')}</span>
+                          </label>
+                          <label className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="notify_via"
+                              checked={notifyVia === 'self'}
+                              onChange={() => setNotifyVia('self')}
+                            />
+                            <span className="form-check-label">{t('Ich benachrichtige selbst')}</span>
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-success"
+                          disabled={isAwarding}
+                          onClick={handleAcceptOffer}
+                        >
+                          {isAwarding ? t('Wird gespeichert...') : t('Angebot annehmen')}
+                        </button>
+                      </div>
+
                       <div className="mb-2 fw-semibold">{t('Angebot ablehnen')}</div>
                       <div className="row g-2 align-items-end">
                         <div className="col-md-9">
@@ -1511,14 +1647,27 @@ function OrderDetailsPage() {
                         <div className="col-md-3">
                           <button
                             type="button"
-                            className="btn btn-light-danger text-danger w-100"
+                            className="btn btn-danger w-100"
                             disabled={isDisclosing || rejectReason.trim().length < 5}
                             onClick={handleRejectDisclosedBid}
                           >
-                            {t('Ablehnen')}
+                            {t('Angebot ablehnen')}
                           </button>
                         </div>
                       </div>
+
+                      {awardSummary ? (
+                        <div className="border rounded-3 p-3 mt-3 bg-light">
+                          <div className="fw-semibold mb-2">{t('Auftragsdaten zum Kopieren')}</div>
+                          <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap' }}>
+{`${t('Vergo-Auftragsnummer')}: ${awardSummary.vergo_order_number ?? '-'}
+${awardSummary.provider_reference ? `${t('Auftragsnummer Dienstleister')}: ${awardSummary.provider_reference}\n` : ''}${t('Adresse')}: ${awardSummary.address ?? '-'}
+${t('PLZ / Ort')}: ${awardSummary.postal_code_city ?? '-'}
+${t('Auftragstitel')}: ${awardSummary.job_title ?? '-'}
+${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency ?? ''}`}
+                          </pre>
+                        </div>
+                      ) : null}
                       <div className="form-text">
                         {disclosure.remaining_count > 0
                           ? `${t('Danach wird das nächste Angebot freigegeben. Noch gesperrt')}: ${disclosure.remaining_count}`
@@ -1547,15 +1696,18 @@ function OrderDetailsPage() {
               ) : null}
             </div>
 
+            {canSeeDetailedEvaluation ? (
             <div className="card">
               <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between gap-2 flex-wrap">
                 <div>
                   <h5 className="card-title fw-semibold mb-0">{t('Automatische Angebotsbewertung')}</h5>
                   <p className="text-muted small mb-0">
-                    {t('Jedes Angebot wird mit 100 Punkten bewertet: Preis 60, Bewertungen 24, Termine 11, Objekterfahrung 5.')}
+                    {isBiddingStillOpen
+                      ? t('Die Angebote bleiben bis zum Ablauf der Angebotsfrist verborgen.')
+                      : t('Jedes Angebot wird mit 100 Punkten bewertet: Preis 60, Bewertungen 24, Termine 11, Objekterfahrung 5.')}
                   </p>
                 </div>
-                <button type="button" className="btn btn-primary btn-sm" disabled={isEvaluating} onClick={handleEvaluateOffers}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={isEvaluating || isBiddingStillOpen} onClick={handleEvaluateOffers}>
                   {isEvaluating ? t('Wird bewertet...') : t('Angebote bewerten')}
                 </button>
               </div>
@@ -1629,6 +1781,7 @@ function OrderDetailsPage() {
                 </div>
               ) : null}
             </div>
+            ) : null}
 
             {changeRequests.length > 0 ? (
               <div className="card">

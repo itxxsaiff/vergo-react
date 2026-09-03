@@ -43,7 +43,11 @@ class BidDisclosureService
                 continue;
             }
 
-            if ($bid->status === 'rejected') {
+            // A company that declined the award or walked away from the job is
+            // out of the running and must never be offered again.
+            if (in_array($bid->status, ['rejected', 'cancelled'], true)
+                || $bid->provider_declined_at
+                || $bid->cancelled_at) {
                 $rejected[] = $this->openEntry($bid, $entry) + [
                     'rejection_reason' => $bid->rejection_reason,
                 ];

@@ -152,6 +152,18 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Provider confirmed an inspection appointment but did not attend.
     Route::post('/orders/{order}/bids/{bid}/no-show', [OrderLifecycleController::class, 'reportNoShow']);
 
+    // Award round: the manager accepts or rejects the disclosed offer.
+    Route::post('/orders/{order}/bids/{bid}/accept', [OrderLifecycleController::class, 'acceptBid']);
+    Route::post('/orders/{order}/bids/{bid}/reject-offer', [OrderLifecycleController::class, 'rejectOffer']);
+    Route::post('/orders/{order}/open-offer-exit', [OrderLifecycleController::class, 'recordOpenOfferExit']);
+    // No offers left: reopen the tender to everyone except those who declined.
+    Route::post('/orders/{order}/refresh-tender', [OrderLifecycleController::class, 'refreshTender']);
+
+    // The awarded provider answers, or abandons a running job.
+    Route::post('/orders/{order}/award/accept', [OrderCompletionController::class, 'acceptAward']);
+    Route::post('/orders/{order}/award/decline', [OrderCompletionController::class, 'declineAward']);
+    Route::post('/orders/{order}/award/cancel', [OrderCompletionController::class, 'cancelAward']);
+
     Route::get('/bids', [BidController::class, 'index']);
     Route::post('/bids', [BidController::class, 'store']);
     Route::put('/bids/{bid}', [BidController::class, 'update']);

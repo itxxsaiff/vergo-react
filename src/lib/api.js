@@ -614,6 +614,40 @@ export const api = {
   getBidDisclosure(id) {
     return request(`/orders/${id}/bid-disclosure`)
   },
+  // Award round
+  acceptBid(orderId, bidId, notifyVia) {
+    return request(`/orders/${orderId}/bids/${bidId}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({ notify_via: notifyVia }),
+    })
+  },
+  rejectOffer(orderId, bidId, reason) {
+    return request(`/orders/${orderId}/bids/${bidId}/reject-offer`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    })
+  },
+  recordOpenOfferExit(orderId, reason) {
+    return request(`/orders/${orderId}/open-offer-exit`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    })
+  },
+  acceptAward(orderId) {
+    return request(`/orders/${orderId}/award/accept`, { method: 'POST' })
+  },
+  declineAward(orderId, reason) {
+    return request(`/orders/${orderId}/award/decline`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    })
+  },
+  cancelAward(orderId, reason) {
+    return request(`/orders/${orderId}/award/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    })
+  },
   reportNoShow(orderId, bidId) {
     return request(`/orders/${orderId}/bids/${bidId}/no-show`, { method: 'POST' })
   },

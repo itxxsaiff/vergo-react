@@ -24,7 +24,7 @@ class NotificationService
     public function sendOrderCreated(Order $order, mixed $actor = null): void
     {
         $recipients = $this->orderRecipients($order, $actor)
-            ->merge($this->adminRecipients($actor))
+            ->concat($this->adminRecipients($actor))
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
         Notification::send($recipients, new SystemNotification(
@@ -38,7 +38,7 @@ class NotificationService
     public function sendBidSubmitted(Order $order, string $providerName, mixed $actor = null): void
     {
         $recipients = $this->orderRecipients($order, $actor)
-            ->merge($this->adminRecipients($actor))
+            ->concat($this->adminRecipients($actor))
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
         Notification::send($recipients, new SystemNotification(
@@ -71,7 +71,7 @@ class NotificationService
             ?: 'A provider';
 
         $recipients = $this->orderRecipients($order, $actor)
-            ->merge($this->adminRecipients($actor))
+            ->concat($this->adminRecipients($actor))
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
         Notification::send($recipients, new SystemNotification(
@@ -319,7 +319,7 @@ class NotificationService
         };
 
         $recipients = $this->orderRecipients($order)
-            ->merge($this->adminRecipients())
+            ->concat($this->adminRecipients())
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
         Notification::send($recipients, new SystemNotification(
@@ -362,7 +362,7 @@ class NotificationService
         $document->loadMissing(['property.owners', 'property.managerProfiles', 'order']);
 
         $recipients = $this->basePropertyRecipients($document->property)
-            ->merge($this->adminRecipients())
+            ->concat($this->adminRecipients())
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey());
 
         Notification::send($recipients, new SystemNotification(
@@ -391,7 +391,7 @@ class NotificationService
             'propertyManager',
         ]);
 
-        $recipients = $this->basePropertyRecipients($order->property, $actor);
+        $recipients = collect($this->basePropertyRecipients($order->property, $actor)->all());
 
         if ($order->propertyManager) {
             $recipients = $recipients->concat([$order->propertyManager]);
@@ -470,8 +470,11 @@ class NotificationService
             $managers = $managers->concat([$property->assignedManagerProfile]);
         }
 
-        return $owners
-            ->concat($managers)
+        // Deliberately a base collection: an Eloquent collection would key
+        // these by model id and silently drop a manager whose id matches an
+        // owner's.
+        return collect($owners->all())
+            ->concat($managers->all())
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey())
             ->filter(fn ($recipient) => ! $this->isSameRecipient($recipient, $actor));
     }

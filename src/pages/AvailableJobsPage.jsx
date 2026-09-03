@@ -167,6 +167,8 @@ function AvailableJobsPage() {
   const [isSubmittingPriceChange, setIsSubmittingPriceChange] = useState(false)
   const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState(null)
   const [isCompletingJob, setIsCompletingJob] = useState(false)
+  const [awardReason, setAwardReason] = useState('')
+  const [isAnsweringAward, setIsAnsweringAward] = useState(false)
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState('')
   const [error, setError] = useState('')
   const [hasOpenedInitialOrder, setHasOpenedInitialOrder] = useState(false)
@@ -602,6 +604,12 @@ function AvailableJobsPage() {
   const requiresRequote = Boolean(activeProviderBid?.workflow_meta?.requires_requote)
   // The awarded provider closes the job themselves; that opens the client's
   // confidential rating and returns the invoicing summary.
+  // The manager awarded this job and is waiting for the company to confirm.
+  const isAwaitingMyAcceptance = activeProviderBid?.status === 'awarded_pending_acceptance'
+  // Work is running: it can still be abandoned, with a substantial reason.
+  const isRunningJob = ['accepted', 'approved'].includes(activeProviderBid?.status)
+  // Someone else won.
+  const lostToAnotherCompany = activeProviderBid?.status === 'rejected'
   const canMarkJobCompleted = Boolean(selectedOrder)
     && ['approved', 'accepted'].includes(activeProviderBid?.status)
     && !['completed', 'closed'].includes(String(selectedOrder?.status || '').toLowerCase())
@@ -807,6 +815,38 @@ function AvailableJobsPage() {
       setError(t(submitError.message))
     } finally {
       setIsSubmittingPriceChange(false)
+    }
+  }
+
+  async function handleAwardAnswer(action) {
+    if (!selectedOrder) {
+      return
+    }
+
+    if (action === 'cancel' && awardReason.trim().length < 20) {
+      setError(t('Bitte geben Sie eine Begründung mit mindestens 20 Zeichen an.'))
+      return
+    }
+
+    setIsAnsweringAward(true)
+    setError('')
+
+    try {
+      if (action === 'accept') {
+        await api.acceptAward(selectedOrder.id)
+      } else if (action === 'decline') {
+        await api.declineAward(selectedOrder.id, awardReason.trim() || null)
+      } else {
+        await api.cancelAward(selectedOrder.id, awardReason.trim())
+      }
+
+      setAwardReason('')
+      await loadOrders()
+      closeModal()
+    } catch (awardError) {
+      setError(t(awardError.message))
+    } finally {
+      setIsAnsweringAward(false)
     }
   }
 
@@ -1198,6 +1238,64 @@ function AvailableJobsPage() {
                         >
                           {t('Neue Preise eingeben')}
                         </button>
+                      </div>
+                    ) : null}
+
+                    {isAwaitingMyAcceptance ? (
+                      <div className="border rounded-3 p-3 mb-3">
+                        <div className="fw-semibold mb-1">{t('Sie haben den Zuschlag erhalten')}</div>
+                        <p className="text-muted small">
+                          {t('Bitte bestätigen Sie den Auftrag, damit die Arbeit starten kann.')}
+                        </p>
+                        <input
+                          className="form-control mb-2"
+                          value={awardReason}
+                          placeholder={t('Begründung bei Ablehnung (optional)')}
+                          onChange={(event) => setAwardReason(event.target.value)}
+                        />
+                        <div className="d-flex gap-2 flex-wrap">
+                          <button type="button" className="btn btn-success" disabled={isAnsweringAward}
+                            onClick={() => handleAwardAnswer('accept')}>
+                            {isAnsweringAward ? t('Wird gespeichert...') : t('Auftrag annehmen')}
+                          </button>
+                          <button type="button" className="btn btn-danger" disabled={isAnsweringAward}
+                            onClick={() => handleAwardAnswer('decline')}>
+                            {t('Auftrag ablehnen')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {lostToAnotherCompany ? (
+                      <div className="alert alert-light border mb-3">
+                        <span className="badge bg-light-danger text-danger rounded-pill px-3 py-2 me-2">
+                          {t('Nicht erhalten')}
+                        </span>
+                        {t('Dieser Auftrag wurde an eine andere Firma vergeben.')}
+                      </div>
+                    ) : null}
+
+                    {isRunningJob ? (
+                      <div className="border rounded-3 p-3 mb-3">
+                        <div className="fw-semibold mb-1">{t('Auftrag stornieren')}</div>
+                        <p className="text-muted small">
+                          {t('Eine Begründung von mindestens 20 Zeichen ist zwingend. Die Bewirtschaftung und der Eigentümer werden informiert.')}
+                        </p>
+                        <textarea
+                          className="form-control mb-2"
+                          rows="2"
+                          value={awardReason}
+                          placeholder={t('Warum können Sie den Auftrag nicht ausführen?')}
+                          onChange={(event) => setAwardReason(event.target.value)}
+                        ></textarea>
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                          <button type="button" className="btn btn-light-danger text-danger"
+                            disabled={isAnsweringAward || awardReason.trim().length < 20}
+                            onClick={() => handleAwardAnswer('cancel')}>
+                            {isAnsweringAward ? t('Wird gespeichert...') : t('Auftrag stornieren')}
+                          </button>
+                          <span className="text-muted small">{awardReason.trim().length} / 20</span>
+                        </div>
                       </div>
                     ) : null}
 

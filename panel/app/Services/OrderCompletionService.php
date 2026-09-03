@@ -38,12 +38,17 @@ class OrderCompletionService
                 'postal_code' => $object?->postal_code ?: $property?->postal_code,
                 'city' => $object?->city ?: $property?->city,
             ],
-            'owner' => $owner ? [
-                'name' => $owner->display_name,
-                'address' => $owner->address,
+            // A company owner is shown by company name and full address; a
+            // private owner by first and last name with postcode and town.
+            'owner' => $owner ? array_filter([
+                'owner_type' => $owner->owner_type,
+                'name' => $owner->owner_type === 'company'
+                    ? ($owner->company_name ?: $owner->display_name)
+                    : (trim(implode(' ', array_filter([$owner->first_name, $owner->last_name]))) ?: $owner->display_name),
+                'address' => $owner->owner_type === 'company' ? $owner->address : null,
                 'postal_code' => $owner->postal_code,
                 'city' => $owner->city,
-            ] : null,
+            ], fn ($value) => $value !== null && $value !== '') : null,
             'property_manager' => $manager ? [
                 'name' => $manager->name,
                 'address' => $manager->address,
@@ -51,6 +56,32 @@ class OrderCompletionService
                 'city' => $manager->city,
             ] : null,
             'billing_address' => $this->resolveBillingAddress($order),
+            // Where the invoice physically goes, and how.
+            'invoice_delivery' => $this->resolveInvoiceDelivery($order),
+        ];
+    }
+
+    /**
+     * How the invoice should be delivered and to which address.
+     *
+     * @return array<string, mixed>
+     */
+    private function resolveInvoiceDelivery(Order $order): array
+    {
+        $billing = $this->resolveBillingAddress($order);
+        $method = $billing['delivery_method'] ?? 'email';
+
+        return [
+            'method' => $method,
+            // Only the relevant one is filled in, so the provider is not left
+            // guessing which address to use.
+            'email' => $method === 'email' ? ($billing['email'] ?? null) : null,
+            'postal_address' => $method === 'email' ? null : ((trim(implode(', ', array_filter([
+                $billing['company'] ?? $billing['name'] ?? null,
+                $billing['company_extra'] ?? null,
+                $billing['address'] ?? null,
+                trim(implode(' ', array_filter([$billing['postal_code'] ?? null, $billing['city'] ?? null]))),
+            ]))) ?: null)),
         ];
     }
 

@@ -21,6 +21,9 @@ class QuoteScopeChangedMail extends Mailable
         public ServiceProvider $provider,
         public int $itemCount,
         public string $loginUrl,
+        public ?string $tradeLabel = null,
+        public ?string $propertyAddress = null,
+        public ?string $originalQuoteEmail = null,
     ) {
     }
 

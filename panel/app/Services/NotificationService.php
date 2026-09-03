@@ -206,7 +206,9 @@ class NotificationService
                 actionUrl: '/available-jobs',
             ));
 
-            $email = $bid->assigned_provider_email ?: $provider->order_email;
+            // Goes to the company's main order inbox - the same address that
+            // receives new-order notifications - not the individual who quoted.
+            $email = $provider->order_email ?: $bid->assigned_provider_email;
 
             if (! $email) {
                 Log::warning('Vergo requote email skipped: no address', [
@@ -223,6 +225,10 @@ class NotificationService
                     provider: $provider,
                     itemCount: $itemCount,
                     loginUrl: $this->providerLoginUrl($frontendBase, $provider->id, $email),
+                    tradeLabel: $this->tradeLabel($order->service_type),
+                    propertyAddress: $this->orderAddressLine($order),
+                    // The address the original quote was submitted from.
+                    originalQuoteEmail: $bid->assigned_provider_email,
                 ));
             } catch (\Throwable $exception) {
                 Log::error('Vergo requote email failed', [
@@ -395,6 +401,54 @@ class NotificationService
             ->unique(fn ($recipient) => get_class($recipient).':'.$recipient->getKey())
             ->filter(fn ($recipient) => ! $this->isSameRecipient($recipient, $actor))
             ->values();
+    }
+
+    /**
+     * Human readable trade for e-mails, which are written in German.
+     */
+    private function tradeLabel(?string $serviceType): ?string
+    {
+        if (! $serviceType) {
+            return null;
+        }
+
+        $labels = [
+            'painting' => 'Maler',
+            'plumbing' => 'Sanitär',
+            'electrical' => 'Elektro',
+            'hvac_maintenance' => 'Heizung / Lüftung / Klima',
+            'flooring' => 'Bodenbeläge',
+            'cleaning' => 'Reinigung',
+            'landscaping' => 'Garten / Umgebung',
+            'security' => 'Sicherheit / Brandschutz',
+            'elevator_service' => 'Lift',
+            'general_maintenance' => 'Allgemeiner Unterhalt',
+            'other' => 'Sonstiges',
+        ];
+
+        $key = ServiceProvider::normalizeServiceType($serviceType);
+
+        return $labels[$key] ?? str($serviceType)->replace('_', ' ')->headline()->toString();
+    }
+
+    /**
+     * Street, postcode and town of the object the order relates to.
+     */
+    private function orderAddressLine(Order $order): ?string
+    {
+        $order->loadMissing(['property', 'propertyObject']);
+        $object = $order->propertyObject;
+        $property = $order->property;
+
+        $line = array_filter([
+            $object?->address ?: $property?->address_line_1,
+            trim(implode(' ', array_filter([
+                $object?->postal_code ?: $property?->postal_code,
+                $object?->city ?: $property?->city,
+            ]))),
+        ]);
+
+        return $line === [] ? null : implode(', ', $line);
     }
 
     private function basePropertyRecipients(?Property $property, mixed $actor = null): Collection

@@ -2797,3 +2797,135 @@ body {
   background: var(--vergo-input-bg);
   line-height: 1.35;
 }
+
+/* A job a colleague in the same company has taken on: visible for
+   transparency, but clearly not actionable by this user. */
+.vergo-job-card-locked {
+  opacity: 0.55;
+  filter: grayscale(0.8);
+  pointer-events: none;
+}
+
+.vergo-job-card-locked .vergo-job-apply-btn {
+  cursor: not-allowed;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Provider quote modal: give the long form a visible structure so it reads as
+   a sequence of steps instead of one dense wall of fields.
+   --------------------------------------------------------------------------- */
+
+.vergo-quote-section {
+  border: 1px solid var(--vergo-table-border);
+  border-radius: 12px;
+  background: var(--vergo-card-bg);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.vergo-quote-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.vergo-quote-step {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--vergo-accent);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.vergo-quote-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--vergo-text-main);
+}
+
+.vergo-quote-section-hint {
+  font-size: 0.82rem;
+  color: var(--vergo-text-soft);
+  margin: 2px 0 0;
+}
+
+/* Read-only context (property, appointments, contact) is secondary to the
+   fields the provider actually fills in. */
+.vergo-quote-section-muted {
+  background: var(--vergo-input-bg);
+}
+
+/* The running total follows the provider down the form. */
+.vergo-quote-total-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border: 1px solid var(--vergo-table-border);
+  border-radius: 12px;
+  background: var(--vergo-accent-soft-2);
+  box-shadow: 0 -6px 18px rgba(33, 35, 43, 0.06);
+}
+
+.vergo-quote-total-bar .vergo-quote-total-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+@media (max-width: 991.98px) {
+  /* Each line item becomes its own card, so the seven columns stop fighting
+     for width on a phone. */
+  .vergo-provider-quote-line {
+    border: 1px solid var(--vergo-table-border);
+    border-radius: 10px;
+    margin: 0 0 12px;
+    background: var(--vergo-card-bg);
+  }
+
+  .vergo-provider-quote-line:last-child {
+    margin-bottom: 0;
+  }
+
+  .vergo-provider-quote-line .form-label {
+    white-space: normal;
+    font-weight: 600;
+  }
+
+  .vergo-provider-quote-line-subtotal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px dashed var(--vergo-table-border);
+  }
+
+  .vergo-quote-section {
+    padding: 14px;
+  }
+}
+
+/* Bootstrap's .row on a <fieldset>: strip the browser's default chrome and
+   allow it to shrink inside flex parents. */
+.vergo-quote-fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.vergo-quote-fieldset:disabled {
+  opacity: 0.6;
+}

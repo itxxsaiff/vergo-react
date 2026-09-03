@@ -294,6 +294,15 @@ class OrderController extends Controller
         });
 
         if (! $isDraft) {
+            // Carry the inspection quotes across before anything else: if one
+            // provider's scope was taken whole, their quote becomes quote 1 on
+            // this tender, and the rest are asked to re-price.
+            $this->carryOverInspectionQuotes($order, $actor, $notificationService);
+
+            // A request for proposals raised from a site inspection closes that
+            // inspection: the job has moved on to the tender phase.
+            $this->completeSourceInspection($order, $actor);
+
             $notificationService->sendOrderCreated($order->load('property.owners', 'property.managerProfiles'), $actor);
         }
 
@@ -639,6 +648,86 @@ class OrderController extends Controller
         abort_unless($order->attachment_path, 404, 'No order attachment found.');
 
         return Storage::download($order->attachment_path, $order->attachment_name ?: 'order-attachment');
+    }
+
+    /**
+     * Marks the inspection an order was generated from as completed, so it stops
+     * sitting in the list as if it were still awaiting a decision.
+     */
+    /**
+     * Moves the quotes from the inspection this tender was generated from.
+     *
+     * @see QuoteScopeService::carryOverFromInspection()
+     */
+    private function carryOverInspectionQuotes(Order $order, mixed $actor, NotificationService $notificationService): void
+    {
+        $sourceId = data_get($order->workflow_meta ?? [], 'assignment.source_inspection_order_id');
+
+        if (! $sourceId) {
+            return;
+        }
+
+        $inspection = Order::query()
+            ->where('id', (int) $sourceId)
+            ->where('workflow_type', 'inspection')
+            ->first();
+
+        if (! $inspection) {
+            return;
+        }
+
+        if ($actor instanceof PropertyManagerProfile && ! $actor->canAccessProperty($inspection->property_id)) {
+            return;
+        }
+
+        $items = $order->quote_items ?? [];
+
+        if ($items === []) {
+            return;
+        }
+
+        $outcome = app(QuoteScopeService::class)->carryOverFromInspection($order, $inspection, $items);
+
+        if ($outcome['requote']->isNotEmpty()) {
+            $notificationService->sendQuoteScopeChanged(
+                $order->fresh(),
+                $outcome['requote']->load('serviceProvider'),
+                count($items),
+            );
+        }
+    }
+
+    private function completeSourceInspection(Order $order, mixed $actor): void
+    {
+        $sourceId = data_get($order->workflow_meta ?? [], 'assignment.source_inspection_order_id');
+
+        if (! $sourceId) {
+            return;
+        }
+
+        $inspection = Order::query()
+            ->where('id', (int) $sourceId)
+            ->where('workflow_type', 'inspection')
+            ->first();
+
+        if (! $inspection) {
+            return;
+        }
+
+        // Only the manager responsible for that property may close it.
+        if ($actor instanceof PropertyManagerProfile && ! $actor->canAccessProperty($inspection->property_id)) {
+            return;
+        }
+
+        if (in_array($inspection->status, ['completed', 'closed', 'cancelled'], true)) {
+            return;
+        }
+
+        $inspection->forceFill([
+            'status' => 'completed',
+            'workflow_status' => 'inspection_completed',
+            'completed_at' => $inspection->completed_at ?? now(),
+        ])->save();
     }
 
     private function authorizeOrderAccess(mixed $actor, Order $order): void

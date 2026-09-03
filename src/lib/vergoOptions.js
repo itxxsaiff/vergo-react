@@ -665,6 +665,9 @@ export function createQuoteLineItem(serviceType = '', values = {}) {
     quantity: hasOwnValue(values, 'quantity') ? values.quantity : 1,
     unit_price: hasOwnValue(values, 'unit_price') ? values.unit_price : '',
     source: values.source ?? 'catalog',
+    // Must survive: the backend uses it to tell which provider a line item came
+    // from, and therefore whose inspection quote can be carried over as quote 1.
+    source_bid_id: values.source_bid_id ?? null,
     is_custom: Boolean(values.is_custom ?? false),
   }
 }

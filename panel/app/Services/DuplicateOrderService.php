@@ -43,6 +43,10 @@ class DuplicateOrderService
             ->with('propertyManager:id,name,email')
             ->where('property_id', $order->property_id)
             ->where('id', '!=', $order->id)
+            // A site inspection and the request for proposals generated from it
+            // are two phases of the same job, not two jobs. Only compare like
+            // with like.
+            ->where('workflow_type', $order->workflow_type)
             ->where(function ($query): void {
                 $query
                     // A cancelled or deleted job that was re-raised.
@@ -63,6 +67,11 @@ class DuplicateOrderService
             ->limit(50)
             ->get();
 
+        $excludedIds = $candidates
+            ->filter(fn (Order $candidate): bool => $this->isOwnSource($order, $candidate))
+            ->pluck('id')
+            ->all();
+
         return $candidates
             ->map(function (Order $candidate) use ($order): array {
                 $similarity = $this->similarity($order, $candidate);
@@ -82,7 +91,8 @@ class DuplicateOrderService
                     'created_at' => $candidate->created_at?->toDateTimeString(),
                 ];
             })
-            ->filter(fn (array $row): bool => $row['similarity'] >= self::THRESHOLD)
+            ->filter(fn (array $row): bool => $row['similarity'] >= self::THRESHOLD
+                && ! in_array($row['order_id'], $excludedIds, true))
             ->sortByDesc('similarity')
             ->values()
             ->all();
@@ -92,6 +102,19 @@ class DuplicateOrderService
      * 0..1 similarity. The trade must match for anything to be comparable at
      * all; wording and line items then decide how close the two jobs are.
      */
+    /**
+     * True when the second order is the inspection this one was generated from.
+     */
+    private function isOwnSource(Order $order, Order $candidate): bool
+    {
+        // Set by the wizard when a request for proposals is generated from an
+        // inspection quote.
+        $sourceId = data_get($order->workflow_meta ?? [], 'assignment.source_inspection_order_id')
+            ?: data_get($order->workflow_meta ?? [], 'inspection.generated_from_order_id');
+
+        return $sourceId && (int) $sourceId === $candidate->id;
+    }
+
     public function similarity(Order $first, Order $second): float
     {
         // Different trades are never the same job.

@@ -81,6 +81,18 @@ function isInspectionWorkflow(order) {
     || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
 }
 
+// Local calendar date in the yyyy-mm-dd form <input type="date"> expects.
+// toISOString() would shift the day for anyone east of UTC.
+function getTodayDateValue() {
+  const now = new Date()
+
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 function getAssignedProviderEmail(bid) {
   return String(
     bid?.assigned_provider_email
@@ -597,6 +609,9 @@ function AvailableJobsPage() {
   const canSubmitCurrentOrder = selectedOrder
     ? selectedOrder.workflow_status === 'public_inspection_open' || isOrderQuoteRequest(selectedOrder)
     : false
+  // Nothing in the quote is editable until somebody in the company has taken
+  // the job on. Assign first, then fill in the offer.
+  const canEditQuote = isAssignedToMe
 
   useEffect(() => {
     if (!selectedOrder || !activeProviderBid?.id || !isAssignedToMe) {
@@ -909,6 +924,12 @@ function AvailableJobsPage() {
   const selectedQuoteTradeGroup = getOrderTradeGroup(selectedOrder)
   const selectedQuoteCategoryOptions = getTradeActivityOptions(selectedQuoteTradeGroup)
   const selectedQuoteUnitOptions = getTradeUnitOptions(selectedQuoteTradeGroup)
+  // Some sections only apply to inspections or to quote requests, so the step
+  // numbers are assigned in render order rather than hard-coded. Reset on every
+  // render; nextQuoteStep() is called once per section as it renders.
+  const quoteStepCounter = { value: 0 }
+  const nextQuoteStep = () => ++quoteStepCounter.value
+
   const quoteBidBreakdown = calculateQuoteVatBreakdown(
     bidForm.line_items ?? [],
     providerIsVatSubject,
@@ -1038,10 +1059,14 @@ function AvailableJobsPage() {
                 const isQuoteRequest = isOrderQuoteRequest(order)
                 const cardDisplayStatus = getCardDisplayStatus(order, providerBid)
                 const cardAction = getInspectionCardAction(providerBid, isQuoteRequest)
+                // A colleague in the same company took this job on. It stays
+                // listed for transparency but must not be opened or edited.
+                const assignedEmail = getAssignedProviderEmail(providerBid)
+                const isLockedByColleague = Boolean(assignedEmail) && assignedEmail !== providerLoginEmail
 
                 return (
                   <div className="col-12" key={order.id}>
-                    <div className="card vergo-job-card h-100 border">
+                    <div className={`card vergo-job-card h-100 border${isLockedByColleague ? ' vergo-job-card-locked' : ''}`}>
                       <div className="card-body p-4 p-lg-4">
 
                         <div className="d-flex align-items-start justify-content-between gap-4 flex-wrap">
@@ -1063,6 +1088,15 @@ function AvailableJobsPage() {
                                 ? t('Öffentliche Besichtigungsanfrage')
                                 : `${t('Öffentliche Offertenanfrage')}${order.bid_deadline_at ? ` ${t('bis')} ${formatDateDisplay(order.bid_deadline_at)}` : ''}`}
                             </div>
+
+                            {assignedEmail ? (
+                              <div className="mt-2 small">
+                                <i className="ti ti-user-check me-1"></i>
+                                {isLockedByColleague
+                                  ? `${t('In Bearbeitung durch')}: ${assignedEmail}`
+                                  : `${t('Von Ihnen übernommen')}: ${assignedEmail}`}
+                              </div>
+                            ) : null}
                           </div>
 
                           <div className="d-flex align-items-start gap-2">
@@ -1091,7 +1125,12 @@ function AvailableJobsPage() {
                             </div>
                           </div>
 
-                          {cardAction.submitted ? (
+                          {isLockedByColleague ? (
+                            <button type="button" className="btn vergo-job-apply-btn" disabled>
+                              {t('Von Kollege übernommen')}
+                              <i className="ti ti-lock ms-2"></i>
+                            </button>
+                          ) : cardAction.submitted ? (
                             <button type="button" className="btn vergo-job-apply-btn vergo-job-apply-btn-submitted" disabled>
                               {t(cardAction.label)}
                               <i className="ti ti-check ms-2"></i>
@@ -1255,8 +1294,14 @@ function AvailableJobsPage() {
                     ) : null}
 
                     {canAssignJob ? (
-                      <div className="border rounded-3 p-3 mb-3">
-                        <div className="fw-semibold mb-1">{selectedOrderIsInspection ? t('Wer übernimmt die Besichtigung?') : t('Wer übernimmt den Auftrag?')}</div>
+                      <div className="vergo-quote-section">
+                        <div className="vergo-quote-section-head">
+                          <span className="vergo-quote-step">{nextQuoteStep()}</span>
+                          <div>
+                            <h6 className="vergo-quote-section-title">{selectedOrderIsInspection ? t('Wer übernimmt die Besichtigung?') : t('Wer übernimmt den Auftrag?')}</h6>
+                            <p className="vergo-quote-section-hint mb-0">{t('Nur die zuständige Person kann die Offerte bearbeiten.')}</p>
+                          </div>
+                        </div>
                         <div className="text-muted small mb-3">
                           {activeAssignedProviderEmail
                             ? `${t('Zugewiesen an')}: ${activeAssignedProviderEmail}`
@@ -1319,8 +1364,14 @@ function AvailableJobsPage() {
                       </div>
                     ) : null}
 
-                    <div className="border rounded-3 p-3 mb-3">
-                      <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Liegenschaft')}</div>
+                    <div className="vergo-quote-section vergo-quote-section-muted">
+                      <div className="vergo-quote-section-head">
+                        <span className="vergo-quote-step">{nextQuoteStep()}</span>
+                        <div>
+                          <h6 className="vergo-quote-section-title">{t('Liegenschaft')}</h6>
+                          <p className="vergo-quote-section-hint mb-0">{t('Angaben zum Objekt - nur zur Information.')}</p>
+                        </div>
+                      </div>
                       <div className="row g-3">
                         <div className="col-md-6">
                           <div className="text-muted small">{t('Name')}</div>
@@ -1347,8 +1398,14 @@ function AvailableJobsPage() {
 
                     {selectedOrderIsInspection ? (
                       <>
-                        <div className="border rounded-3 p-3 mb-3">
-                          <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Besichtigungstermine')}</div>
+                        <div className="vergo-quote-section vergo-quote-section-muted">
+                          <div className="vergo-quote-section-head">
+                            <span className="vergo-quote-step">{nextQuoteStep()}</span>
+                            <div>
+                              <h6 className="vergo-quote-section-title">{t('Besichtigungstermine')}</h6>
+                              <p className="vergo-quote-section-hint mb-0">{t('Wählen Sie den Termin, an dem Sie vor Ort sind.')}</p>
+                            </div>
+                          </div>
                           <div className="row g-3">
                             {[0, 1].map((slotIndex) => {
                               const slot = selectedInspectionSlots[slotIndex]
@@ -1406,8 +1463,14 @@ function AvailableJobsPage() {
                           </div>
                         ) : null}
 
-                        <div className="border rounded-3 p-3 mb-3">
-                          <div className="text-muted small text-uppercase fw-semibold mb-2">{t('Kontakt vor Ort')}</div>
+                        <div className="vergo-quote-section vergo-quote-section-muted">
+                          <div className="vergo-quote-section-head">
+                            <span className="vergo-quote-step">{nextQuoteStep()}</span>
+                            <div>
+                              <h6 className="vergo-quote-section-title">{t('Kontakt vor Ort')}</h6>
+                              <p className="vergo-quote-section-hint mb-0">{t('Ansprechperson für die Besichtigung.')}</p>
+                            </div>
+                          </div>
                           <div className="row g-3">
                             <div className="col-md-6">
                               <div className="text-muted small">{t('Firma')}</div>
@@ -1452,6 +1515,8 @@ function AvailableJobsPage() {
                             </div>
                           </div>
                         ) : null}
+                        <div className="col-12">
+                          <fieldset className="row vergo-quote-fieldset" disabled={!canEditQuote}>
                         {selectedInvoiceRecipient && selectedOrderCompleted ? (
                           <div className="col-12 mb-3">
                             <div className="border rounded-3 p-3">
@@ -1499,9 +1564,24 @@ function AvailableJobsPage() {
                             </div>
                           </div>
                         ) : null}
+                        {isOrderQuoteRequest(selectedOrder) && !canEditQuote ? (
+                          <div className="col-12 mb-3">
+                            <div className="alert alert-warning border mb-0">
+                              <i className="ti ti-lock me-1"></i>
+                              {t('Bitte übernehmen Sie den Auftrag zuerst. Erst danach können Sie Positionen und Preise bearbeiten.')}
+                            </div>
+                          </div>
+                        ) : null}
+
                         {isOrderQuoteRequest(selectedOrder) ? (
                           <div className="col-12 mb-3">
-                            <label className="form-label">{t('Positionen und Preise')}</label>
+                            <div className="vergo-quote-section-head">
+                              <span className="vergo-quote-step">{nextQuoteStep()}</span>
+                              <div>
+                                <h6 className="vergo-quote-section-title">{t('Positionen und Preise')}</h6>
+                                <p className="vergo-quote-section-hint mb-0">{t('Tragen Sie hier Ihre Preise ein. Die Summe wird automatisch berechnet.')}</p>
+                              </div>
+                            </div>
                             <div className="border rounded-3">
                               {(bidForm.line_items ?? []).map((item, index) => {
                                 const usesCustomCategory = Boolean(item.is_custom || (item.category && !selectedQuoteCategoryOptions.includes(item.category)))
@@ -1707,13 +1787,23 @@ function AvailableJobsPage() {
                           </div>
                         )}
 
+                        <div className="col-12">
+                          <div className="vergo-quote-section-head mt-2">
+                            <span className="vergo-quote-step">{nextQuoteStep()}</span>
+                            <div>
+                              <h6 className="vergo-quote-section-title">{t('Termine und Angaben')}</h6>
+                              <p className="vergo-quote-section-hint mb-0">{t('Wann können Sie starten und fertigstellen?')}</p>
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="col-md-6 mb-3">
                           <label className="form-label">{t('Voraussichtliches Startdatum')}</label>
-                          <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} onChange={handleBidChange} />
+                          <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} min={getTodayDateValue()} onChange={handleBidChange} />
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')}</label>
-                          <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || undefined} onChange={handleBidChange} />
+                          <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || getTodayDateValue()} onChange={handleBidChange} />
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="form-label">{t('Eigene Angebotsnummer')}</label>
@@ -1737,9 +1827,22 @@ function AvailableJobsPage() {
                           <input type="file" className="form-control" name="attachment" onChange={handleBidChange} />
                           <div className="form-text">{t('Optional. Laden Sie ein Angebot, einen Kostenvoranschlag oder eine unterstützende Datei bis zu 10 MB hoch.')}</div>
                         </div>
+                          </fieldset>
+                        </div>
                       </div>
                     ) : null}
                     {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
+
+                    {isOrderQuoteRequest(selectedOrder) ? (
+                      <div className="vergo-quote-total-bar mt-3">
+                        <span className="text-muted">
+                          {(bidForm.line_items ?? []).length} {t('Positionen')} · {t('inkl. MwSt.')}
+                        </span>
+                        <span className="vergo-quote-total-value">
+                          {formatCurrencyAmount(quoteBidBreakdown.total, bidForm.currency)}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>{t('Abbrechen')}</button>

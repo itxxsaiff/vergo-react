@@ -27,7 +27,7 @@ class UpdateBidRequest extends FormRequest
             'line_items.*.code' => ['nullable', 'string', 'max:100'],
             'line_items.*.unit' => ['required_with:line_items', 'string', 'max:50'],
             'line_items.*.is_custom' => ['nullable', 'boolean'],
-            'estimated_start_date' => ['nullable', 'date'],
+            'estimated_start_date' => ['nullable', 'date', 'after_or_equal:today'],
             'estimated_completion_date' => ['nullable', 'date', 'after_or_equal:estimated_start_date'],
             'provider_reference' => ['nullable', 'string', 'max:64'],
             'notes' => ['nullable', 'string'],
@@ -44,6 +44,7 @@ class UpdateBidRequest extends FormRequest
         return [
             'amount.required' => 'Bid amount is required.',
             'currency.required' => 'Currency is required.',
+            'estimated_start_date.after_or_equal' => 'The start date cannot be in the past.',
             'estimated_completion_date.after_or_equal' => 'Completion date must be after the start date.',
             'attachment.max' => 'Attachment size must not exceed 10 MB.',
             'attachment.mimes' => 'Attachment must be a PDF, Office document, or image file.',

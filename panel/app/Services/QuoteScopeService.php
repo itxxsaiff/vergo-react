@@ -19,6 +19,85 @@ use Illuminate\Support\Collection;
 class QuoteScopeService
 {
     /**
+     * A request for proposals was generated as a NEW order from an inspection.
+     * The inspection's quotes live on the old order, so they have to be carried
+     * across explicitly.
+     *
+     * If every published item came from one provider and all of that provider's
+     * items were taken, their quote moves over complete with prices and shows as
+     * the first quote. Everyone else who quoted after the inspection is asked to
+     * re-price the changed scope.
+     *
+     * @param  array<int, array<string, mixed>>  $publishedItems
+     * @return array{preserved: ?Bid, requote: Collection<int, Bid>}
+     */
+    public function carryOverFromInspection(Order $newOrder, Order $inspection, array $publishedItems): array
+    {
+        $seedBids = $inspection->bids()
+            ->with('serviceProvider')
+            ->get()
+            ->filter(fn (Bid $bid): bool => (bool) data_get($bid->workflow_meta ?? [], 'quote_scope_seed')
+                || ! empty($bid->line_items))
+            ->values();
+
+        $publishedSourceBidIds = collect($publishedItems)
+            ->pluck('source_bid_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $preserved = null;
+        $requote = collect();
+
+        foreach ($seedBids as $bid) {
+            if ($this->scopeMatchesBid($bid, $publishedItems, $publishedSourceBidIds)) {
+                $preserved = $this->copyQuoteToOrder($bid, $newOrder);
+
+                continue;
+            }
+
+            $requote->push($bid);
+        }
+
+        return ['preserved' => $preserved, 'requote' => $requote];
+    }
+
+    /**
+     * Duplicates the provider's inspection quote onto the tender as a normal,
+     * fully priced quote.
+     */
+    private function copyQuoteToOrder(Bid $sourceBid, Order $newOrder): Bid
+    {
+        $workflowMeta = $sourceBid->workflow_meta ?? [];
+
+        unset($workflowMeta['quote_scope_seed'], $workflowMeta['requires_requote']);
+        data_set($workflowMeta, 'carried_over_from_bid_id', $sourceBid->id);
+        data_set($workflowMeta, 'carried_over_from_order_id', $sourceBid->order_id);
+        data_set($workflowMeta, 'quote_preserved_from_inspection', true);
+
+        return Bid::query()->updateOrCreate(
+            [
+                'order_id' => $newOrder->id,
+                'service_provider_id' => $sourceBid->service_provider_id,
+            ],
+            [
+                'assigned_provider_email' => $sourceBid->assigned_provider_email,
+                'provider_reference' => $sourceBid->provider_reference,
+                'amount' => $sourceBid->amount,
+                'currency' => $sourceBid->currency ?: 'CHF',
+                'line_items' => $sourceBid->line_items,
+                'estimated_start_date' => $sourceBid->estimated_start_date,
+                'estimated_completion_date' => $sourceBid->estimated_completion_date,
+                'notes' => $sourceBid->notes,
+                'workflow_meta' => $workflowMeta,
+                'status' => 'submitted',
+                'submitted_at' => $sourceBid->submitted_at ?? now(),
+            ],
+        );
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $publishedItems
      * @return array{preserved: Collection<int, Bid>, requote: Collection<int, Bid>}
      */

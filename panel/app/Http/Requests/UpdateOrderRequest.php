@@ -73,6 +73,8 @@ class UpdateOrderRequest extends FormRequest
             'quote_items.*.unit' => ['nullable', 'string', 'max:50'],
             'quote_items.*.quantity' => ['nullable', 'numeric', 'min:0'],
             'quote_items.*.source' => ['nullable', 'string', 'max:100'],
+            // Which provider's inspection quote this line item came from.
+            'quote_items.*.source_bid_id' => ['nullable', 'integer'],
             'quote_items.*.is_custom' => ['nullable', 'boolean'],
             'requested_at' => ['nullable', 'date'],
         ];

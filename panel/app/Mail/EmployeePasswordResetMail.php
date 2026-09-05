@@ -24,7 +24,7 @@ class EmployeePasswordResetMail extends Mailable
     {
         return new Envelope(
             from: new Address(config('mail.otp_from.address'), config('mail.otp_from.name')),
-            subject: 'Set or Reset Your Vergo Password',
+            subject: 'Vergo Passwort festlegen oder zurücksetzen',
         );
     }
 

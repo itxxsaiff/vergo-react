@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Bid;
 use App\Models\Order;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,7 +30,7 @@ class QuoteScopeService
      * re-price the changed scope.
      *
      * @param  array<int, array<string, mixed>>  $publishedItems
-     * @return array{preserved: ?Bid, requote: Collection<int, Bid>}
+     * @return array{preserved: ?Bid, requote: EloquentCollection<int, Bid>}
      */
     public function carryOverFromInspection(Order $newOrder, Order $inspection, array $publishedItems): array
     {
@@ -48,7 +49,7 @@ class QuoteScopeService
             ->values();
 
         $preserved = null;
-        $requote = collect();
+        $requote = new EloquentCollection();
 
         foreach ($seedBids as $bid) {
             if ($this->scopeMatchesBid($bid, $publishedItems, $publishedSourceBidIds)) {
@@ -99,7 +100,7 @@ class QuoteScopeService
 
     /**
      * @param  array<int, array<string, mixed>>  $publishedItems
-     * @return array{preserved: Collection<int, Bid>, requote: Collection<int, Bid>}
+     * @return array{preserved: EloquentCollection<int, Bid>, requote: EloquentCollection<int, Bid>}
      */
     public function applyPublishedScope(Order $order, array $publishedItems): array
     {
@@ -115,8 +116,8 @@ class QuoteScopeService
             ->unique()
             ->values();
 
-        $preserved = collect();
-        $requote = collect();
+        $preserved = new EloquentCollection();
+        $requote = new EloquentCollection();
 
         foreach ($seedBids as $bid) {
             if ($this->scopeMatchesBid($bid, $publishedItems, $publishedSourceBidIds)) {

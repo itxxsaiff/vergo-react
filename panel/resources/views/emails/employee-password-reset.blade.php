@@ -1,36 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
+
 <head>
     <meta charset="UTF-8">
-    <title>Vergo Password Reset</title>
+    <title>Vergo Passwort festlegen</title>
 </head>
-<body style="margin:0;padding:24px;background:#f8f8fb;font-family:Arial,sans-serif;color:#495057;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+
+<body style="margin:0;padding:24px;background:#f8f8fb;font-family:Arial,sans-serif;color:#2f3441;">
+    <table width="100%" cellspacing="0" cellpadding="0">
         <tr>
             <td align="center">
-                <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;">
+                <table width="580" cellspacing="0" cellpadding="0"
+                    style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #eaded7;">
                     <tr>
-                        <td style="background:#556ee6;padding:24px 32px;color:#ffffff;">
-                            <h1 style="margin:0;font-size:22px;font-weight:700;">Vergo Password Setup</h1>
-                            <p style="margin:8px 0 0;font-size:14px;opacity:0.92;">Use the link below to create or reset your password.</p>
+                        <td style="background:#9f6d54;padding:22px 32px;">
+                            <img src="{{ asset('VERGO.png') }}" alt="Vergo Logo" style="height:42px;display:block;">
                         </td>
                     </tr>
                     <tr>
-                        <td style="padding:32px;">
-                            <p style="margin:0 0 12px;font-size:15px;">Hello {{ $employeeName }},</p>
-
-                            <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
-                                Your Vergo account is ready. Click the button below to set a new password.
+                        <td style="padding:34px 40px;">
+                            <p style="margin:0 0 18px;font-size:15px;line-height:1.7;">
+                                Hallo {{ $employeeName }},
                             </p>
 
-                            <p style="margin:0 0 20px;">
-                                <a href="{{ $resetUrl }}" style="display:inline-block;padding:14px 22px;background:#556ee6;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;">
-                                    Set Password
+                            <p style="margin:0 0 24px;font-size:15px;line-height:1.7;">
+                                Ihr Vergo-Konto ist bereit. Klicken Sie auf die Schaltfläche unten, um Ihr Passwort festzulegen oder zurückzusetzen.
+                            </p>
+
+                            <p style="margin:0 0 24px;">
+                                <a href="{{ $resetUrl }}"
+                                    style="display:inline-block;padding:14px 24px;background:#9f6d54;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;">
+                                    Passwort festlegen
                                 </a>
                             </p>
 
-                            <p style="margin:0;font-size:14px;line-height:1.6;">
-                                If you did not expect this email, you can ignore it.
+                            <p style="margin:0 0 24px;font-size:13px;line-height:1.7;color:#5f6877;">
+                                Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:<br>
+                                <span style="color:#9f6d54;word-break:break-all;">{{ $resetUrl }}</span>
+                            </p>
+
+                            <p style="margin:0;font-size:14px;line-height:1.7;color:#5f6877;">
+                                Sollten Sie dieses Mail nicht erwartet haben, können Sie es ignorieren.
                             </p>
                         </td>
                     </tr>
@@ -39,4 +49,5 @@
         </tr>
     </table>
 </body>
+
 </html>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import PageContent from '../components/PageContent'
-import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
+import { confirmDelete, showActionSuccess, showDeleteSuccess } from '../lib/alerts'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
@@ -27,6 +27,7 @@ function EmployeesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
+  const [sendingResetId, setSendingResetId] = useState(null)
 
   async function loadEmployees() {
     setIsLoading(true)
@@ -190,11 +191,20 @@ function EmployeesPage() {
   }
 
   async function handleSendReset(employeeId) {
+    if (sendingResetId) {
+      return
+    }
+
+    setSendingResetId(employeeId)
+
     try {
       await api.sendEmployeePasswordReset(employeeId)
       setError('')
+      showActionSuccess('Passwort-E-Mail gesendet', 'Der Mitarbeiter hat einen Link zum Festlegen eines neuen Passworts erhalten.')
     } catch (sendError) {
       setError(t(sendError.message))
+    } finally {
+      setSendingResetId(null)
     }
   }
 
@@ -302,9 +312,14 @@ function EmployeesPage() {
                             type="button"
                             className="table-action-btn"
                             onClick={() => handleSendReset(employee.id)}
+                            disabled={sendingResetId !== null}
                             title="Passwort-E-Mail senden"
                           >
-                            <i className="ti ti-mail-forward"></i>
+                            {sendingResetId === employee.id ? (
+                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            ) : (
+                              <i className="ti ti-mail-forward"></i>
+                            )}
                           </button>
                           <button
                             type="button"

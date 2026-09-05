@@ -1879,6 +1879,8 @@ const supplementalTranslations = {
     'Noch keine Angebote eingegangen.': 'Noch keine Angebote eingegangen.',
   },
   en: {
+    'Passwort-E-Mail gesendet': 'Password email sent',
+    'Der Mitarbeiter hat einen Link zum Festlegen eines neuen Passworts erhalten.': 'The employee has received a link to set a new password.',
     manager: 'Property Manager',
     'Inspection Rejected': 'Inspection Rejected',
     'Maximale Anzahl Dienstleister': 'Maximum number of service providers',
@@ -2056,6 +2058,8 @@ const supplementalTranslations = {
     'Hochwertige Materialien': 'High-quality Materials',
   },
   it: {
+    'Passwort-E-Mail gesendet': 'E-mail password inviata',
+    'Der Mitarbeiter hat einen Link zum Festlegen eines neuen Passworts erhalten.': 'Il dipendente ha ricevuto un link per impostare una nuova password.',
     manager: 'Amministratore immobiliare',
     owner: 'Proprietario',
     provider: 'Fornitore di servizi',
@@ -2219,6 +2223,8 @@ const supplementalTranslations = {
     'Hochwertige Materialien': 'Materiali di alta qualità',
   },
   fr: {
+    'Passwort-E-Mail gesendet': 'E-mail de mot de passe envoyé',
+    'Der Mitarbeiter hat einen Link zum Festlegen eines neuen Passworts erhalten.': 'L’employé a reçu un lien pour définir un nouveau mot de passe.',
     manager: 'Gestionnaire immobilier',
     owner: 'Propriétaire',
     provider: 'Prestataire de services',

@@ -45,3 +45,14 @@ export function showDeleteSuccess(itemLabel = 'record') {
     showConfirmButton: false,
   })
 }
+
+export function showActionSuccess(titleKey, textKey = '') {
+  const language = getCurrentLanguage()
+  return swalWithTemplateButtons.fire({
+    title: translateText(titleKey, language),
+    text: textKey ? translateText(textKey, language) : undefined,
+    icon: 'success',
+    timer: 2200,
+    showConfirmButton: false,
+  })
+}

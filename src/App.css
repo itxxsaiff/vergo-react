@@ -2046,17 +2046,19 @@ body {
   font-weight: 700;
 }
 
+/* Same light read-only look the service provider sees when opening a job
+   (see .vergo-quote-section-muted) instead of the old dark brown panels. */
 .vergo-inspection-section {
   padding: 1rem;
-  border: 1px solid #dac5ba;
+  border: 1px solid var(--vergo-input-border);
   border-radius: 20px;
-  background: linear-gradient(180deg, #be9e8d 0%, #ab8b79 100%);
-  box-shadow: 0 14px 28px rgba(159, 109, 84, 0.16);
+  background: var(--vergo-input-bg);
+  box-shadow: 0 10px 24px rgba(159, 109, 84, 0.07);
 }
 
 .vergo-inspection-section-title {
   margin-bottom: 0.85rem;
-  color: rgba(255, 247, 241, 0.84);
+  color: var(--vergo-text-soft);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -2071,10 +2073,10 @@ body {
 
 .vergo-inspection-property-cell,
 .vergo-inspection-detail-card {
-  border: 1px solid rgba(255, 244, 238, 0.22);
+  border: 1px solid var(--vergo-input-border);
   border-radius: 16px;
-  background: rgba(255, 250, 247, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: var(--vergo-card-bg);
+  box-shadow: none;
 }
 
 .vergo-inspection-property-cell {
@@ -2105,7 +2107,7 @@ body {
 .vergo-inspection-detail-label {
   display: block;
   margin-bottom: 0.3rem;
-  color: rgba(255, 247, 241, 0.76);
+  color: var(--vergo-text-soft);
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -2115,7 +2117,7 @@ body {
 .vergo-inspection-property-cell strong,
 .vergo-inspection-detail-value {
   display: block;
-  color: #fffaf7;
+  color: var(--vergo-text-main);
   font-size: 0.98rem;
   font-weight: 800;
   line-height: 1.35;
@@ -2126,21 +2128,23 @@ body {
 }
 
 .vergo-quote-cta-card {
-  border: 1px solid #dac5ba;
-  background: linear-gradient(180deg, #be9e8d 0%, #ab8b79 100%);
-  color: #fffaf7;
+  border: 1px solid var(--vergo-input-border);
+  background: var(--vergo-input-bg);
+  color: var(--vergo-text-main);
 }
 
 .vergo-quote-cta-card .card-body {
-  color: #fffaf7;
+  color: var(--vergo-text-main);
 }
 
 .vergo-quote-cta-label {
-  color: rgba(255, 247, 241, 0.82);
+  color: var(--vergo-text-soft);
   letter-spacing: 0.06em;
 }
 
 .vergo-quote-cta-card .btn-light {
+  border: 1px solid var(--vergo-input-border);
+  background: var(--vergo-card-bg);
   color: #846456;
   font-weight: 700;
 }
@@ -2218,7 +2222,7 @@ body {
 
 .vergo-inspection-detail-subvalue,
 .vergo-inspection-empty {
-  color: rgba(255, 247, 241, 0.82);
+  color: var(--vergo-text-soft);
   font-size: 0.88rem;
 }
 

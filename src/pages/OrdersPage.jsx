@@ -1324,6 +1324,10 @@ function OrdersPage() {
               quantity: Number(item.quantity || 0),
               source: item.source || (item.is_custom ? 'custom' : 'catalog'),
               is_custom: Boolean(item.is_custom),
+              // Tells the backend which provider this position came from, so a
+              // provider whose scope was taken whole keeps their quote instead
+              // of being asked to re-price it.
+              source_bid_id: item.source_bid_id ?? null,
             }
           })
         : [],
@@ -2611,7 +2615,7 @@ function OrdersPage() {
 
                                 <button type="button" className="btn btn-light-primary" onClick={openCompanyRequestModal}>
                                   <i className="ti ti-plus me-1"></i>
-                                  {t('Firma zur Anlage anfragen')}
+                                  {t('Erfassung anfragen')}
                                 </button>
 
                                 {companyRequestSuccess ? (
@@ -2787,7 +2791,7 @@ function OrdersPage() {
               <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content rounded-1">
                   <div className="modal-header border-bottom">
-                    <h5 className="modal-title">{t('Firma zur Anlage anfragen')}</h5>
+                    <h5 className="modal-title">{t('Erfassung anfragen')}</h5>
                     <button type="button" className="btn-close" aria-label={t('Schließen')} onClick={closeCompanyRequestModal}></button>
                   </div>
 

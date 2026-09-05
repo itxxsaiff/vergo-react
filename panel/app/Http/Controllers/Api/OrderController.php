@@ -285,7 +285,13 @@ class OrderController extends Controller
             }
 
             if ($workflowStatus === 'published_for_quotes') {
-                $notificationService->sendQuoteRequestPublished($order, $quoteSourceExcludeProviderIds);
+                // When the tender grew out of a site inspection, the providers
+                // that already quoted there must not get the generic "new
+                // request" mail - they get their own mail (or none at all)
+                // once the quotes have been carried over below.
+                if (! data_get($workflowMeta, 'assignment.source_inspection_order_id')) {
+                    $notificationService->sendQuoteRequestPublished($order, $quoteSourceExcludeProviderIds);
+                }
             } elseif ($workflowStatus === 'public_inspection_open') {
                 $notificationService->sendPublicInspectionPublished($order);
             }
@@ -297,7 +303,18 @@ class OrderController extends Controller
             // Carry the inspection quotes across before anything else: if one
             // provider's scope was taken whole, their quote becomes quote 1 on
             // this tender, and the rest are asked to re-price.
-            $this->carryOverInspectionQuotes($order, $actor, $notificationService);
+            $outcome = $this->carryOverInspectionQuotes($order, $actor, $notificationService);
+
+            // Everyone who quoted at the inspection has now been handled: the
+            // provider whose scope was taken whole gets nothing, the others got
+            // the "volume changed" mail. Only the providers that were not part
+            // of the inspection still get the standard "request published" mail.
+            if ($order->workflow_status === 'published_for_quotes' && $outcome !== null) {
+                $notificationService->sendQuoteRequestPublished(
+                    $order->fresh(),
+                    $outcome['handled_provider_ids'],
+                );
+            }
 
             // A request for proposals raised from a site inspection closes that
             // inspection: the job has moved on to the tender phase.
@@ -659,12 +676,21 @@ class OrderController extends Controller
      *
      * @see QuoteScopeService::carryOverFromInspection()
      */
-    private function carryOverInspectionQuotes(Order $order, mixed $actor, NotificationService $notificationService): void
+    /**
+     * Moves the inspection quotes onto the new tender and mails the providers
+     * that have to re-price.
+     *
+     * @return array{handled_provider_ids: array<int, int>}|null
+     *         The providers that were part of the inspection and have therefore
+     *         already been dealt with, or null when this order did not come out
+     *         of an inspection at all.
+     */
+    private function carryOverInspectionQuotes(Order $order, mixed $actor, NotificationService $notificationService): ?array
     {
         $sourceId = data_get($order->workflow_meta ?? [], 'assignment.source_inspection_order_id');
 
         if (! $sourceId) {
-            return;
+            return null;
         }
 
         $inspection = Order::query()
@@ -673,17 +699,17 @@ class OrderController extends Controller
             ->first();
 
         if (! $inspection) {
-            return;
+            return null;
         }
 
         if ($actor instanceof PropertyManagerProfile && ! $actor->canAccessProperty($inspection->property_id)) {
-            return;
+            return null;
         }
 
         $items = $order->quote_items ?? [];
 
         if ($items === []) {
-            return;
+            return null;
         }
 
         $outcome = app(QuoteScopeService::class)->carryOverFromInspection($order, $inspection, $items);
@@ -695,6 +721,24 @@ class OrderController extends Controller
                 count($items),
             );
         }
+
+        // The provider whose scope was taken whole keeps their quote and hears
+        // nothing; the others were just asked to re-price. Either way none of
+        // them may also receive the generic "request published" mail.
+        $handled = $outcome['requote']->pluck('service_provider_id');
+
+        if ($outcome['preserved'] instanceof Bid) {
+            $handled = $handled->push($outcome['preserved']->service_provider_id);
+        }
+
+        return [
+            'handled_provider_ids' => $handled
+                ->map(fn ($id): int => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all(),
+        ];
     }
 
     private function completeSourceInspection(Order $order, mixed $actor): void

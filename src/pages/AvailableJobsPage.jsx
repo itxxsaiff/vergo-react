@@ -551,7 +551,17 @@ function AvailableJobsPage() {
       return
     }
 
-    if (bidForm.estimated_start_date && !bidForm.estimated_completion_date) {
+    // The two date fields are only shown when this is a real quote (same
+    // condition as the form), so they are only mandatory there.
+    const datesAreRequired = !isInspectionWorkflow(selectedOrder) || isQuoteRequest
+
+    if (datesAreRequired && !bidForm.estimated_start_date) {
+      setError(t('Bitte geben Sie ein voraussichtliches Startdatum ein.'))
+      setIsSaving(false)
+      return
+    }
+
+    if (datesAreRequired && !bidForm.estimated_completion_date) {
       setError(t('Bitte geben Sie ein voraussichtliches Fertigstellungsdatum ein.'))
       setIsSaving(false)
       return
@@ -1210,7 +1220,16 @@ function AvailableJobsPage() {
                   <h5 className="modal-title">{t('Auftrag bearbeiten')}</h5>
                   <button type="button" className="btn-close" onClick={closeModal}></button>
                 </div>
-                <form onSubmit={handleSubmitBid}>
+                <form
+                  onSubmit={handleSubmitBid}
+                  onKeyDown={(event) => {
+                    // The quote may only be sent by clicking the button, never
+                    // by pressing Enter in one of the fields.
+                    if (event.key === 'Enter' && event.target.tagName !== 'TEXTAREA') {
+                      event.preventDefault()
+                    }
+                  }}
+                >
                   <div className="modal-body">
                     <div className="border rounded-3 p-3 mb-3">
                       <div className="text-muted small text-uppercase fw-semibold mb-1">{t('Betreff')}</div>
@@ -1896,11 +1915,11 @@ function AvailableJobsPage() {
                         </div>
 
                         <div className="col-md-6 mb-3">
-                          <label className="form-label">{t('Voraussichtliches Startdatum')}</label>
+                          <label className="form-label">{t('Voraussichtliches Startdatum')} *</label>
                           <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} min={getTodayDateValue()} onChange={handleBidChange} />
                         </div>
                         <div className="col-md-6 mb-3">
-                          <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')}</label>
+                          <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')} *</label>
                           <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || getTodayDateValue()} onChange={handleBidChange} />
                         </div>
                         <div className="col-md-6 mb-3">

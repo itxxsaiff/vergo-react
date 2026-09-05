@@ -143,7 +143,10 @@ class QuoteScopeService
      */
     private function scopeMatchesBid(Bid $bid, array $publishedItems, Collection $publishedSourceBidIds): bool
     {
-        $ownItemCount = count($bid->line_items ?? []);
+        // Count the quote the way the manager actually saw it. A bid can carry
+        // blank or zero-quantity rows, and those are never offered for
+        // selection - counting them here would make a full take impossible.
+        $ownItemCount = $this->quotedItemCount($bid);
 
         if ($ownItemCount === 0 || $publishedItems === []) {
             return false;
@@ -157,6 +160,19 @@ class QuoteScopeService
             ->count();
 
         return $everyPublishedItemIsTheirs && $selectedFromThisBid === $ownItemCount;
+    }
+
+    /**
+     * The positions of a quote that are actually offered to the manager for
+     * selection - the same filter OrderResource applies when it builds the
+     * anonymous quote options.
+     */
+    private function quotedItemCount(Bid $bid): int
+    {
+        return collect($bid->line_items ?? [])
+            ->filter(fn ($item): bool => filled(data_get($item, 'label'))
+                && (float) data_get($item, 'quantity', 0) > 0)
+            ->count();
     }
 
     /**

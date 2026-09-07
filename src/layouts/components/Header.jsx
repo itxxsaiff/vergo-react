@@ -16,6 +16,9 @@ function Header({ user, showSidebarToggle = true }) {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const isPropertyManager = user?.navigationRole === 'manager' || user?.role === 'manager'
+  // Owners are greeted in the header bar itself - the manager already has the
+  // same greeting on their dashboard card.
+  const showHeaderGreeting = user?.role === 'owner'
 
   useEffect(() => {
     let intervalId = null
@@ -117,6 +120,13 @@ function Header({ user, showSidebarToggle = true }) {
           <Link to={user?.homePath ?? '/dashboard'} className={`vergo-header-logo${showSidebarToggle ? ' ms-2' : ''}`} aria-label="Vergo">
             <img src={VergoLogo} alt="Vergo" />
           </Link>
+        ) : null}
+
+        {showHeaderGreeting ? (
+          <div className="vergo-header-greeting">
+            <span className="vergo-header-greeting-title">{t('Guten Tag')}</span>
+            {user?.email ? <span className="vergo-header-greeting-mail">{user.email}</span> : null}
+          </div>
         ) : null}
 
         <button
@@ -245,8 +255,13 @@ function Header({ user, showSidebarToggle = true }) {
                   <div className="d-flex align-items-center py-4 mx-4 border-bottom">
                     <img src={user.avatar || HEADER_PLACEHOLDER_IMAGE} className="rounded-circle" width="80" height="80" alt={user.name} onError={handleAvatarError} />
                     <div className="ms-3">
-                      <h5 className="mb-1 fs-3">{user.name}</h5>
+                      <h5 className="mb-1 fs-3">{t('Hallo')} {user.name || user.email}</h5>
                       <span className="mb-1 d-block text-dark text-capitalize">{user.roleLabel}</span>
+                      {/* The address they signed in with - owners in particular
+                          need to see which account they are working under. */}
+                      {user.email ? (
+                        <span className="d-block text-muted text-break">{user.email}</span>
+                      ) : null}
                     </div>
                   </div>
                   <div className="message-body">

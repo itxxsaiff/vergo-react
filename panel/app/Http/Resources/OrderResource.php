@@ -91,27 +91,36 @@ class OrderResource extends JsonResource
             'bids_count' => $this->whenCounted('bids'),
             'bids' => $this->whenLoaded('bids', fn () => $this->bids->map(function ($bid) use ($request) {
                 $hideScopeSeedPrices = $this->shouldHideScopeSeedPrices($request, $bid);
+                // A property manager awards from the sequential best-offer view.
+                // Offers they have not opened yet stay anonymous - hiding them
+                // only in the browser would leave the data one API call away.
+                $sealedForManager = $this->shouldSealFromManager($request, $bid);
+                $hide = $hideScopeSeedPrices || $sealedForManager;
 
                 return [
                     'id' => $bid->id,
-                    'amount' => $hideScopeSeedPrices ? null : $bid->amount,
+                    'amount' => $hide ? null : $bid->amount,
                     'currency' => $bid->currency,
-                    'line_items' => $hideScopeSeedPrices ? $this->scopeOnlyLineItems($bid->line_items ?? []) : ($bid->line_items ?? []),
+                    'line_items' => $hide ? $this->scopeOnlyLineItems($bid->line_items ?? []) : ($bid->line_items ?? []),
                     'prices_hidden' => $hideScopeSeedPrices,
+                    // The offer counts towards the total the manager sees, but
+                    // who it is from and what it costs stay sealed until they
+                    // open it in the ranked order.
+                    'identity_sealed' => $sealedForManager,
                     'status' => $bid->status,
                     'estimated_start_date' => $bid->estimated_start_date?->toDateString(),
                     'estimated_completion_date' => $bid->estimated_completion_date?->toDateString(),
-                    'notes' => $hideScopeSeedPrices ? null : $bid->notes,
-                    'workflow_meta' => $hideScopeSeedPrices ? $this->scopeOnlyWorkflowMeta($bid->workflow_meta ?? []) : ($bid->workflow_meta ?? []),
+                    'notes' => $hide ? null : $bid->notes,
+                    'workflow_meta' => $hide ? $this->scopeOnlyWorkflowMeta($bid->workflow_meta ?? []) : ($bid->workflow_meta ?? []),
                     'rejection_reason' => $bid->rejection_reason,
                     'no_show_at' => $bid->no_show_at?->toDateTimeString(),
-                    'attachment_name' => $hideScopeSeedPrices ? null : $bid->attachment_name,
-                    'attachment_mime_type' => $hideScopeSeedPrices ? null : $bid->attachment_mime_type,
-                    'attachment_size' => $hideScopeSeedPrices ? null : $bid->attachment_size,
-                    'attachment_download_url' => ! $hideScopeSeedPrices && $bid->attachment_path ? route('bids.attachment.download', $bid->id) : null,
+                    'attachment_name' => $hide ? null : $bid->attachment_name,
+                    'attachment_mime_type' => $hide ? null : $bid->attachment_mime_type,
+                    'attachment_size' => $hide ? null : $bid->attachment_size,
+                    'attachment_download_url' => ! $hide && $bid->attachment_path ? route('bids.attachment.download', $bid->id) : null,
                     'submitted_at' => $bid->submitted_at?->toDateTimeString(),
                     'created_at' => $bid->created_at?->toDateTimeString(),
-                    'service_provider' => ! $hideScopeSeedPrices && $bid->serviceProvider ? [
+                    'service_provider' => ! $hide && $bid->serviceProvider ? [
                         'id' => $bid->serviceProvider->id,
                         'company_name' => $bid->serviceProvider->company_name,
                         'contact_email' => $bid->serviceProvider->contact_email,
@@ -154,6 +163,31 @@ class OrderResource extends JsonResource
                 ])),
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
+    }
+
+    /**
+     * True while a property manager may not yet see who this offer is from.
+     *
+     * On a quote workflow the manager works through the ranked offers one at a
+     * time: the offer they opened, and the ones they already rejected, carry a
+     * decided status. Everything still queued stays anonymous.
+     */
+    private function shouldSealFromManager(Request $request, mixed $bid): bool
+    {
+        if (! $request->user() instanceof PropertyManagerProfile) {
+            return false;
+        }
+
+        $isQuoteWorkflow = data_get($this->workflow_meta ?? [], 'assignment.award_mode') === 'request_quotes'
+            || in_array($this->workflow_status, ['published_for_quotes', 'awarded', 'quotes_rejected'], true);
+
+        if (! $isQuoteWorkflow) {
+            return false;
+        }
+
+        $decided = ['approved', 'accepted', 'completed', 'rejected', 'cancelled', 'awarded_pending_acceptance'];
+
+        return ! in_array($bid->status, $decided, true);
     }
 
     private function shouldHideScopeSeedPrices(Request $request, mixed $bid): bool

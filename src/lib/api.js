@@ -589,8 +589,22 @@ export const api = {
     return request('/admin/provider-ratings')
   },
   // Owner portfolio analytics + flagged duplicates.
-  getOwnerAnalytics() {
-    return request('/owner/analytics')
+  getOwnerAnalytics(ownerId = null) {
+    return request(`/owner/analytics${ownerId ? `?owner_id=${encodeURIComponent(ownerId)}` : ''}`)
+  },
+  openOwnerAnalyticsReport({ sections = [], owner_id: ownerId = null, search = '' } = {}) {
+    const params = new URLSearchParams()
+    sections.forEach((section) => params.append('sections[]', section))
+
+    if (ownerId) {
+      params.set('owner_id', ownerId)
+    }
+
+    if (search) {
+      params.set('search', search)
+    }
+
+    return openPdfInNewTab(`/owner/analytics/report?${params.toString()}`)
   },
   getOwnerDuplicates() {
     return request('/owner/duplicates')

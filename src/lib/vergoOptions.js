@@ -1,4 +1,5 @@
 import { TRADE_CATALOG } from '../data/tradeCatalog'
+import { formatSwissMoney } from './numberFormat'
 
 export const PROPERTY_USAGE_OPTIONS = [
   { value: 'residential', label: 'Wohnen' },
@@ -714,7 +715,7 @@ export function calculateQuoteVatBreakdown(lineItems = [], isVatSubject = false,
 }
 
 export function formatCurrencyAmount(value, currency = 'CHF') {
-  return `${Number(value || 0).toFixed(2)} ${currency}`
+  return `${formatSwissMoney(Number(value || 0))} ${currency}`
 }
 
 export function getOptionLabel(options, value) {

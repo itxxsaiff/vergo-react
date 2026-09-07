@@ -444,10 +444,15 @@ function OrdersPage() {
   const canDeleteOrders = Boolean(user?.permissions?.orders?.delete)
   const canManageOrders = canCreateOrders || canEditOrders || canDeleteOrders
   const isAdmin = user?.role === 'admin'
-  const canRecoverOrders = isAdmin || user?.role === 'employee' || canDeleteOrders
+  // Restoring a deleted order is an internal repair action - property managers
+  // must not be able to bring an order back themselves.
+  const canRecoverOrders = isAdmin || user?.role === 'employee'
   const showActionColumn = isAdmin || canEditOrders || canDeleteOrders
   const isManager = user?.role === 'manager'
   const isOwner = user?.role === 'owner'
+  // The owner sees what was deleted on their own properties, but never gets a
+  // restore button - that stays with Vergo staff.
+  const canSeeDeletedOrders = canRecoverOrders || isOwner
   const isManagerOrderFlow = isManager
 
   async function loadData() {
@@ -460,7 +465,7 @@ function OrdersPage() {
         api.getProperties(),
         api.getPropertyObjects(),
         api.getServiceProviders(),
-        canRecoverOrders ? api.getDeletedOrders() : Promise.resolve({ data: [] }),
+        canSeeDeletedOrders ? api.getDeletedOrders() : Promise.resolve({ data: [] }),
       ])
 
       setOrders(ordersResponse.data ?? [])
@@ -476,7 +481,7 @@ function OrdersPage() {
   }
 
   async function loadDeletedOrders() {
-    if (!canRecoverOrders) {
+    if (!canSeeDeletedOrders) {
       return
     }
 
@@ -1647,6 +1652,13 @@ function OrdersPage() {
     return searchMatch && statusMatch
   })
 
+  // Finished work moves out of the working list into its own section. A site
+  // inspection that a tender was raised from is completed automatically, so it
+  // lands here without the manager having to do anything.
+  const isCompletedOrder = (order) => ['completed', 'closed'].includes(String(order.status || '').toLowerCase())
+  const activeOrders = filteredOrders.filter((order) => !isCompletedOrder(order))
+  const completedOrders = filteredOrders.filter(isCompletedOrder)
+
   const requiresProviderSelection = managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct'
   const visibleServiceProviders = useMemo(() => (
     providerCantonFilter
@@ -1787,7 +1799,7 @@ function OrdersPage() {
                     </thead>
 
                     <tbody>
-                      {filteredOrders.map((order) => (
+                      {activeOrders.map((order) => (
                         <tr key={order.id}>
                           <td>
                             <div className="fw-semibold">{order.title}</div>
@@ -1862,7 +1874,7 @@ function OrdersPage() {
                         </tr>
                       ))}
 
-                      {filteredOrders.length === 0 ? (
+                      {activeOrders.length === 0 ? (
                         <tr>
                           <td colSpan={showActionColumn ? 8 : 7} className="text-center text-muted py-4">
                             {t('Keine Aufträge gefunden.')}
@@ -1878,7 +1890,81 @@ function OrdersPage() {
         </div>
       </div>
 
-      {canRecoverOrders ? (
+      <div className="row">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-body p-4">
+              <div className="mb-3">
+                <h5 className="fw-semibold mb-1">{t('Abgeschlossene Aufträge')}</h5>
+                <div className="text-muted small">
+                  {t('Erledigte Aufträge und Besichtigungen, aus denen bereits ein Auftrag entstanden ist.')}
+                </div>
+              </div>
+
+              <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
+                <table className="table border text-nowrap customize-table mb-0 align-middle">
+                  <thead className="text-dark fs-4">
+                    <tr>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Titel')}</h6></th>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Immobilie')}</h6></th>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Objekt')}</h6></th>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Typ')}</h6></th>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Status')}</h6></th>
+                      <th width="90"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {completedOrders.map((order) => (
+                      <tr key={order.id}>
+                        <td>
+                          <div className="fw-semibold">{order.title}</div>
+                          <div className="text-muted">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
+                        </td>
+                        <td>
+                          <div className="fw-semibold">{order.property?.li_number ?? '-'}</div>
+                          <div className="text-muted">{order.property?.title ?? '-'}</div>
+                        </td>
+                        <td>{getOrderObjectLabel(order)}</td>
+                        <td>
+                          <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
+                            {t(getOrderFlowTypeLabel(order))}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={getStatusBadgeClass(order.status)}>
+                            {t(formatStatusLabel(order.status))}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="table-action-group">
+                            <Link
+                              to={`/orders/${order.id}`}
+                              className="table-action-btn table-action-view"
+                              title={t('Auftrag ansehen')}
+                            >
+                              <i className="ti ti-eye"></i>
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {completedOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="text-center text-muted py-4">
+                          {t('Noch keine abgeschlossenen Aufträge vorhanden.')}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {canSeeDeletedOrders ? (
         <div className="row">
           <div className="col-12">
             <div className="card">
@@ -1886,7 +1972,11 @@ function OrdersPage() {
                 <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
                   <div>
                     <h5 className="fw-semibold mb-1">{t('Gelöschte Aufträge')}</h5>
-                    <div className="text-muted small">{t('Gelöschte Aufträge werden hier wiederhergestellt, ohne ein Datenbank-Backup einzuspielen.')}</div>
+                    <div className="text-muted small">
+                      {canRecoverOrders
+                        ? t('Gelöschte Aufträge werden hier wiederhergestellt, ohne ein Datenbank-Backup einzuspielen.')
+                        : t('Aufträge, die auf Ihren Liegenschaften gelöscht wurden.')}
+                    </div>
                   </div>
                   <button type="button" className="btn btn-light-primary btn-sm" onClick={loadDeletedOrders} disabled={isLoadingDeletedOrders}>
                     <i className="ti ti-refresh me-1"></i>
@@ -1925,14 +2015,18 @@ function OrdersPage() {
                             </td>
                             <td>{formatDateTimeDisplay(order.deleted_at)}</td>
                             <td>
-                              <button
-                                type="button"
-                                className="btn btn-light-primary btn-sm"
-                                disabled={restoringOrderId === order.id}
-                                onClick={() => handleRestore(order.id)}
-                              >
-                                {restoringOrderId === order.id ? t('Wird wiederhergestellt...') : t('Wiederherstellen')}
-                              </button>
+                              {canRecoverOrders ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-light-primary btn-sm"
+                                  disabled={restoringOrderId === order.id}
+                                  onClick={() => handleRestore(order.id)}
+                                >
+                                  {restoringOrderId === order.id ? t('Wird wiederhergestellt...') : t('Wiederherstellen')}
+                                </button>
+                              ) : (
+                                <span className="text-muted">-</span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -2352,7 +2446,7 @@ function OrdersPage() {
                                     <div className="form-text">
                                       {managerWizard.inspection_request_mode === 'direct'
                                         ? t('Sie müssen im nächsten Schritt genau diese Anzahl Firmen auswählen.')
-                                        : t('So viele Dienstleister dürfen sich für die öffentliche Besichtigung anmelden.')}
+                                        : t('So viele Dienstleister dürfen sich anmelden. Benachrichtigt werden immer alle Firmen des Gewerks.')}
                                     </div>
                                   </div>
                                 ) : null}
@@ -2551,6 +2645,16 @@ function OrdersPage() {
                                       ? `${t('1 Firma im Gewerk')} „${t(getOptionLabel(JOB_TYPE_OPTIONS, managerWizard.service_type))}" ${t('wird benachrichtigt.')}`
                                       : `${notifiedProviderCount} ${t('Firmen im Gewerk')} „${t(getOptionLabel(JOB_TYPE_OPTIONS, managerWizard.service_type))}" ${t('werden benachrichtigt.')}`}
                                   </div>
+                                  {managerWizard.flow_type === 'inspection'
+                                    && managerWizard.inspection_request_mode === 'public'
+                                    && managerWizard.inspection_provider_limit ? (
+                                    <div className="small mt-1">
+                                      {t('Davon dürfen sich')} <strong>{managerWizard.inspection_provider_limit}</strong>{' '}
+                                      {Number(managerWizard.inspection_provider_limit) === 1
+                                        ? t('Firma anmelden. Danach verschwindet die Anfrage bei allen anderen.')
+                                        : t('Firmen anmelden. Danach verschwindet die Anfrage bei allen anderen.')}
+                                    </div>
+                                  ) : null}
                                   {notifiedProviderCount === 0 ? (
                                     <div className="small text-danger mt-1">
                                       {t('Für dieses Gewerk ist aktuell keine Firma registriert. Die Ausschreibung bleibt sichtbar, sobald sich passende Dienstleister registrieren.')}

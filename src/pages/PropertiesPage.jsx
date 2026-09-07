@@ -48,7 +48,9 @@ function PropertiesPage() {
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const isInternalUser = ['admin', 'employee'].includes(user?.role)
-  const canManageProperties = ['admin', 'employee', 'owner'].includes(user?.role)
+  // An owner only reads their portfolio: open a property to see its objects,
+  // print the PDF - but never create, edit or delete one.
+  const canManageProperties = isInternalUser
 
   useEffect(() => {
     async function loadData() {

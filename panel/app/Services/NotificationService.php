@@ -11,6 +11,7 @@ use App\Models\ServiceProvider;
 use App\Models\User;
 use App\Mail\InspectionAppointmentConfirmedMail;
 use App\Mail\ProviderOrderNoticeMail;
+use App\Mail\QuotePreservedDatesRequestedMail;
 use App\Mail\QuoteScopeChangedMail;
 use App\Notifications\SystemNotification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -238,6 +239,70 @@ class NotificationService
                 ]);
             }
         }
+    }
+
+    /**
+     * The provider whose inspection quote was taken over unchanged. They are not
+     * asked to re-price - only to say when they can start and finish.
+     */
+    public function sendQuotePreservedDatesRequested(Order $order, Bid $preservedBid): void
+    {
+        $provider = $preservedBid->serviceProvider;
+
+        if (! $provider) {
+            return;
+        }
+
+        $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+
+        Notification::send($this->providerRecipients(collect([$provider])), new SystemNotification(
+            title: 'Auftrag erstellt',
+            message: sprintf('Bitte erfassen Sie Start- und Fertigstellungsdatum für "%s".', $order->title),
+            type: 'primary',
+            actionUrl: '/available-jobs',
+        ));
+
+        $email = $provider->order_email ?: $preservedBid->assigned_provider_email;
+
+        if (! $email) {
+            Log::warning('Vergo preserved-quote email skipped: no address', [
+                'order_id' => $order->id,
+                'provider_id' => $provider->id,
+            ]);
+
+            return;
+        }
+
+        try {
+            Mail::mailer('orders')->to($email)->send(new QuotePreservedDatesRequestedMail(
+                order: $order,
+                provider: $provider,
+                loginUrl: $this->providerLoginUrl($frontendBase, $provider->id, $email),
+                tradeLabel: $this->tradeLabel($order->service_type),
+                propertyAddress: $this->orderAddressLine($order),
+                completionDeadline: $this->completionDeadlineLabel($order),
+            ));
+        } catch (\Throwable $exception) {
+            Log::error('Vergo preserved-quote email failed', [
+                'order_id' => $order->id,
+                'provider_id' => $provider->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * How the manager framed the completion deadline, for reference in mails.
+     */
+    private function completionDeadlineLabel(Order $order): ?string
+    {
+        $mode = data_get($order->workflow_meta ?? [], 'assignment.completion_mode');
+
+        if ($mode === 'fixed_date') {
+            return $order->due_date?->format('d.m.Y');
+        }
+
+        return $mode ? 'So schnell wie möglich' : null;
     }
 
     public function sendQuoteRequestPublished(Order $order, array $excludeProviderIds = []): void

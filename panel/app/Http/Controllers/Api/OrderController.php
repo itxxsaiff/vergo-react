@@ -86,6 +86,12 @@ class OrderController extends Controller
                                 'working',
                                 'inspection_interest',
                                 'inspection_confirmed',
+                                // A company must not lose sight of an order it
+                                // has already quoted on - they still have to be
+                                // able to open it, and may be asked to add dates
+                                // or re-price.
+                                'submitted',
+                                'shortlisted',
                                 'awarded_pending_acceptance',
                                 'approved',
                                 'accepted',
@@ -128,6 +134,14 @@ class OrderController extends Controller
             $query
                 ->whereIn('property_id', $propertyIds ?: [0])
                 ->where('requester_email', $actor->email);
+
+            return OrderResource::collection($query->get());
+        }
+
+        // An owner sees what was deleted on their own properties. Read only -
+        // restoring stays with Vergo staff.
+        if ($actor instanceof User && $actor->role?->name === 'owner') {
+            $query->whereHas('property.owners', fn ($ownerQuery) => $ownerQuery->where('users.id', $actor->id));
 
             return OrderResource::collection($query->get());
         }
@@ -722,9 +736,18 @@ class OrderController extends Controller
             );
         }
 
-        // The provider whose scope was taken whole keeps their quote and hears
-        // nothing; the others were just asked to re-price. Either way none of
-        // them may also receive the generic "request published" mail.
+        // Their prices were taken over unchanged, so they are not asked to
+        // re-price - only to add the start and completion dates, which are not
+        // collected on a quote written straight after the site visit.
+        if ($outcome['preserved'] instanceof Bid) {
+            $notificationService->sendQuotePreservedDatesRequested(
+                $order->fresh(),
+                $outcome['preserved']->load('serviceProvider'),
+            );
+        }
+
+        // Both groups have now had their own mail, so neither may also receive
+        // the generic "request published" one.
         $handled = $outcome['requote']->pluck('service_provider_id');
 
         if ($outcome['preserved'] instanceof Bid) {

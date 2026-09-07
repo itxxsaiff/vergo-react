@@ -13,6 +13,7 @@ use App\Models\PropertyManagerProfile;
 use App\Models\User;
 use App\Services\BidComparisonService;
 use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Http\JsonResponse;
@@ -116,9 +117,13 @@ class BidController extends Controller
             // A provider flagged for re-quote submits again on purpose: the
             // published scope no longer matches what they originally priced.
             $needsRequote = (bool) data_get($existingBid->workflow_meta ?? [], 'requires_requote');
+            // Their inspection quote was carried over unchanged; they are coming
+            // back only to add the start and completion dates.
+            $awaitingSchedule = (bool) data_get($existingBid->workflow_meta ?? [], 'awaiting_schedule');
 
             abort_unless(
                 $needsRequote
+                || $awaitingSchedule
                 || in_array($existingBid->status, ['working', 'inspection_interest', 'inspection_confirmed'], true),
                 422,
                 'You have already submitted a bid for this order.'
@@ -135,6 +140,12 @@ class BidController extends Controller
 
         if ($isInspectionSignup) {
             $this->validateSelectedInspectionSlot($order, $workflowMeta);
+        }
+
+        // A quote for work seen on site can only be written once the visit has
+        // actually taken place - not days in advance.
+        if ($isInspectionQuoteSeed) {
+            $this->abortUnlessInspectionDayReached($order, $existingBid);
         }
 
         $pricing = $this->resolveBidPricing($lineItems, $request->input('amount'), $workflowMeta, $serviceProvider);
@@ -174,6 +185,24 @@ class BidController extends Controller
             data_set($workflowMeta, 'requote_submitted_at', now()->toDateTimeString());
         }
 
+        // The carried-over quote was only missing its schedule. Once both dates
+        // are in, it is a complete quote like any other.
+        if ($existingBid && data_get($existingBid->workflow_meta ?? [], 'awaiting_schedule')) {
+            // Their scope was taken over untouched, so the prices they quoted at
+            // the inspection stand. Only the dates may still be filled in - a
+            // disabled field in the browser is no protection on its own.
+            $lineItems = $existingBid->line_items ?? [];
+            $amount = $existingBid->amount;
+            $workflowMeta['pricing'] = data_get($existingBid->workflow_meta ?? [], 'pricing');
+
+            if ($request->filled('estimated_start_date') && $request->filled('estimated_completion_date')) {
+                unset($workflowMeta['awaiting_schedule']);
+                data_set($workflowMeta, 'schedule_submitted_at', now()->toDateTimeString());
+            } else {
+                data_set($workflowMeta, 'awaiting_schedule', true);
+            }
+        }
+
         $bidPayload = [
             'order_id' => $order->id,
             'service_provider_id' => $serviceProvider->id,
@@ -193,9 +222,31 @@ class BidController extends Controller
             'submitted_at' => now(),
         ];
 
-        $bid = $existingBid && ($isQuoteSubmission || $isInspectionSignup)
-            ? tap($existingBid)->update($bidPayload)
-            : Bid::query()->create($bidPayload);
+        if ($isInspectionSignup && ! $existingBid) {
+            // Two companies can press "confirm" in the same second. Counting
+            // after the insert would let both through and overbook the visit,
+            // so the last free slot is claimed under a row lock.
+            $bid = DB::transaction(function () use ($order, $bidPayload) {
+                $lockedOrder = Order::query()->whereKey($order->id)->lockForUpdate()->first();
+
+                $taken = Bid::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->whereIn('status', ['inspection_interest', 'inspection_confirmed'])
+                    ->count();
+
+                abort_if(
+                    $taken >= $this->inspectionSignupLimit($lockedOrder),
+                    422,
+                    'This inspection request has already reached the signup limit.'
+                );
+
+                return Bid::query()->create($bidPayload);
+            });
+        } else {
+            $bid = $existingBid && ($isQuoteSubmission || $isInspectionSignup)
+                ? tap($existingBid)->update($bidPayload)
+                : Bid::query()->create($bidPayload);
+        }
 
         if ($isQuoteSubmission) {
             $this->publishQuoteItemsFromBid($order, $lineItems, $bid);
@@ -630,6 +681,38 @@ class BidController extends Controller
 
         abort_unless($selectedSlotIndex !== null && $selectedSlotIndex !== '', 422, 'Please select an inspection appointment.');
         abort_unless(Arr::exists($slots, (int) $selectedSlotIndex), 422, 'Please select a valid inspection appointment.');
+    }
+
+    /**
+     * The provider confirmed a slot; their quote only opens on the day of that
+     * appointment. Without a resolvable date we let them through rather than
+     * lock them out of a job they attended.
+     */
+    private function abortUnlessInspectionDayReached(Order $order, ?Bid $bid): void
+    {
+        $slotIndex = data_get($bid?->workflow_meta ?? [], 'selected_slot_index');
+
+        if ($slotIndex === null || $slotIndex === '') {
+            return;
+        }
+
+        $date = data_get($order->workflow_meta ?? [], 'inspection.preferred_slots.'.((int) $slotIndex).'.date');
+
+        if (! $date) {
+            return;
+        }
+
+        try {
+            $inspectionDay = Carbon::parse($date)->startOfDay();
+        } catch (\Throwable) {
+            return;
+        }
+
+        abort_if(
+            now()->startOfDay()->lt($inspectionDay),
+            422,
+            'The quote can only be created on the day of the site visit ('.$inspectionDay->format('d.m.Y').').'
+        );
     }
 
     private function inspectionSignupLimit(Order $order): int

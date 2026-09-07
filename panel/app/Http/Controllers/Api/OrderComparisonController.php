@@ -120,10 +120,21 @@ class OrderComparisonController extends Controller
      * Who may open the full evaluation: the owner of the property, Vergo admins
      * and employee power users. Never the property manager.
      */
-    private function abortUnlessDetailedEvaluationAllowed(mixed $actor): void
+    private function abortUnlessDetailedEvaluationAllowed(mixed $actor, ?Order $order = null): void
     {
         if ($actor instanceof PropertyManagerProfile) {
             abort(403, 'The detailed offer evaluation is not available for property managers.');
+        }
+
+        // The owner reviews the finished job: every bidder, every price and the
+        // rating. While the job is still running, awarding is the manager's to
+        // do and the owner does not get that view yet.
+        if ($order && $actor instanceof User && $actor->role?->name === 'owner') {
+            abort_unless(
+                in_array($order->status, ['completed', 'closed'], true),
+                422,
+                'The full evaluation is available once the order has been completed.'
+            );
         }
 
         $allowed = $actor instanceof User
@@ -154,7 +165,7 @@ class OrderComparisonController extends Controller
         // The detailed evaluation names every bidder and their per-category
         // scores. Owners and Vergo power users may see it; property managers
         // may not - they award from the sequential best-offer view instead.
-        $this->abortUnlessDetailedEvaluationAllowed($request->user());
+        $this->abortUnlessDetailedEvaluationAllowed($request->user(), $order);
         // The ranking exposes every company and price, so it stays closed until
         // the deadline like the rest of the bid data.
         $this->abortIfBiddingStillOpen($order);

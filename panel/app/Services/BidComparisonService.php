@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AiAnalysisResult;
 use App\Models\Bid;
 use App\Models\Order;
+use App\Support\SwissNumber;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -141,13 +142,13 @@ class BidComparisonService
             ? sprintf(
                 'Best current bid is %s at %s %s with a score of %s. Average bid amount is %s %s.%s%s',
                 $recommendedBid['provider'] ?: 'Unknown provider',
-                number_format((float) $recommendedBid['amount'], 2),
+                SwissNumber::format((float) $recommendedBid['amount']),
                 $recommendedBid['currency'],
-                number_format((float) $recommendedBid['final_score'], 2),
-                number_format($averageAmount, 2),
+                SwissNumber::format((float) $recommendedBid['final_score']),
+                SwissNumber::format($averageAmount),
                 $recommendedBid['currency'],
                 $standardBenchmarkAmount
-                    ? sprintf(' Standard benchmark is %s %s from %s analyzed invoice/order source(s).', number_format($standardBenchmarkAmount, 2), $recommendedBid['currency'], $standardBenchmarks->count())
+                    ? sprintf(' Standard benchmark is %s %s from %s analyzed invoice/order source(s).', SwissNumber::format($standardBenchmarkAmount), $recommendedBid['currency'], $standardBenchmarks->count())
                     : '',
                 $lowBidFlags->isNotEmpty()
                     ? sprintf(' %s bid(s) are more than 20%% below the standard benchmark and were penalized.', $lowBidFlags->count())

@@ -124,6 +124,18 @@ function getInspectionCardAction(providerBid, isQuoteRequest) {
     return { label: 'Offerte erstellen', disabled: false, submitted: false }
   }
 
+  // Their inspection quote was carried onto the order untouched, so the bid is
+  // already "submitted" - but it is not finished until they add the dates, and
+  // a disabled card would lock them out of the very thing the mail asks for.
+  if (providerBid?.workflow_meta?.awaiting_schedule) {
+    return { label: 'Termine erfassen', disabled: false, submitted: false }
+  }
+
+  // The published scope changed, so the company has to price it again.
+  if (providerBid?.workflow_meta?.requires_requote) {
+    return { label: 'Neue Preise erfassen', disabled: false, submitted: false }
+  }
+
   if (['submitted', 'shortlisted', 'approved', 'accepted', 'completed'].includes(bidStatus)) {
     return { label: 'Angebot eingereicht', disabled: true, submitted: true }
   }
@@ -266,10 +278,16 @@ function AvailableJobsPage() {
   function hydrateBidForm(order, providerBid = null) {
     const draft = providerBid?.draft_payload
     const tradeGroup = getOrderTradeGroup(order)
-    const quoteItems = draft?.line_items
-      ?? ((order.quote_items ?? []).length > 0
-        ? order.quote_items
-        : [createQuoteLineItem(tradeGroup, { ...emptyLineItem, category: '', code: '', quantity: '', source: 'custom', is_custom: true })])
+    // Their inspection quote was carried over untouched: show what they actually
+    // priced, not the manager's blank published scope.
+    const keepsOwnPrices = Boolean(providerBid?.workflow_meta?.awaiting_schedule)
+      && (providerBid?.line_items ?? []).length > 0
+    const quoteItems = keepsOwnPrices
+      ? providerBid.line_items
+      : (draft?.line_items
+        ?? ((order.quote_items ?? []).length > 0
+          ? order.quote_items
+          : [createQuoteLineItem(tradeGroup, { ...emptyLineItem, category: '', code: '', quantity: '', source: 'custom', is_custom: true })]))
 
     return {
       ...initialBidForm,
@@ -287,7 +305,7 @@ function AvailableJobsPage() {
         category: item.category ?? item.code ?? '',
         code: item.code ?? item.category ?? '',
         label: item.label ?? '',
-        unit_price: draft ? item.unit_price : '',
+        unit_price: (draft || keepsOwnPrices) ? item.unit_price : '',
         is_custom: item.is_custom ?? false,
       })),
     }
@@ -530,7 +548,11 @@ function AvailableJobsPage() {
       return
     }
 
-    if (isQuoteRequest) {
+    // Positions and prices are locked on a carried-over quote and the server
+    // keeps its own copy, so there is nothing here for the provider to fix.
+    const keepsOwnPrices = Boolean(providerBidByOrderId[selectedOrder.id]?.workflow_meta?.awaiting_schedule)
+
+    if (isQuoteRequest && !keepsOwnPrices) {
       const validLineItems = (bidForm.line_items ?? []).filter((item) => (
         item.category?.trim()
         && item.label?.trim()
@@ -545,15 +567,19 @@ function AvailableJobsPage() {
         return
       }
 
-    } else if (!isInspectionSignup && !bidForm.amount) {
+    } else if (!isQuoteRequest && !isInspectionSignup && !bidForm.amount) {
       setError(t('Gebotsbetrag erforderlich.'))
       setIsSaving(false)
       return
     }
 
-    // The two date fields are only shown when this is a real quote (same
-    // condition as the form), so they are only mandatory there.
-    const datesAreRequired = !isInspectionWorkflow(selectedOrder) || isQuoteRequest
+    // The two date fields are only shown when this is a real order quote (same
+    // condition as the form), so they are only mandatory there. A quote written
+    // straight after the site visit has no dates yet - the manager has not made
+    // an order out of it, so there is nothing to schedule.
+    const isSeedQuote = selectedOrder.workflow_type === 'inspection'
+      && providerBidByOrderId[selectedOrder.id]?.status === 'inspection_confirmed'
+    const datesAreRequired = !isSeedQuote && (!isInspectionWorkflow(selectedOrder) || isQuoteRequest)
 
     if (datesAreRequired && !bidForm.estimated_start_date) {
       setError(t('Bitte geben Sie ein voraussichtliches Startdatum ein.'))
@@ -612,6 +638,13 @@ function AvailableJobsPage() {
   // The manager published a scope that differs from what this company
   // priced, so their old quote is parked until they send new prices.
   const requiresRequote = Boolean(activeProviderBid?.workflow_meta?.requires_requote)
+  // Their inspection quote was taken over unchanged; only the schedule is left.
+  const awaitingSchedule = Boolean(activeProviderBid?.workflow_meta?.awaiting_schedule)
+  // The quote a provider writes straight after the site visit. The manager has
+  // not turned it into an order yet, so there is nothing to schedule: the dates
+  // are asked for later, once the order actually exists.
+  const isInspectionSeedQuote = selectedOrder?.workflow_type === 'inspection'
+    && activeProviderBid?.status === 'inspection_confirmed'
   // The awarded provider closes the job themselves; that opens the client's
   // confidential rating and returns the invoicing summary.
   // The manager awarded this job and is waiting for the company to confirm.
@@ -627,9 +660,24 @@ function AvailableJobsPage() {
   const canSubmitCurrentOrder = selectedOrder
     ? selectedOrder.workflow_status === 'public_inspection_open' || isOrderQuoteRequest(selectedOrder)
     : false
+  // Reference only: the deadline the manager set for the work to be finished.
+  // Providers see it while pricing, they do not fill it in.
+  const orderCompletionMode = selectedOrder?.workflow_meta?.assignment?.completion_mode || ''
+  const orderCompletionDeadline = orderCompletionMode === 'fixed_date' && selectedOrder?.due_date
+    ? formatDateDisplay(selectedOrder.due_date)
+    : (orderCompletionMode ? t('So schnell wie möglich') : '')
+  // The quote for work seen on site only opens on the day of the appointment
+  // the company confirmed - it cannot be written days in advance.
+  const confirmedInspectionSlot = isInspectionSeedQuote
+    ? getInspectionSlots(selectedOrder)[
+      Number(activeProviderBid?.workflow_meta?.selected_slot_index ?? -1)
+    ]
+    : null
+  const inspectionDayNotReached = Boolean(confirmedInspectionSlot?.date)
+    && getTodayDateValue() < String(confirmedInspectionSlot.date).slice(0, 10)
   // Nothing in the quote is editable until somebody in the company has taken
   // the job on. Assign first, then fill in the offer.
-  const canEditQuote = isAssignedToMe
+  const canEditQuote = isAssignedToMe && !inspectionDayNotReached
 
   useEffect(() => {
     if (!selectedOrder || !activeProviderBid?.id || !isAssignedToMe) {
@@ -1239,6 +1287,15 @@ function AvailableJobsPage() {
                       </div>
                     </div>
 
+                    {awaitingSchedule ? (
+                      <div className="alert alert-info border mb-3">
+                        <div className="fw-semibold mb-1">{t('Ihre Offerte wurde übernommen')}</div>
+                        <div className="small mb-0">
+                          {t('Ihre Positionen und Preise bleiben unverändert. Bitte erfassen Sie nur noch das voraussichtliche Start- und Fertigstellungsdatum und senden Sie die Offerte ab.')}
+                        </div>
+                      </div>
+                    ) : null}
+
                     {requiresRequote ? (
                       <div className="alert alert-warning border mb-3">
                         <div className="fw-semibold mb-1">{t('Das Auftragsvolumen hat sich geändert')}</div>
@@ -1681,11 +1738,31 @@ function AvailableJobsPage() {
                             </div>
                           </div>
                         ) : null}
-                        {isOrderQuoteRequest(selectedOrder) && !canEditQuote ? (
+                        {inspectionDayNotReached ? (
+                          <div className="col-12 mb-3">
+                            <div className="alert alert-warning border mb-0">
+                              <i className="ti ti-calendar-time me-1"></i>
+                              {t('Die Offerte kann erst am Tag der Besichtigung erfasst werden')}
+                              {confirmedInspectionSlot?.date ? ` (${formatDateDisplay(confirmedInspectionSlot.date)}).` : '.'}
+                            </div>
+                          </div>
+                        ) : isOrderQuoteRequest(selectedOrder) && !canEditQuote ? (
                           <div className="col-12 mb-3">
                             <div className="alert alert-warning border mb-0">
                               <i className="ti ti-lock me-1"></i>
                               {t('Bitte übernehmen Sie den Auftrag zuerst. Erst danach können Sie Positionen und Preise bearbeiten.')}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {isOrderQuoteRequest(selectedOrder) && orderCompletionDeadline ? (
+                          <div className="col-12 mb-3">
+                            <div className="alert alert-light border mb-0 d-flex align-items-center gap-2">
+                              <i className="ti ti-flag"></i>
+                              <span>
+                                <strong>{t('Fertigstellung bis')}:</strong> {orderCompletionDeadline}
+                                <span className="text-muted"> - {t('Vorgabe der Verwaltung, nur zur Information.')}</span>
+                              </span>
                             </div>
                           </div>
                         ) : null}
@@ -1699,7 +1776,9 @@ function AvailableJobsPage() {
                                 <p className="vergo-quote-section-hint mb-0">{t('Tragen Sie hier Ihre Preise ein. Die Summe wird automatisch berechnet.')}</p>
                               </div>
                             </div>
-                            <div className="border rounded-3">
+                            {/* The quote was taken over unchanged - the prices
+                                are settled, only the schedule is still open. */}
+                            <fieldset className="border rounded-3" disabled={awaitingSchedule}>
                               {(bidForm.line_items ?? []).map((item, index) => {
                                 const usesCustomCategory = Boolean(item.is_custom || (item.category && !selectedQuoteCategoryOptions.includes(item.category)))
 
@@ -1877,7 +1956,13 @@ function AvailableJobsPage() {
                                   <span className="fw-semibold">{formatCurrencyAmount(quoteBidBreakdown.total, bidForm.currency)}</span>
                                 </div>
                               </div>
-                            </div>
+                            </fieldset>
+                            {awaitingSchedule ? (
+                              <div className="alert alert-light border small mt-2 mb-0">
+                                <i className="ti ti-lock me-1"></i>
+                                {t('Positionen und Preise wurden aus Ihrer Offerte übernommen und können nicht mehr geändert werden.')}
+                              </div>
+                            ) : null}
                             {providerIsVatSubject ? (
                               <div className="form-check mt-3">
                                 <input
@@ -1904,24 +1989,28 @@ function AvailableJobsPage() {
                           </div>
                         )}
 
-                        <div className="col-12">
-                          <div className="vergo-quote-section-head mt-2">
-                            <span className="vergo-quote-step">{nextQuoteStep()}</span>
-                            <div>
-                              <h6 className="vergo-quote-section-title">{t('Termine und Angaben')}</h6>
-                              <p className="vergo-quote-section-hint mb-0">{t('Wann können Sie starten und fertigstellen?')}</p>
+                        {isInspectionSeedQuote ? null : (
+                          <>
+                            <div className="col-12">
+                              <div className="vergo-quote-section-head mt-2">
+                                <span className="vergo-quote-step">{nextQuoteStep()}</span>
+                                <div>
+                                  <h6 className="vergo-quote-section-title">{t('Termine und Angaben')}</h6>
+                                  <p className="vergo-quote-section-hint mb-0">{t('Wann können Sie starten und fertigstellen?')}</p>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
 
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label">{t('Voraussichtliches Startdatum')} *</label>
-                          <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} min={getTodayDateValue()} onChange={handleBidChange} />
-                        </div>
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')} *</label>
-                          <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || getTodayDateValue()} onChange={handleBidChange} />
-                        </div>
+                            <div className="col-md-6 mb-3">
+                              <label className="form-label">{t('Voraussichtliches Startdatum')} *</label>
+                              <input type="date" className="form-control" name="estimated_start_date" value={bidForm.estimated_start_date} min={getTodayDateValue()} onChange={handleBidChange} />
+                            </div>
+                            <div className="col-md-6 mb-3">
+                              <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')} *</label>
+                              <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || getTodayDateValue()} onChange={handleBidChange} />
+                            </div>
+                          </>
+                        )}
                         <div className="col-md-6 mb-3">
                           <label className="form-label">{t('Eigene Angebotsnummer')}</label>
                           <input
@@ -1994,7 +2083,7 @@ function AvailableJobsPage() {
                       </button>
                     ) : null}
                     {canSubmitCurrentOrder ? (
-                      <button type="submit" className="btn btn-primary" disabled={isSaving || !isAssignedToMe}>
+                      <button type="submit" className="btn btn-primary" disabled={isSaving || !isAssignedToMe || inspectionDayNotReached}>
                         {isSaving ? t('Wird gespeichert...') : isOrderQuoteRequest(selectedOrder) ? t('Angebot einreichen') : t('Besichtigung bestätigen')}
                       </button>
                     ) : null}

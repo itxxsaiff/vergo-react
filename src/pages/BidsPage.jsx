@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
+import { formatSwissMoney } from '../lib/numberFormat'
 
 const initialForm = {
   amount: '',
@@ -269,7 +270,7 @@ function BidsPage() {
                         </td>
                       ) : null}
 
-                      <td>{bid.amount} {bid.currency}</td>
+                      <td>{formatSwissMoney(bid.amount)} {bid.currency}</td>
 
                       <td>
                         <div>{bid.estimated_start_date || '-'}</div>

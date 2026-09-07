@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
+import { formatSwissMoney } from '../lib/numberFormat'
 
 function getLatestBidComparison(results) {
   return [...(results ?? [])]
@@ -301,7 +302,7 @@ function PriceComparisonPage() {
                                 {bidScoreMap[bid.id] ? ` • Rang #${index + 1}` : ''}
                               </div>
                             </td>
-                            <td>{bid.amount} {bid.currency}</td>
+                            <td>{formatSwissMoney(bid.amount)} {bid.currency}</td>
                             <td>
                               <div>{bid.estimated_start_date || '-'}</div>
                               <div className="text-muted">{bid.estimated_completion_date || '-'}</div>

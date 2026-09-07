@@ -99,7 +99,9 @@ function OrdersRoute() {
 function PropertyDetailsRoute() {
   const { user } = useAuth()
 
-  if (['admin', 'employee'].includes(user?.role)) {
+  // Owners get the same objects view as the admin: the property plus its
+  // objects, nothing else.
+  if (['admin', 'employee', 'owner'].includes(user?.role)) {
     return <EmployeePropertyDetailsPage />
   }
 
@@ -165,10 +167,12 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Owners reach objects through their property, not through a separate
+            list of every object. */}
         <Route
           path="property-objects"
           element={
-            <ProtectedRoute allowRoles={['admin', 'owner', 'manager', 'employee']} allowManagerAccessModes={['full']}>
+            <ProtectedRoute allowRoles={['admin', 'manager', 'employee']} allowManagerAccessModes={['full']}>
               <PropertyObjectsPage />
             </ProtectedRoute>
           }
@@ -192,7 +196,7 @@ function App() {
         <Route
           path="owner-analytics"
           element={
-            <ProtectedRoute allowRoles={['owner']}>
+            <ProtectedRoute allowRoles={['owner', 'admin', 'employee']}>
               <OwnerAnalyticsPage />
             </ProtectedRoute>
           }

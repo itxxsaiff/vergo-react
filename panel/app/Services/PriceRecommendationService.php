@@ -6,6 +6,7 @@ use App\Models\AiAnalysisResult;
 use App\Models\Bid;
 use App\Models\Order;
 use App\Models\Property;
+use App\Support\SwissNumber;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -100,9 +101,9 @@ class PriceRecommendationService
         }
 
         $reasons = collect([
-            $benchmarkAmount !== null ? sprintf('Average benchmark from analyzed documents and completed orders is %s.', number_format($benchmarkAmount, 2)) : null,
-            $recommendedBid ? sprintf('Lowest bid comes from %s at %s %s.', $recommendedBid->serviceProvider?->company_name ?: 'Unknown provider', number_format($recommendedBidAmount, 2), $recommendedBid->currency) : null,
-            $variancePercentage !== null ? sprintf('Variance against benchmark is %s%%.', number_format($variancePercentage, 2)) : null,
+            $benchmarkAmount !== null ? sprintf('Average benchmark from analyzed documents and completed orders is %s.', SwissNumber::format($benchmarkAmount)) : null,
+            $recommendedBid ? sprintf('Lowest bid comes from %s at %s %s.', $recommendedBid->serviceProvider?->company_name ?: 'Unknown provider', SwissNumber::format($recommendedBidAmount), $recommendedBid->currency) : null,
+            $variancePercentage !== null ? sprintf('Variance against benchmark is %s%%.', SwissNumber::format($variancePercentage)) : null,
             $historicalBenchmarks->isNotEmpty() ? sprintf('%s similar historical source(s) were used from analyzed documents and completed orders.', $historicalBenchmarks->count()) : null,
             $historicalBenchmarks->where('same_property', true)->isNotEmpty() ? 'Some benchmark sources are from the same property history.' : null,
             $historicalBenchmarks->where('size_match', true)->isNotEmpty() ? 'Benchmark includes similar property-size documents.' : null,
@@ -232,9 +233,9 @@ class PriceRecommendationService
         };
 
         $reasons = collect([
-            $benchmarkAmount !== null ? sprintf('Average property benchmark from analyzed documents and completed orders is %s.', number_format($benchmarkAmount, 2)) : null,
-            $lowestBid ? sprintf('Lowest property-linked bid is %s %s from %s.', number_format($lowestBidAmount, 2), $lowestBid->currency, $lowestBid->serviceProvider?->company_name ?: 'Unknown provider') : null,
-            $variancePercentage !== null ? sprintf('Variance against the current benchmark is %s%%.', number_format($variancePercentage, 2)) : null,
+            $benchmarkAmount !== null ? sprintf('Average property benchmark from analyzed documents and completed orders is %s.', SwissNumber::format($benchmarkAmount)) : null,
+            $lowestBid ? sprintf('Lowest property-linked bid is %s %s from %s.', SwissNumber::format($lowestBidAmount), $lowestBid->currency, $lowestBid->serviceProvider?->company_name ?: 'Unknown provider') : null,
+            $variancePercentage !== null ? sprintf('Variance against the current benchmark is %s%%.', SwissNumber::format($variancePercentage)) : null,
             $historicalBenchmarks->isNotEmpty() ? sprintf('%s similar documents/orders were used for this benchmark.', $historicalBenchmarks->count()) : null,
             $historicalBenchmarks->where('same_property', true)->isNotEmpty() ? 'This property already has matching historical price evidence.' : null,
             $historicalBenchmarks->where('size_match', true)->isNotEmpty() ? 'Benchmark includes properties of similar size.' : null,

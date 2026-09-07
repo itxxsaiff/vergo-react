@@ -8,7 +8,7 @@ import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 
 const summaryCards = [
   {
-    title: 'Immobilien',
+    title: 'Anzahl Liegenschaften',
     key: 'properties',
     icon: 'ti ti-building-estate',
     color: 'primary',
@@ -195,6 +195,12 @@ function DashboardPage({ role }) {
   const { t } = useLanguage()
   const isManager = role === 'manager'
   const isInternalDashboard = !isManager
+  // An owner has no business seeing how many owners or service providers exist
+  // in the system - only how many properties are theirs.
+  const isOwner = user?.role === 'owner'
+  const visibleSummaryCards = isOwner
+    ? summaryCards.filter((card) => card.key === 'properties')
+    : summaryCards
   const [overview, setOverview] = useState({
     properties: 0,
     owners: 0,
@@ -303,7 +309,7 @@ function DashboardPage({ role }) {
   return (
     <PageContent
       title={isManager ? '' : t('Vergo Dashboard')}
-      subtitle={`${t('Willkommen im Dashboard als')} ${t(role)}.`}
+      subtitle={isOwner ? '' : `${t('Willkommen im Dashboard als')} ${t(role)}.`}
       variant="dashboard"
     >
       {isManager ? (
@@ -502,8 +508,8 @@ function DashboardPage({ role }) {
       {isInternalDashboard ? (
         <>
           <div className="row">
-            {summaryCards.map((card) => (
-              <div className="col-xl-4 col-md-6" key={card.key}>
+            {visibleSummaryCards.map((card) => (
+              <div className={isOwner ? 'col-xl-4 col-md-6' : 'col-xl-4 col-md-6'} key={card.key}>
                 <div className="card overflow-hidden">
                   <div className="card-body">
                     <div className="d-flex align-items-center">

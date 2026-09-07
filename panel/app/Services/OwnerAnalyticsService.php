@@ -21,8 +21,17 @@ class OwnerAnalyticsService
      */
     public function build(User $owner): array
     {
-        $propertyIds = $owner->ownedProperties()->pluck('properties.id');
+        return $this->buildForProperties($owner->ownedProperties()->pluck('properties.id'));
+    }
 
+    /**
+     * The same portfolio figures for an explicit set of properties, so a
+     * superuser can look at every owner at once or narrow down to one.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $propertyIds
+     */
+    public function buildForProperties($propertyIds): array
+    {
         if ($propertyIds->isEmpty()) {
             return $this->emptyResult();
         }
@@ -51,6 +60,8 @@ class OwnerAnalyticsService
             'providers_by_property' => $this->providerByProperty($orders),
             'top_services_by_property' => $this->topServicesByProperty($orders),
             'cancellations_by_manager' => $this->cancellationsByManager($orders),
+            'duplicates_by_manager' => $this->duplicatesByManager($orders),
+            'providers_by_canton' => $this->providersByCanton($orders),
         ];
     }
 
@@ -246,6 +257,53 @@ class OwnerAnalyticsService
             ->all();
     }
 
+    /**
+     * How many orders each property manager raised that the system flagged as a
+     * duplicate of an existing one.
+     *
+     * @param  Collection<int, Order>  $orders
+     * @return array<int, array<string, mixed>>
+     */
+    private function duplicatesByManager(Collection $orders): array
+    {
+        return $orders
+            ->filter(fn (Order $o): bool => $o->duplicate_of_order_id !== null)
+            ->groupBy(fn (Order $o): string => $o->propertyManager?->email ?: ($o->requester_email ?: '-'))
+            ->map(fn (Collection $group, string $email): array => [
+                'label' => $email,
+                'manager_name' => $group->first()->propertyManager?->name,
+                'duplicate_count' => $group->count(),
+            ])
+            ->sortByDesc('duplicate_count')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Completed jobs per service provider per canton.
+     *
+     * @param  Collection<int, Order>  $orders
+     * @return array<int, array<string, mixed>>
+     */
+    private function providersByCanton(Collection $orders): array
+    {
+        return $orders
+            ->filter(fn (Order $o): bool => $o->approvedBid?->serviceProvider !== null)
+            ->groupBy(function (Order $o): string {
+                $canton = $o->property?->state ?: '-';
+
+                return ($o->approvedBid->serviceProvider->company_name ?: '-').' - '.$canton;
+            })
+            ->map(fn (Collection $group, string $label): array => [
+                'label' => $label,
+                'order_count' => $group->count(),
+                'completed_count' => $group->filter(fn (Order $o): bool => $o->status === 'completed')->count(),
+            ])
+            ->sortByDesc('order_count')
+            ->values()
+            ->all();
+    }
+
     private function awardedAmount(Order $order): float
     {
         return (float) ($order->approvedBid?->amount ?? 0);
@@ -275,6 +333,7 @@ class OwnerAnalyticsService
             'orders_by_property' => [], 'orders_by_object' => [], 'orders_by_management' => [],
             'orders_by_manager_email' => [], 'providers' => [], 'providers_by_property' => [],
             'top_services_by_property' => [], 'cancellations_by_manager' => [],
+            'duplicates_by_manager' => [], 'providers_by_canton' => [],
         ];
     }
 }

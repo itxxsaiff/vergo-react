@@ -58,10 +58,56 @@ class QuoteScopeService
                 continue;
             }
 
+            $this->openRequoteOnOrder($bid, $newOrder, $publishedItems);
             $requote->push($bid);
         }
 
         return ['preserved' => $preserved, 'requote' => $requote];
+    }
+
+    /**
+     * The provider is asked to re-price, so the tender has to actually appear in
+     * their job list with the published scope ready to price. Without a bid of
+     * their own they would only find the order through the public trade match -
+     * and would get a "please re-quote" mail pointing at nothing.
+     */
+    private function openRequoteOnOrder(Bid $sourceBid, Order $newOrder, array $publishedItems): void
+    {
+        $scopeToPrice = collect($publishedItems)
+            ->map(fn ($item) => [
+                'category' => data_get($item, 'category'),
+                'label' => data_get($item, 'label'),
+                'code' => data_get($item, 'code') ?: data_get($item, 'category'),
+                'unit' => data_get($item, 'unit'),
+                'quantity' => data_get($item, 'quantity'),
+                // Quantities and units are given; only the prices are missing.
+                'unit_price' => null,
+                'is_custom' => (bool) data_get($item, 'is_custom', true),
+            ])
+            ->values()
+            ->all();
+
+        Bid::query()->updateOrCreate(
+            [
+                'order_id' => $newOrder->id,
+                'service_provider_id' => $sourceBid->service_provider_id,
+            ],
+            [
+                'assigned_provider_email' => $sourceBid->assigned_provider_email,
+                'amount' => null,
+                'currency' => $sourceBid->currency ?: 'CHF',
+                'line_items' => $scopeToPrice,
+                'status' => 'working',
+                'workflow_meta' => [
+                    'source' => 'inspection_requote',
+                    'requires_requote' => true,
+                    'requote_requested_at' => now()->toDateTimeString(),
+                    'requote_item_count' => count($publishedItems),
+                    'carried_over_from_bid_id' => $sourceBid->id,
+                ],
+                'submitted_at' => null,
+            ],
+        );
     }
 
     /**
@@ -76,6 +122,9 @@ class QuoteScopeService
         data_set($workflowMeta, 'carried_over_from_bid_id', $sourceBid->id);
         data_set($workflowMeta, 'carried_over_from_order_id', $sourceBid->order_id);
         data_set($workflowMeta, 'quote_preserved_from_inspection', true);
+        // Prices are settled; the schedule is not. Quotes written straight after
+        // a site visit carry no dates, so the provider still has to supply them.
+        data_set($workflowMeta, 'awaiting_schedule', true);
 
         return Bid::query()->updateOrCreate(
             [

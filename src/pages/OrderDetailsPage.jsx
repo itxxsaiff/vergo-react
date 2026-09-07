@@ -8,6 +8,7 @@ import { clearOpenOffer, setOpenOffer } from '../lib/openOfferGuard'
 import { formatDateDisplay, formatDateTimeDisplay, formatTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 import { formatCurrencyAmount, getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
+import { formatSwissMoney, formatSwissQuantity } from '../lib/numberFormat'
 
 function getLatestAnalysisResult(results, analysisType) {
   return [...(results ?? [])]
@@ -521,7 +522,12 @@ function OrderDetailsPage() {
   const canApproveBids = user?.role === 'owner'
   const canCompleteOrder = ['manager', 'owner'].includes(user?.role) && order?.status === 'approved'
   const priceRecommendation = getLatestAnalysisResult(order?.analysis_results, 'price_recommendation')
-  const comparableBids = (order?.bids ?? []).filter((bid) => !bid.prices_hidden)
+  // Placeholders - a company that picked the job up or was asked to re-price -
+  // are not offers yet and must never be compared or ranked as one.
+  const PLACEHOLDER_BID_STATUSES = ['working', 'inspection_requested', 'inspection_interest', 'inspection_confirmed']
+  const comparableBids = (order?.bids ?? []).filter((bid) => (
+    !bid.prices_hidden && !PLACEHOLDER_BID_STATUSES.includes(bid.status)
+  ))
   const arrivalOrderedBids = [...comparableBids].sort((firstBid, secondBid) => {
     const firstDate = new Date(firstBid.submitted_at ?? firstBid.created_at ?? 0)
     const secondDate = new Date(secondBid.submitted_at ?? secondBid.created_at ?? 0)
@@ -620,8 +626,13 @@ function OrderDetailsPage() {
   // Owners and Vergo power users see the full evaluation with every bidder and
   // their category scores. Property managers award from the sequential
   // best-offer view instead and must not see the field.
-  const canSeeDetailedEvaluation = ['owner', 'admin'].includes(user?.role)
-    || (user?.role === 'employee' && (user?.navigationRole ?? user?.navigation_role) === 'employee_power_user')
+  const orderIsCompleted = ['completed', 'closed'].includes(String(order?.status || '').toLowerCase())
+  // The owner reviews the finished job - every bidder, every price and the
+  // rating. Vergo staff are not tied to the order being finished.
+  const canSeeDetailedEvaluation = user?.role === 'owner'
+    ? orderIsCompleted
+    : (user?.role === 'admin'
+      || (user?.role === 'employee' && (user?.navigationRole ?? user?.navigation_role) === 'employee_power_user'))
   const isBiddingStillOpen = Boolean(
     ['published_for_quotes', 'inspection_signup_closed'].includes(order?.workflow_status)
     && order?.bid_deadline_at
@@ -863,6 +874,30 @@ function OrderDetailsPage() {
             </div>
 
             <div className="col-xl-5">
+              {/* A quote is waiting for the manager - that is the reason they
+                  opened this page, so it belongs above everything else. */}
+              {hasQuoteToGenerate ? (
+                <div className="card vergo-quote-cta-card">
+                  <div className="card-body">
+                    <div className="text-uppercase small fw-bold vergo-quote-cta-label mb-2">{t('Offerte nach Besichtigung')}</div>
+                    <p className="mb-3">
+                      {canPublishInspectionQuote
+                        ? hasMultipleInspectionQuoteOptions
+                          ? t('Mehrere Dienstleister haben nach der Besichtigung Leistungspositionen erfasst. Prüfen Sie die Optionen und starten Sie die Ausschreibung für weitere Anbieter.')
+                          : t('Der Dienstleister hat nach der Besichtigung eine Offerte erstellt. Prüfen Sie die Leistungen und starten Sie die Ausschreibung für weitere Anbieter.')
+                        : quoteRequestAlreadyPublished
+                          ? t('Die Offerte wurde bereits als Ausschreibung für weitere Anbieter veröffentlicht.')
+                          : hasMultipleInspectionQuoteOptions
+                            ? t('Mehrere Dienstleister haben nach der Besichtigung Leistungspositionen erfasst. Sie können die Optionen ansehen.')
+                            : t('Der Dienstleister hat nach der Besichtigung eine Offerte erstellt. Sie können die Leistungen ansehen.')}
+                    </p>
+                    <button type="button" className="btn btn-light fw-semibold" onClick={openQuoteModal}>
+                      {t('Offerte ansehen')}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="card">
                 <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
                   <h5 className="card-title fw-semibold mb-0">{t('Bestätigte Termine')}</h5>
@@ -948,27 +983,6 @@ function OrderDetailsPage() {
                 </div>
               </div>
 
-              {hasQuoteToGenerate ? (
-                <div className="card vergo-quote-cta-card">
-                  <div className="card-body">
-                    <div className="text-uppercase small fw-bold vergo-quote-cta-label mb-2">{t('Offerte nach Besichtigung')}</div>
-                    <p className="mb-3">
-                      {canPublishInspectionQuote
-                        ? hasMultipleInspectionQuoteOptions
-                          ? t('Mehrere Dienstleister haben nach der Besichtigung Leistungspositionen erfasst. Prüfen Sie die Optionen und starten Sie die Ausschreibung für weitere Anbieter.')
-                          : t('Der Dienstleister hat nach der Besichtigung eine Offerte erstellt. Prüfen Sie die Leistungen und starten Sie die Ausschreibung für weitere Anbieter.')
-                        : quoteRequestAlreadyPublished
-                          ? t('Die Offerte wurde bereits als Ausschreibung für weitere Anbieter veröffentlicht.')
-                          : hasMultipleInspectionQuoteOptions
-                            ? t('Mehrere Dienstleister haben nach der Besichtigung Leistungspositionen erfasst. Sie können die Optionen ansehen.')
-                            : t('Der Dienstleister hat nach der Besichtigung eine Offerte erstellt. Sie können die Leistungen ansehen.')}
-                    </p>
-                    <button type="button" className="btn btn-light fw-semibold" onClick={openQuoteModal}>
-                      {t('Offerte ansehen')}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
         ) : (
@@ -1167,7 +1181,7 @@ function OrderDetailsPage() {
                         {priceRecommendation.comparison_data.benchmark_sources.slice(0, 6).map((source, index) => (
                           <tr key={`${source.result_id ?? source.order_id ?? source.bid_id ?? 'source'}-${index}`}>
                             <td>{source.document_title || source.order_title || '-'}</td>
-                            <td>{source.amount ?? '-'} {source.currency || ''}</td>
+                            <td>{formatSwissMoney(source.amount)} {source.currency || ''}</td>
                             <td>{source.document_type ? formatStatusLabel(source.document_type) : source.source_type === 'historical_order' ? 'Abgeschlossener Auftrag' : '-'}</td>
                             <td>{source.match_score ?? '-'}</td>
                           </tr>
@@ -1252,7 +1266,7 @@ function OrderDetailsPage() {
                                 {comparisonBenchmarkSources.slice(0, 5).map((source, index) => (
                                   <tr key={`${source.result_id}-${index}`}>
                                     <td>{source.document_title || source.order_title || '-'}</td>
-                                    <td>{source.amount ?? '-'} {source.currency || 'CHF'}</td>
+                                    <td>{formatSwissMoney(source.amount)} {source.currency || 'CHF'}</td>
                                     <td>{getOptionLabel(JOB_TYPE_OPTIONS, source.service_category) || source.service_category || '-'}</td>
                                     <td>{source.match_score ?? '-'}</td>
                                   </tr>
@@ -1428,7 +1442,7 @@ function OrderDetailsPage() {
                             </td>
 
                             <td>
-                              <div>{bid.amount} {bid.currency}</div>
+                              <div>{formatSwissMoney(bid.amount)} {bid.currency}</div>
                               {(bid.line_items ?? []).length > 0 ? (
                                 <div className="text-muted small">{bid.line_items.length} Positionen</div>
                               ) : null}
@@ -1980,7 +1994,7 @@ ${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency 
                   <div className="col-md-6">
                     <div className="border rounded-3 p-3 h-100">
                       <div className="text-muted small">{t('Betrag')}</div>
-                      <div className="fw-semibold fs-5">{selectedBidDetail.amount ?? '-'} {selectedBidDetail.currency || 'CHF'}</div>
+                      <div className="fw-semibold fs-5">{formatSwissMoney(selectedBidDetail.amount)} {selectedBidDetail.currency || 'CHF'}</div>
                       <div className="text-muted small">{t('Status')}: {t(formatStatusLabel(selectedBidDetail.status))}</div>
                     </div>
                   </div>
@@ -2029,9 +2043,9 @@ ${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency 
                                 {item.category || item.code ? <div className="text-muted small">{item.category || item.code}</div> : null}
                               </td>
                               <td>{item.unit || '-'}</td>
-                              <td className="text-end">{item.quantity ?? '-'}</td>
-                              <td className="text-end">{unitPrice ? `${unitPrice.toFixed(2)} ${selectedBidDetail.currency || 'CHF'}` : '-'}</td>
-                              <td className="text-end">{subtotal ? `${subtotal.toFixed(2)} ${selectedBidDetail.currency || 'CHF'}` : '-'}</td>
+                              <td className="text-end">{formatSwissQuantity(item.quantity)}</td>
+                              <td className="text-end">{unitPrice ? `${formatSwissMoney(unitPrice)} ${selectedBidDetail.currency || 'CHF'}` : '-'}</td>
+                              <td className="text-end">{subtotal ? `${formatSwissMoney(subtotal)} ${selectedBidDetail.currency || 'CHF'}` : '-'}</td>
                             </tr>
                           )
                         })}
@@ -2162,7 +2176,7 @@ ${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency 
                                       {item.category || item.code ? <div className="text-muted small">{item.category || item.code}</div> : null}
                                     </td>
                                     <td>{item.unit || '-'}</td>
-                                    <td className="text-end">{item.quantity ?? '-'}</td>
+                                    <td className="text-end">{formatSwissQuantity(item.quantity)}</td>
                                   </tr>
                                 )
                               })}
@@ -2193,7 +2207,7 @@ ${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency 
                               {item.code ? <div className="text-muted small">{item.code}</div> : null}
                             </td>
                             <td>{item.unit || '-'}</td>
-                            <td className="text-end">{item.quantity ?? '-'}</td>
+                            <td className="text-end">{formatSwissQuantity(item.quantity)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -2251,7 +2265,7 @@ ${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency 
                               ) : null}
                             </td>
                             <td>{item.unit || '-'}</td>
-                            <td className="text-end">{item.quantity ?? '-'}</td>
+                            <td className="text-end">{formatSwissQuantity(item.quantity)}</td>
                           </tr>
                         ))}
                       </tbody>

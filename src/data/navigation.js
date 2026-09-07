@@ -26,6 +26,12 @@ export const navigationByRole = {
       ],
     },
     {
+      // The owner report, across every owner, with a filter to narrow it down.
+      title: 'Auswertungen',
+      icon: 'ti ti-chart-histogram',
+      href: '/owner-analytics',
+    },
+    {
       title: 'Support-Tickets',
       icon: 'ti ti-ticket',
       href: '/support-tickets',
@@ -88,6 +94,12 @@ export const navigationByRole = {
       ],
     },
     {
+      // The owner report, across every owner, with a filter to narrow it down.
+      title: 'Auswertungen',
+      icon: 'ti ti-chart-histogram',
+      href: '/owner-analytics',
+    },
+    {
       title: 'Support-Tickets',
       icon: 'ti ti-ticket',
       href: '/support-tickets',
@@ -130,11 +142,12 @@ export const navigationByRole = {
       href: '/dashboard',
     },
     {
-      title: 'Mein Arbeitsbereich',
+      title: 'Berichte',
       icon: 'ti ti-building-estate',
       children: [
-        { title: 'Meine Eigenschaften', href: '/properties' },
-        { title: 'Immobilienobjekte', href: '/property-objects' },
+        // The property list is the owner's starting point: from there they open
+        // the objects of a property. The separate object page is gone.
+        { title: 'Liegenschaften', href: '/properties' },
         { title: 'Bestellungen', href: '/orders' },
         { title: 'Preisvergleich', href: '/price-comparison' },
         { title: 'Auswertungen', href: '/owner-analytics' },

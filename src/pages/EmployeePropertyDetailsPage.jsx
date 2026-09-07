@@ -4,6 +4,7 @@ import PageContent from '../components/PageContent'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { PROPERTY_USAGE_OPTIONS, getOptionLabel } from '../lib/vergoOptions'
+import { useAuth } from '../context/AuthContext'
 
 const initialForm = {
   address: '',
@@ -26,6 +27,9 @@ function getAllowedObjectUsageOptions(propertyUsage) {
 
 function EmployeePropertyDetailsPage() {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  // An owner only reads their portfolio - they never create objects.
+  const canManageObjects = user?.role !== 'owner'
   const { propertyId } = useParams()
   const [property, setProperty] = useState(null)
   const [form, setForm] = useState(initialForm)
@@ -290,14 +294,16 @@ function EmployeePropertyDetailsPage() {
                       Zurücksetzen
                     </button>
 
-                    <button
-                      type="button"
-                      className="btn btn-primary text-nowrap"
-                      onClick={openModal}
-                    >
-                      <i className="ti ti-plus me-1"></i>
-                      Objekt erstellen
-                    </button>
+                    {canManageObjects ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary text-nowrap"
+                        onClick={openModal}
+                      >
+                        <i className="ti ti-plus me-1"></i>
+                        Objekt erstellen
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -340,7 +346,7 @@ function EmployeePropertyDetailsPage() {
         </>
       ) : null}
 
-      {isModalOpen ? (
+      {isModalOpen && canManageObjects ? (
         <>
           <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="false">
             <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">

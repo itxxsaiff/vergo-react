@@ -134,12 +134,14 @@ body {
   color: inherit;
 }
 
+/* A menu title must never be cut off mid-word - it wraps onto a second line
+   instead of ending in an ellipsis. */
 .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link .hide-menu {
   flex: 1 1 auto;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-button {
@@ -2932,4 +2934,73 @@ body {
 
 .vergo-quote-fieldset:disabled {
   opacity: 0.6;
+}
+
+/* Owner greeting inside the header bar. Two tight lines that stay within the
+   existing --vergo-header-height, so the bar does not grow. */
+.vergo-header-greeting {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  margin-left: 0.75rem;
+  line-height: 1.15;
+}
+
+.vergo-header-greeting-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--vergo-text-main);
+}
+
+.vergo-header-greeting-mail {
+  font-size: 0.76rem;
+  color: var(--vergo-text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  .vergo-header-greeting-mail {
+    display: none;
+  }
+}
+
+/* Analytics: the categories stack down the left and open one at a time. */
+.vergo-analytics-category {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid var(--vergo-input-border);
+  border-radius: 12px;
+  background: var(--vergo-card-bg);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.vergo-analytics-category:hover {
+  border-color: var(--vergo-accent);
+}
+
+.vergo-analytics-category.is-open {
+  border-color: var(--vergo-accent);
+  background: var(--vergo-accent-soft-2);
+}
+
+.vergo-analytics-category-title {
+  font-weight: 600;
+  color: var(--vergo-text-main);
+}
+
+.vergo-analytics-category-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  color: var(--vergo-text-soft);
 }

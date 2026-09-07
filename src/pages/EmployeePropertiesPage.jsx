@@ -29,7 +29,7 @@ function getOwnerCompanyLabel(property) {
 }
 
 function EmployeePropertiesPage() {
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
   const [properties, setProperties] = useState([])
   const [owners, setOwners] = useState([])
   const [propertyManagers, setPropertyManagers] = useState([])
@@ -40,6 +40,7 @@ function EmployeePropertiesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [pdfGeneratingId, setPdfGeneratingId] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
@@ -134,6 +135,20 @@ function EmployeePropertiesPage() {
     setError('')
     setFieldErrors({})
     setIsModalOpen(true)
+  }
+
+  // Same property PDF the admin gets - not the documents page.
+  async function handleGeneratePdf(propertyId) {
+    setError('')
+    setPdfGeneratingId(propertyId)
+
+    try {
+      await api.openPropertyPdf(propertyId, language)
+    } catch (pdfError) {
+      setError(t(pdfError.message))
+    } finally {
+      setPdfGeneratingId(null)
+    }
   }
 
   function handleEdit(property) {
@@ -381,13 +396,19 @@ function EmployeePropertiesPage() {
                           >
                             <i className="ti ti-building-community"></i>
                           </Link>
-                          <Link
-                            to={`/properties/${property.id}/documents`}
+                          <button
+                            type="button"
                             className="table-action-btn table-action-view"
-                            title="Dokumente und Analyse öffnen"
+                            onClick={() => handleGeneratePdf(property.id)}
+                            disabled={pdfGeneratingId === property.id}
+                            title="Liegenschaft als PDF drucken"
                           >
-                            <i className="ti ti-file-invoice"></i>
-                          </Link>
+                            {pdfGeneratingId === property.id ? (
+                              <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            ) : (
+                              <i className="ti ti-file-invoice"></i>
+                            )}
+                          </button>
                           <button
                             type="button"
                             className="table-action-btn table-action-edit"

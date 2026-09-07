@@ -31,6 +31,45 @@ if (! $order) {
     exit("Order not found.\n");
 }
 
+// ---------------------------------------------------------------------------
+// Mode 2: why can a service provider not see a public site-visit request?
+//   ...&mode=inspection&order=VER-2609-00012
+// ---------------------------------------------------------------------------
+if (($_GET['mode'] ?? '') === 'inspection') {
+    $limit = data_get($order->workflow_meta ?? [], 'inspection.public_provider_limit');
+    $signups = App\Models\Bid::where('order_id', $order->id)
+        ->whereIn('status', ['inspection_interest', 'inspection_confirmed'])->count();
+    $effective = max(1, (int) ($limit ?? 3));
+
+    echo "workflow_status : {$order->workflow_status}\n";
+    echo 'service_type    : '.var_export($order->service_type, true)."\n";
+    echo 'provider limit  : '.var_export($limit, true).($limit === null ? '   <-- not stored, defaults to 3' : '')."\n";
+    echo "signed up so far: {$signups} of {$effective}\n";
+    echo '=> advertised?  : '.($order->workflow_status === 'public_inspection_open'
+        ? ($signups < $effective ? 'YES, still open' : 'NO - limit reached')
+        : 'NO - status is not public_inspection_open')."\n\n";
+
+    foreach ($order->bids as $b) {
+        echo "  existing bid #{$b->id} sp={$b->service_provider_id} status={$b->status}\n";
+    }
+    echo "\n";
+
+    foreach (App\Models\ServiceProvider::with('user')->get() as $sp) {
+        $types = $sp->supportedServiceTypes();
+        $tradeOk = empty($types) || in_array(strtolower((string) $order->service_type), $types, true);
+        $ownBid = $order->bids->firstWhere('service_provider_id', $sp->id);
+        $visible = $ownBid !== null
+            || ($order->workflow_status === 'public_inspection_open' && $signups < $effective && $tradeOk);
+
+        echo ($visible ? '  SEES it   ' : '  HIDDEN    ').$sp->company_name."\n";
+        echo '     trade_groups : '.json_encode($sp->trade_groups)."\n";
+        echo '     matches order: '.($tradeOk ? 'yes' : 'NO  <-- trade mismatch, this is the reason')."\n";
+        echo '     own bid      : '.($ownBid ? "#{$ownBid->id} ({$ownBid->status})" : 'none')."\n";
+        echo '     login user   : '.($sp->user ? ('yes, status='.($sp->user->status ?? 'n/a')) : 'NO LOGIN USER  <-- cannot log in at all')."\n\n";
+    }
+    exit;
+}
+
 $items = $order->quote_items ?? [];
 echo "Order {$order->order_number} - {$order->title}\n";
 echo 'Published positions: '.count($items)."\n";

@@ -142,6 +142,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Owner portfolio analytics and the duplicates the system flagged.
     Route::get('/owner/analytics', [OwnerAnalyticsController::class, 'analytics']);
     Route::get('/owner/analytics/report', [OwnerAnalyticsController::class, 'report'])->name('owner.analytics.report');
+    Route::get('/owner/decisions', [OwnerAnalyticsController::class, 'decisions']);
     Route::get('/owner/duplicates', [OwnerAnalyticsController::class, 'duplicates']);
 
     // Cancellation, duplicate detection and sequential bid disclosure.

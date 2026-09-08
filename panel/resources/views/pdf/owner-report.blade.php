@@ -22,22 +22,22 @@
 </head>
 <body>
     <div class="head">
-        <h1>Vergo Auswertung</h1>
+        <h1>{{ $labels['heading'] }}</h1>
         <div class="meta">
-            @if($ownerName) Eigentuemer: {{ $ownerName }} &middot; @else Alle Eigentuemer &middot; @endif
-            @if($search) Filter: "{{ $search }}" &middot; @endif
-            Erstellt am {{ $generatedAt }}
+            @if($ownerName) {{ $labels['owner'] }}: {{ $ownerName }} &middot; @else {{ $labels['all_owners'] }} &middot; @endif
+            @if($search) {{ $labels['filter'] }}: "{{ $search }}" &middot; @endif
+            {{ $labels['generated'] }} {{ $generatedAt }}
         </div>
     </div>
 
     <table class="totals">
         <tr>
-            <td><span class="k">Auftraege</span><span class="v">{{ $totals['order_count'] ?? 0 }}</span></td>
-            <td><span class="k">Aktiv</span><span class="v">{{ $totals['active_order_count'] ?? 0 }}</span></td>
-            <td><span class="k">Abgeschlossen</span><span class="v">{{ $totals['completed_order_count'] ?? 0 }}</span></td>
-            <td><span class="k">Storniert</span><span class="v">{{ $totals['cancelled_order_count'] ?? 0 }}</span></td>
-            <td><span class="k">Liegenschaften</span><span class="v">{{ $totals['property_count'] ?? 0 }}</span></td>
-            <td><span class="k">Ausgaben</span><span class="v">{{ App\Support\SwissNumber::money($totals['total_spend'] ?? 0) }}</span></td>
+            <td><span class="k">{{ $labels['orders'] }}</span><span class="v">{{ $totals['order_count'] ?? 0 }}</span></td>
+            <td><span class="k">{{ $labels['active'] }}</span><span class="v">{{ $totals['active_order_count'] ?? 0 }}</span></td>
+            <td><span class="k">{{ $labels['completed'] }}</span><span class="v">{{ $totals['completed_order_count'] ?? 0 }}</span></td>
+            <td><span class="k">{{ $labels['cancelled'] }}</span><span class="v">{{ $totals['cancelled_order_count'] ?? 0 }}</span></td>
+            <td><span class="k">{{ $labels['properties'] }}</span><span class="v">{{ $totals['property_count'] ?? 0 }}</span></td>
+            <td><span class="k">{{ $labels['spend'] }}</span><span class="v">{{ App\Support\SwissNumber::money($totals['total_spend'] ?? 0) }}</span></td>
         </tr>
     </table>
 
@@ -45,7 +45,7 @@
         <h2>{{ $block['title'] }}</h2>
 
         @if(empty($block['rows']))
-            <div class="empty">Keine Daten vorhanden.</div>
+            <div class="empty">{{ $labels['empty'] }}</div>
         @else
             <table class="data">
                 <thead>

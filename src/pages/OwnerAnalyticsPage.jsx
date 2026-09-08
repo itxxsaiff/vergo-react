@@ -151,7 +151,7 @@ function cellValue(row, column) {
 }
 
 function OwnerAnalyticsPage() {
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
   const { user } = useAuth()
   const [data, setData] = useState(null)
   const [owners, setOwners] = useState([])
@@ -236,6 +236,7 @@ function OwnerAnalyticsPage() {
         sections: reportSections,
         owner_id: canFilterByOwner && ownerId ? ownerId : null,
         search: categorySearch.trim(),
+        language,
       })
       setIsReportOpen(false)
     } catch (reportError) {
@@ -333,8 +334,12 @@ function OwnerAnalyticsPage() {
             </div>
 
             <div className="col-xl-8 col-lg-7">
+              {/* The report follows the page: scrolling the category list on the
+                  left keeps it in view, and a long table scrolls inside its own
+                  box rather than stretching the page. */}
+              <div className="vergo-analytics-detail-sticky">
               {activeCategory ? (
-                <div className="card">
+                <div className="card mb-0">
                   <div className="px-4 py-3 border-bottom">
                     <h5 className="card-title fw-semibold mb-2">{t(activeCategory.title)}</h5>
                     {/* The filter sits where the description used to be. */}
@@ -350,7 +355,7 @@ function OwnerAnalyticsPage() {
                     {activeRows.length === 0 ? (
                       <div className="text-muted">{t('Keine Daten vorhanden.')}</div>
                     ) : (
-                      <div className="table-responsive">
+                      <div className="table-responsive vergo-analytics-detail-scroll">
                         <table className="table align-middle mb-0">
                           <thead>
                             <tr>
@@ -381,12 +386,13 @@ function OwnerAnalyticsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="card h-100">
+                <div className="card mb-0">
                   <div className="card-body d-flex align-items-center justify-content-center text-muted py-5">
                     {t('Wählen Sie links eine Kategorie, um die Auswertung zu sehen.')}
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
         </>

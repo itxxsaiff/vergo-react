@@ -592,7 +592,7 @@ export const api = {
   getOwnerAnalytics(ownerId = null) {
     return request(`/owner/analytics${ownerId ? `?owner_id=${encodeURIComponent(ownerId)}` : ''}`)
   },
-  openOwnerAnalyticsReport({ sections = [], owner_id: ownerId = null, search = '' } = {}) {
+  openOwnerAnalyticsReport({ sections = [], owner_id: ownerId = null, search = '', language = 'de' } = {}) {
     const params = new URLSearchParams()
     sections.forEach((section) => params.append('sections[]', section))
 
@@ -604,7 +604,13 @@ export const api = {
       params.set('search', search)
     }
 
+    // The PDF must come out in the language the user is working in.
+    params.set('language', language)
+
     return openPdfInNewTab(`/owner/analytics/report?${params.toString()}`)
+  },
+  getOwnerDecisions(ownerId = null) {
+    return request(`/owner/decisions${ownerId ? `?owner_id=${encodeURIComponent(ownerId)}` : ''}`)
   },
   getOwnerDuplicates() {
     return request('/owner/duplicates')

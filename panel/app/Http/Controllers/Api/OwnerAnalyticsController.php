@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bid;
 use App\Models\Order;
 use App\Models\Property;
 use App\Models\User;
@@ -44,6 +45,115 @@ class OwnerAnalyticsController extends Controller
     }
 
     /**
+     * Every decision a property manager made that the owner has a right to
+     * question: a best offer turned down, a contract cancelled, or an order the
+     * system flagged as a duplicate - each with the reason that was given.
+     */
+    public function decisions(Request $request): JsonResponse
+    {
+        $propertyIds = $this->reportablePropertyIds($request);
+
+        $rejectedOffers = Bid::query()
+            ->with(['serviceProvider:id,company_name', 'order:id,order_number,title,property_id,property_manager_profile_id', 'order.property:id,li_number,title', 'order.propertyManager:id,name,email'])
+            ->where('status', 'rejected')
+            ->whereNotNull('rejection_reason')
+            ->whereHas('order', fn ($query) => $query->whereIn('property_id', $propertyIds))
+            ->latest('updated_at')
+            ->get()
+            ->map(fn (Bid $bid): array => [
+                'id' => $bid->id,
+                'order_id' => $bid->order?->id,
+                'order_number' => $bid->order?->order_number,
+                'order_title' => $bid->order?->title,
+                'property' => $bid->order?->property?->title ?: $bid->order?->property?->li_number,
+                'company_name' => $bid->serviceProvider?->company_name,
+                'amount' => $bid->amount,
+                'currency' => $bid->currency,
+                'manager_name' => $bid->order?->propertyManager?->name,
+                'manager_email' => $bid->order?->propertyManager?->email,
+                'reason' => $bid->rejection_reason,
+                'decided_at' => $bid->updated_at?->toDateTimeString(),
+            ])
+            ->values()
+            ->all();
+
+        $cancellations = Order::query()
+            ->withTrashed()
+            ->with(['property:id,li_number,title', 'propertyManager:id,name,email'])
+            ->whereIn('property_id', $propertyIds)
+            ->whereNotNull('cancelled_at')
+            ->latest('cancelled_at')
+            ->get()
+            ->map(fn (Order $order): array => [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'order_title' => $order->title,
+                'property' => $order->property?->title ?: $order->property?->li_number,
+                'manager_name' => $order->propertyManager?->name,
+                'manager_email' => $order->propertyManager?->email,
+                'reason' => $order->cancellation_reason,
+                'decided_at' => $order->cancelled_at?->toDateTimeString(),
+            ])
+            ->values()
+            ->all();
+
+        $duplicates = Order::query()
+            ->withTrashed()
+            ->with(['property:id,li_number,title', 'propertyManager:id,name,email', 'duplicateOfOrder:id,order_number,title'])
+            ->whereIn('property_id', $propertyIds)
+            ->whereNotNull('duplicate_of_order_id')
+            ->latest()
+            ->get()
+            ->map(fn (Order $order): array => [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'order_title' => $order->title,
+                'property' => $order->property?->title ?: $order->property?->li_number,
+                'manager_name' => $order->propertyManager?->name,
+                'manager_email' => $order->propertyManager?->email,
+                'duplicate_of_number' => $order->duplicateOfOrder?->order_number,
+                'duplicate_of_title' => $order->duplicateOfOrder?->title,
+                // duplicate_reason is a short code; the manager's own words are
+                // in duplicate_explanation.
+                'reason_code' => $order->duplicate_reason,
+                'reason' => $order->duplicate_explanation ?: $order->duplicate_reason,
+                'decided_at' => $order->created_at?->toDateTimeString(),
+            ])
+            ->values()
+            ->all();
+
+        return response()->json([
+            'data' => [
+                'rejected_offers' => $rejectedOffers,
+                'cancellations' => $cancellations,
+                'duplicates' => $duplicates,
+            ],
+            'owners' => $this->isSuperUser($request->user()) ? $this->selectableOwners() : [],
+        ]);
+    }
+
+    /**
+     * The properties this report covers: the owner's own, or - for a superuser -
+     * every property, optionally narrowed to one owner.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function reportablePropertyIds(Request $request)
+    {
+        $actor = $request->user();
+
+        if ($this->isSuperUser($actor)) {
+            $ownerId = $request->integer('owner_id') ?: null;
+
+            return $ownerId
+                ? Property::query()->whereHas('owners', fn ($query) => $query->where('users.id', $ownerId))->pluck('id')
+                : Property::query()->pluck('id');
+        }
+
+        return $this->authorizeOwner($request)->ownedProperties()->pluck('properties.id');
+    }
+
+    /**
      * Builds a PDF for one section of the report. The owner picks what to print
      * - spend per property, jobs per provider, cancellations per manager and so
      * on - and gets a document they can file or forward.
@@ -65,8 +175,12 @@ class OwnerAnalyticsController extends Controller
                 ->pluck('id')
             : Property::query()->pluck('id');
 
+        $language = in_array($request->query('language'), ['de', 'en', 'fr', 'it'], true)
+            ? $request->query('language')
+            : 'de';
+
         $data = $analytics->buildForProperties($propertyIds);
-        $sections = $this->reportSections();
+        $sections = $this->reportSections($language);
         $requested = collect($request->input('sections', array_keys($sections)))
             ->filter(fn ($key): bool => isset($sections[$key]))
             ->values();
@@ -103,6 +217,7 @@ class OwnerAnalyticsController extends Controller
             'ownerName' => $ownerName,
             'search' => $search,
             'generatedAt' => now()->format('d.m.Y H:i'),
+            'labels' => $this->reportChrome($language),
         ])->setPaper('a4', 'portrait');
 
         return $pdf->stream('vergo-report.pdf');
@@ -113,22 +228,115 @@ class OwnerAnalyticsController extends Controller
      *
      * @return array<string, array<string, mixed>>
      */
-    private function reportSections(): array
+    private function reportSections(string $language = 'de'): array
     {
+        $t = $this->reportTranslations($language);
+
         return [
-            'spend_by_property' => ['title' => 'Ausgaben pro Liegenschaft', 'label' => 'Liegenschaft', 'value' => 'Ausgaben', 'key' => 'total_spend', 'money' => true],
-            'spend_by_object' => ['title' => 'Ausgaben pro Objekt', 'label' => 'Objekt', 'value' => 'Ausgaben', 'key' => 'total_spend', 'money' => true],
-            'spend_by_canton' => ['title' => 'Ausgaben pro Kanton', 'label' => 'Kanton', 'value' => 'Ausgaben', 'key' => 'total_spend', 'money' => true],
-            'orders_by_property' => ['title' => 'Auftraege pro Liegenschaft', 'label' => 'Liegenschaft', 'value' => 'Auftraege', 'key' => 'order_count'],
-            'orders_by_object' => ['title' => 'Auftraege pro Objekt', 'label' => 'Objekt', 'value' => 'Auftraege', 'key' => 'order_count'],
-            'orders_by_management' => ['title' => 'Auftraege pro Bewirtschaftung', 'label' => 'Bewirtschaftung', 'value' => 'Auftraege', 'key' => 'order_count'],
-            'orders_by_manager_email' => ['title' => 'Auftraege pro Bewirtschafter', 'label' => 'E-Mail', 'value' => 'Auftraege', 'key' => 'order_count'],
-            'cancellations_by_manager' => ['title' => 'Stornierungen pro Bewirtschafter', 'label' => 'E-Mail', 'value' => 'Storniert', 'key' => 'cancelled_count'],
-            'duplicates_by_manager' => ['title' => 'Duplikate pro Bewirtschafter', 'label' => 'E-Mail', 'value' => 'Duplikate', 'key' => 'duplicate_count'],
-            'providers' => ['title' => 'Dienstleister', 'label' => 'Firma', 'value' => 'Abgeschlossen', 'key' => 'completed_count'],
-            'providers_by_canton' => ['title' => 'Dienstleister pro Kanton', 'label' => 'Firma - Kanton', 'value' => 'Auftraege', 'key' => 'order_count'],
-            'providers_by_property' => ['title' => 'Dienstleister pro Liegenschaft', 'label' => 'Liegenschaft', 'value' => 'Auftraege', 'key' => 'order_count'],
+            'spend_by_property' => ['title' => $t['spend_by_property'], 'label' => $t['property'], 'value' => $t['spend'], 'key' => 'total_spend', 'money' => true],
+            'spend_by_object' => ['title' => $t['spend_by_object'], 'label' => $t['object'], 'value' => $t['spend'], 'key' => 'total_spend', 'money' => true],
+            'spend_by_canton' => ['title' => $t['spend_by_canton'], 'label' => $t['canton'], 'value' => $t['spend'], 'key' => 'total_spend', 'money' => true],
+            'orders_by_property' => ['title' => $t['orders_by_property'], 'label' => $t['property'], 'value' => $t['orders'], 'key' => 'order_count'],
+            'orders_by_object' => ['title' => $t['orders_by_object'], 'label' => $t['object'], 'value' => $t['orders'], 'key' => 'order_count'],
+            'orders_by_management' => ['title' => $t['orders_by_management'], 'label' => $t['management'], 'value' => $t['orders'], 'key' => 'order_count'],
+            'orders_by_manager_email' => ['title' => $t['orders_by_manager_email'], 'label' => $t['email'], 'value' => $t['orders'], 'key' => 'order_count'],
+            'cancellations_by_manager' => ['title' => $t['cancellations_by_manager'], 'label' => $t['email'], 'value' => $t['cancelled'], 'key' => 'cancelled_count'],
+            'duplicates_by_manager' => ['title' => $t['duplicates_by_manager'], 'label' => $t['email'], 'value' => $t['duplicates'], 'key' => 'duplicate_count'],
+            'providers' => ['title' => $t['providers'], 'label' => $t['company'], 'value' => $t['completed'], 'key' => 'completed_count'],
+            'providers_by_canton' => ['title' => $t['providers_by_canton'], 'label' => $t['company_canton'], 'value' => $t['orders'], 'key' => 'order_count'],
+            'providers_by_property' => ['title' => $t['providers_by_property'], 'label' => $t['property'], 'value' => $t['orders'], 'key' => 'order_count'],
         ];
+    }
+
+    /**
+     * Section titles and column headings per language. The PDF must come out in
+     * whatever language the user is working in.
+     *
+     * @return array<string, string>
+     */
+    private function reportTranslations(string $language): array
+    {
+        $all = [
+            'de' => [
+                'spend_by_property' => 'Ausgaben pro Liegenschaft', 'spend_by_object' => 'Ausgaben pro Objekt',
+                'spend_by_canton' => 'Ausgaben pro Kanton', 'orders_by_property' => 'Auftraege pro Liegenschaft',
+                'orders_by_object' => 'Auftraege pro Objekt', 'orders_by_management' => 'Auftraege pro Bewirtschaftung',
+                'orders_by_manager_email' => 'Auftraege pro Bewirtschafter', 'cancellations_by_manager' => 'Stornierungen pro Bewirtschafter',
+                'duplicates_by_manager' => 'Duplikate pro Bewirtschafter', 'providers' => 'Dienstleister',
+                'providers_by_canton' => 'Dienstleister pro Kanton', 'providers_by_property' => 'Dienstleister pro Liegenschaft',
+                'property' => 'Liegenschaft', 'object' => 'Objekt', 'canton' => 'Kanton', 'management' => 'Bewirtschaftung',
+                'email' => 'E-Mail', 'company' => 'Firma', 'company_canton' => 'Firma - Kanton',
+                'spend' => 'Ausgaben', 'orders' => 'Auftraege', 'cancelled' => 'Storniert',
+                'duplicates' => 'Duplikate', 'completed' => 'Abgeschlossen',
+            ],
+            'en' => [
+                'spend_by_property' => 'Spend per property', 'spend_by_object' => 'Spend per object',
+                'spend_by_canton' => 'Spend per canton', 'orders_by_property' => 'Orders per property',
+                'orders_by_object' => 'Orders per object', 'orders_by_management' => 'Orders per management company',
+                'orders_by_manager_email' => 'Orders per property manager', 'cancellations_by_manager' => 'Cancellations per property manager',
+                'duplicates_by_manager' => 'Duplicates per property manager', 'providers' => 'Service providers',
+                'providers_by_canton' => 'Service providers per canton', 'providers_by_property' => 'Service providers per property',
+                'property' => 'Property', 'object' => 'Object', 'canton' => 'Canton', 'management' => 'Management',
+                'email' => 'E-mail', 'company' => 'Company', 'company_canton' => 'Company - canton',
+                'spend' => 'Spend', 'orders' => 'Orders', 'cancelled' => 'Cancelled',
+                'duplicates' => 'Duplicates', 'completed' => 'Completed',
+            ],
+            'it' => [
+                'spend_by_property' => 'Spese per immobile', 'spend_by_object' => 'Spese per oggetto',
+                'spend_by_canton' => 'Spese per cantone', 'orders_by_property' => 'Ordini per immobile',
+                'orders_by_object' => 'Ordini per oggetto', 'orders_by_management' => 'Ordini per amministrazione',
+                'orders_by_manager_email' => 'Ordini per amministratore', 'cancellations_by_manager' => 'Annullamenti per amministratore',
+                'duplicates_by_manager' => 'Duplicati per amministratore', 'providers' => 'Fornitori di servizi',
+                'providers_by_canton' => 'Fornitori per cantone', 'providers_by_property' => 'Fornitori per immobile',
+                'property' => 'Immobile', 'object' => 'Oggetto', 'canton' => 'Cantone', 'management' => 'Amministrazione',
+                'email' => 'E-mail', 'company' => 'Azienda', 'company_canton' => 'Azienda - cantone',
+                'spend' => 'Spese', 'orders' => 'Ordini', 'cancelled' => 'Annullati',
+                'duplicates' => 'Duplicati', 'completed' => 'Completati',
+            ],
+            'fr' => [
+                'spend_by_property' => 'Depenses par bien', 'spend_by_object' => 'Depenses par objet',
+                'spend_by_canton' => 'Depenses par canton', 'orders_by_property' => 'Commandes par bien',
+                'orders_by_object' => 'Commandes par objet', 'orders_by_management' => 'Commandes par gerance',
+                'orders_by_manager_email' => 'Commandes par gestionnaire', 'cancellations_by_manager' => 'Annulations par gestionnaire',
+                'duplicates_by_manager' => 'Doublons par gestionnaire', 'providers' => 'Prestataires',
+                'providers_by_canton' => 'Prestataires par canton', 'providers_by_property' => 'Prestataires par bien',
+                'property' => 'Bien', 'object' => 'Objet', 'canton' => 'Canton', 'management' => 'Gerance',
+                'email' => 'E-mail', 'company' => 'Entreprise', 'company_canton' => 'Entreprise - canton',
+                'spend' => 'Depenses', 'orders' => 'Commandes', 'cancelled' => 'Annulees',
+                'duplicates' => 'Doublons', 'completed' => 'Terminees',
+            ],
+        ];
+
+        return $all[$language] ?? $all['de'];
+    }
+
+    /**
+     * The wording around the tables - heading, totals row and footnotes.
+     *
+     * @return array<string, string>
+     */
+    private function reportChrome(string $language): array
+    {
+        $all = [
+            'de' => ['heading' => 'Vergo Auswertung', 'all_owners' => 'Alle Eigentuemer', 'owner' => 'Eigentuemer',
+                'filter' => 'Filter', 'generated' => 'Erstellt am', 'orders' => 'Auftraege', 'active' => 'Aktiv',
+                'completed' => 'Abgeschlossen', 'cancelled' => 'Storniert', 'properties' => 'Liegenschaften',
+                'spend' => 'Ausgaben', 'empty' => 'Keine Daten vorhanden.'],
+            'en' => ['heading' => 'Vergo Analysis', 'all_owners' => 'All owners', 'owner' => 'Owner',
+                'filter' => 'Filter', 'generated' => 'Created on', 'orders' => 'Orders', 'active' => 'Active',
+                'completed' => 'Completed', 'cancelled' => 'Cancelled', 'properties' => 'Properties',
+                'spend' => 'Spend', 'empty' => 'No data available.'],
+            'it' => ['heading' => 'Analisi Vergo', 'all_owners' => 'Tutti i proprietari', 'owner' => 'Proprietario',
+                'filter' => 'Filtro', 'generated' => 'Creato il', 'orders' => 'Ordini', 'active' => 'Attivi',
+                'completed' => 'Completati', 'cancelled' => 'Annullati', 'properties' => 'Immobili',
+                'spend' => 'Spese', 'empty' => 'Nessun dato disponibile.'],
+            'fr' => ['heading' => 'Analyse Vergo', 'all_owners' => 'Tous les proprietaires', 'owner' => 'Proprietaire',
+                'filter' => 'Filtre', 'generated' => 'Cree le', 'orders' => 'Commandes', 'active' => 'Actives',
+                'completed' => 'Terminees', 'cancelled' => 'Annulees', 'properties' => 'Biens',
+                'spend' => 'Depenses', 'empty' => 'Aucune donnee disponible.'],
+        ];
+
+        return $all[$language] ?? $all['de'];
     }
 
     private function rowLabel(mixed $row): string

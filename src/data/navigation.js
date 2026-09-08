@@ -147,11 +147,14 @@ export const navigationByRole = {
       children: [
         // The property list is the owner's starting point: from there they open
         // the objects of a property. The separate object page is gone.
+        // The order the client asked for: properties, orders, analysis, reports.
         { title: 'Liegenschaften', href: '/properties' },
         { title: 'Bestellungen', href: '/orders' },
-        { title: 'Preisvergleich', href: '/price-comparison' },
         { title: 'Auswertungen', href: '/owner-analytics' },
-        { title: 'Erkannte Duplikate', href: '/owner-duplicates' },
+        // Manager decisions with the reason that was given: rejected best
+        // offers, cancellations and duplicates.
+        { title: 'Berichte', href: '/owner-decisions' },
+        { title: 'Preisvergleich', href: '/price-comparison' },
         { title: 'Unterlagen', href: '/documents' },
       ],
     },

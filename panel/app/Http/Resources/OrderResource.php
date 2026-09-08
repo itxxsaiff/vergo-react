@@ -120,7 +120,10 @@ class OrderResource extends JsonResource
                     'attachment_download_url' => ! $hide && $bid->attachment_path ? route('bids.attachment.download', $bid->id) : null,
                     'submitted_at' => $bid->submitted_at?->toDateTimeString(),
                     'created_at' => $bid->created_at?->toDateTimeString(),
-                    'service_provider' => ! $hide && $bid->serviceProvider ? [
+                    // Who confirmed a viewing appointment is never secret - the
+                    // manager needs to know who is coming and who did not turn
+                    // up. Only the priced offer stays anonymous.
+                    'service_provider' => ($this->hasConfirmedInspectionSlot($bid) || ! $hide) && $bid->serviceProvider ? [
                         'id' => $bid->serviceProvider->id,
                         'company_name' => $bid->serviceProvider->company_name,
                         'contact_email' => $bid->serviceProvider->contact_email,
@@ -172,6 +175,30 @@ class OrderResource extends JsonResource
      * time: the offer they opened, and the ones they already rejected, carry a
      * decided status. Everything still queued stays anonymous.
      */
+    /**
+     * The company took part in the site visit - they picked one of the offered
+     * appointments, or their bid carries a status that only an attending
+     * company can reach. Their name is never hidden: the manager has to know
+     * who is coming and who did not turn up. Only the priced offer is anonymous.
+     */
+    private function hasConfirmedInspectionSlot(mixed $bid): bool
+    {
+        $slotIndex = data_get($bid->workflow_meta ?? [], 'selected_slot_index');
+
+        if ($slotIndex !== null && $slotIndex !== '') {
+            return true;
+        }
+
+        return in_array($bid->status, [
+            'inspection_requested',
+            'inspection_interest',
+            'inspection_confirmed',
+            'accepted',
+            'approved',
+            'completed',
+        ], true);
+    }
+
     private function shouldSealFromManager(Request $request, mixed $bid): bool
     {
         if (! $request->user() instanceof PropertyManagerProfile) {

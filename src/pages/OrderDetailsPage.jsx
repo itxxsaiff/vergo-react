@@ -907,17 +907,21 @@ function OrderDetailsPage() {
                   {confirmedInspectionBids.length > 0 ? (
                     <div className="d-flex flex-column gap-2">
                       {confirmedInspectionBids.map(({ bid, slot, slotNumber }) => {
-                        const isAnonymousQuoteSeed = Boolean(bid.workflow_meta?.quote_scope_seed)
+                        // Who is attending the viewing is never anonymous - the
+                        // manager has to know who to expect and who did not show
+                        // up. Only the priced offer stays anonymous.
+                        const attendeeName = bid.service_provider?.company_name
+                        const attendeeEmail = bid.assigned_provider_email || bid.service_provider?.contact_email
 
                         return (
                           <div className="vergo-inspection-confirmed-row" key={bid.id}>
                             <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
                               <div className="min-w-0">
                                 <div className="fw-semibold fs-5 text-truncate">
-                                  {isAnonymousQuoteSeed ? t('Anonyme Offerte') : (bid.service_provider?.company_name || '-')}
+                                  {attendeeName || '-'}
                                 </div>
                                 <div className="text-muted text-truncate">
-                                  {isAnonymousQuoteSeed ? t('Dienstleisterangaben verborgen') : (bid.assigned_provider_email || bid.service_provider?.contact_email || '-')}
+                                  {attendeeEmail || '-'}
                                 </div>
                               </div>
 

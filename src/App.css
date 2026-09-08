@@ -3004,3 +3004,35 @@ body {
   flex-shrink: 0;
   color: var(--vergo-text-soft);
 }
+
+/* Analytics: the report panel follows the page while the category list on the
+   left is scrolled, and long tables scroll inside the panel instead of
+   stretching the page. */
+.vergo-analytics-detail-sticky {
+  position: sticky;
+  top: calc(var(--vergo-header-height) + 1rem);
+}
+
+.vergo-analytics-detail-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* The header row stays put while the rows underneath scroll. */
+.vergo-analytics-detail-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--vergo-card-bg);
+}
+
+@media (max-width: 991.98px) {
+  /* Stacked on a small screen there is nothing to stick to. */
+  .vergo-analytics-detail-sticky {
+    position: static;
+  }
+
+  .vergo-analytics-detail-scroll {
+    max-height: none;
+  }
+}

@@ -20,6 +20,7 @@ import OrdersPage from './pages/OrdersPage'
 import EmployeeOrdersPage from './pages/EmployeeOrdersPage'
 import OrderDetailsPage from './pages/OrderDetailsPage'
 import OwnerAnalyticsPage from './pages/OwnerAnalyticsPage'
+import OwnerDecisionsPage from './pages/OwnerDecisionsPage'
 import OwnerDuplicatesPage from './pages/OwnerDuplicatesPage'
 import OwnersPage from './pages/OwnersPage'
 import PriceComparisonPage from './pages/PriceComparisonPage'
@@ -198,6 +199,14 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['owner', 'admin', 'employee']}>
               <OwnerAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="owner-decisions"
+          element={
+            <ProtectedRoute allowRoles={['owner', 'admin', 'employee']}>
+              <OwnerDecisionsPage />
             </ProtectedRoute>
           }
         />

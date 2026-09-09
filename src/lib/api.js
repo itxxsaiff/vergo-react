@@ -540,6 +540,9 @@ export const api = {
   completeProviderOrder(orderId) {
     return request(`/orders/${orderId}/provider-complete`, { method: 'POST' })
   },
+  openCompletionSummaryPdf(orderId, language = 'de') {
+    return openPdfInNewTab(`/orders/${orderId}/completion-summary/pdf?language=${encodeURIComponent(language)}`)
+  },
   getCompletionSummary(orderId) {
     return request(`/orders/${orderId}/completion-summary`)
   },
@@ -608,6 +611,26 @@ export const api = {
     params.set('language', language)
 
     return openPdfInNewTab(`/owner/analytics/report?${params.toString()}`)
+  },
+  getCompletedJobs(filters = {}) {
+    const params = new URLSearchParams()
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) {
+        params.set(key, value)
+      }
+    })
+
+    return request(`/completed-jobs?${params.toString()}`)
+  },
+  openCompletedJobsPdf(filters = {}) {
+    const params = new URLSearchParams()
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) {
+        params.set(key, value)
+      }
+    })
+
+    return openPdfInNewTab(`/completed-jobs/pdf?${params.toString()}`)
   },
   getOwnerDecisions(ownerId = null) {
     return request(`/owner/decisions${ownerId ? `?owner_id=${encodeURIComponent(ownerId)}` : ''}`)

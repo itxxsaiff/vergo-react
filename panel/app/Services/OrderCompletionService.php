@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Bid;
 use App\Models\Order;
 use Illuminate\Support\Str;
 
@@ -58,7 +59,47 @@ class OrderCompletionService
             'billing_address' => $this->resolveBillingAddress($order),
             // Where the invoice physically goes, and how.
             'invoice_delivery' => $this->resolveInvoiceDelivery($order),
+            // What was actually agreed, so the invoice can be written straight
+            // from this summary without opening the quote again.
+            'line_items' => $this->summaryLineItems($bid),
+            'currency' => $bid?->currency ?: 'CHF',
+            'total' => $bid?->amount,
+            'schedule' => [
+                'start_date' => $bid?->estimated_start_date?->toDateString(),
+                'completion_date' => $bid?->estimated_completion_date?->toDateString(),
+                'completed_at' => $order->completed_at?->toDateTimeString(),
+            ],
+            'service_provider' => $bid?->serviceProvider ? [
+                'company_name' => $bid->serviceProvider->company_name,
+                'contact_email' => $bid->serviceProvider->contact_email,
+            ] : null,
         ];
+    }
+
+    /**
+     * The agreed positions with their prices.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function summaryLineItems(?Bid $bid): array
+    {
+        return collect($bid?->line_items ?? [])
+            ->filter(fn ($item): bool => filled(data_get($item, 'label')))
+            ->map(function ($item): array {
+                $quantity = (float) data_get($item, 'quantity', 0);
+                $unitPrice = (float) data_get($item, 'unit_price', 0);
+
+                return [
+                    'category' => data_get($item, 'category'),
+                    'label' => data_get($item, 'label'),
+                    'unit' => data_get($item, 'unit'),
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'subtotal' => round($quantity * $unitPrice, 2),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**

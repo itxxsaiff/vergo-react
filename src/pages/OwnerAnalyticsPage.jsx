@@ -246,6 +246,52 @@ function OwnerAnalyticsPage() {
     }
   }
 
+  const detailPanel = activeCategory ? (
+    <div className="card mb-0">
+      <div className="px-4 py-3 border-bottom">
+        <h5 className="card-title fw-semibold mb-2">{t(activeCategory.title)}</h5>
+        {/* The filter sits where the description used to be. */}
+        <input
+          type="search"
+          className="form-control"
+          value={categorySearch}
+          onChange={(event) => setCategorySearch(event.target.value)}
+          placeholder={t('In dieser Kategorie filtern...')}
+        />
+      </div>
+      <div className="card-body p-4">
+        {activeRows.length === 0 ? (
+          <div className="text-muted">{t('Keine Daten vorhanden.')}</div>
+        ) : (
+          <div className="table-responsive vergo-analytics-detail-scroll">
+            <table className="table align-middle mb-0">
+              <thead>
+                <tr>
+                  {activeCategory.columns.map((column) => (
+                    <th key={column.key} className={column.align === 'end' ? 'text-end' : ''}>
+                      {t(column.heading)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {activeRows.map((row, index) => (
+                  <tr key={`${activeCategory.key}-${index}`}>
+                    {activeCategory.columns.map((column) => (
+                      <td key={column.key} className={column.align === 'end' ? 'text-end fw-semibold' : ''}>
+                        {cellValue(row, column)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null
+
   return (
     <PageContent
       title={t('Auswertungen')}
@@ -316,82 +362,42 @@ function OwnerAnalyticsPage() {
                   const count = (data[category.key] ?? []).length
 
                   return (
-                    <button
-                      key={category.key}
-                      type="button"
-                      className={`card vergo-analytics-category${isOpen ? ' is-open' : ''}`}
-                      onClick={() => handleCategoryClick(category.key)}
-                    >
-                      <span className="vergo-analytics-category-title">{t(category.title)}</span>
-                      <span className="vergo-analytics-category-meta">
-                        <span className="badge bg-light-primary text-primary rounded-pill">{count}</span>
-                        <i className={`ti ${isOpen ? 'ti-chevron-down' : 'ti-chevron-right'}`}></i>
-                      </span>
-                    </button>
+                    <div key={category.key} className="d-flex flex-column gap-2">
+                      <button
+                        type="button"
+                        className={`card vergo-analytics-category${isOpen ? ' is-open' : ''}`}
+                        onClick={() => handleCategoryClick(category.key)}
+                      >
+                        <span className="vergo-analytics-category-title">{t(category.title)}</span>
+                        <span className="vergo-analytics-category-meta">
+                          <span className="badge bg-light-primary text-primary rounded-pill">{count}</span>
+                          <i className={`ti ${isOpen ? 'ti-chevron-down' : 'ti-chevron-right'}`}></i>
+                        </span>
+                      </button>
+
+                      {/* On a phone the columns stack, so the report would land
+                          below every category. Shown right here instead. */}
+                      {isOpen ? <div className="d-lg-none">{detailPanel}</div> : null}
+                    </div>
                   )
                 })}
               </div>
             </div>
 
-            <div className="col-xl-8 col-lg-7">
+            {/* On a phone the report is shown inline under the tapped
+                category instead, so this column is desktop only. */}
+            <div className="col-xl-8 col-lg-7 d-none d-lg-block">
               {/* The report follows the page: scrolling the category list on the
                   left keeps it in view, and a long table scrolls inside its own
                   box rather than stretching the page. */}
               <div className="vergo-analytics-detail-sticky">
-              {activeCategory ? (
-                <div className="card mb-0">
-                  <div className="px-4 py-3 border-bottom">
-                    <h5 className="card-title fw-semibold mb-2">{t(activeCategory.title)}</h5>
-                    {/* The filter sits where the description used to be. */}
-                    <input
-                      type="search"
-                      className="form-control"
-                      value={categorySearch}
-                      onChange={(event) => setCategorySearch(event.target.value)}
-                      placeholder={t('In dieser Kategorie filtern...')}
-                    />
+                {activeCategory ? detailPanel : (
+                  <div className="card mb-0">
+                    <div className="card-body d-flex align-items-center justify-content-center text-muted py-5">
+                      {t('Wählen Sie links eine Kategorie, um die Auswertung zu sehen.')}
+                    </div>
                   </div>
-                  <div className="card-body p-4">
-                    {activeRows.length === 0 ? (
-                      <div className="text-muted">{t('Keine Daten vorhanden.')}</div>
-                    ) : (
-                      <div className="table-responsive vergo-analytics-detail-scroll">
-                        <table className="table align-middle mb-0">
-                          <thead>
-                            <tr>
-                              {activeCategory.columns.map((column) => (
-                                <th key={column.key} className={column.align === 'end' ? 'text-end' : ''}>
-                                  {t(column.heading)}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activeRows.map((row, index) => (
-                              <tr key={`${activeCategory.key}-${index}`}>
-                                {activeCategory.columns.map((column) => (
-                                  <td
-                                    key={column.key}
-                                    className={column.align === 'end' ? 'text-end fw-semibold' : ''}
-                                  >
-                                    {cellValue(row, column)}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="card mb-0">
-                  <div className="card-body d-flex align-items-center justify-content-center text-muted py-5">
-                    {t('Wählen Sie links eine Kategorie, um die Auswertung zu sehen.')}
-                  </div>
-                </div>
-              )}
+                )}
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CompletedJobsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AiAnalysisController;
 use App\Http\Controllers\Api\BackgroundJobController;
@@ -123,6 +124,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Provider finishes the job and receives the invoicing summary.
     Route::post('/orders/{order}/provider-complete', [OrderCompletionController::class, 'complete']);
     Route::get('/orders/{order}/completion-summary', [OrderCompletionController::class, 'summary']);
+    Route::get('/orders/{order}/completion-summary/pdf', [OrderCompletionController::class, 'summaryPdf'])->name('orders.completion-summary.pdf');
 
     // Price changes / added items after the job started, each with a reason.
     Route::get('/orders/{order}/price-change-requests', [PriceChangeRequestController::class, 'index']);
@@ -143,6 +145,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/owner/analytics', [OwnerAnalyticsController::class, 'analytics']);
     Route::get('/owner/analytics/report', [OwnerAnalyticsController::class, 'report'])->name('owner.analytics.report');
     Route::get('/owner/decisions', [OwnerAnalyticsController::class, 'decisions']);
+
+    // Vergo staff: every finished job, filterable by period and company.
+    Route::get('/completed-jobs', [CompletedJobsController::class, 'index']);
+    Route::get('/completed-jobs/pdf', [CompletedJobsController::class, 'pdf'])->name('completed-jobs.pdf');
     Route::get('/owner/duplicates', [OwnerAnalyticsController::class, 'duplicates']);
 
     // Cancellation, duplicate detection and sequential bid disclosure.

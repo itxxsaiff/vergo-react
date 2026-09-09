@@ -11,6 +11,7 @@ import { useAuth } from './context/AuthContext'
 import { navigationByRole } from './data/navigation'
 import { useSkoteLayout } from './hooks/useSkoteLayout'
 import AdminLayout from './layouts/AdminLayout'
+import CompletedJobsPage from './pages/CompletedJobsPage'
 import DashboardPage from './pages/DashboardPage'
 import DatabaseBackupsPage from './pages/DatabaseBackupsPage'
 import EmailOtpLoginPage from './pages/EmailOtpLoginPage'
@@ -199,6 +200,14 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['owner', 'admin', 'employee']}>
               <OwnerAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="completed-jobs"
+          element={
+            <ProtectedRoute allowRoles={['admin', 'employee']}>
+              <CompletedJobsPage />
             </ProtectedRoute>
           }
         />

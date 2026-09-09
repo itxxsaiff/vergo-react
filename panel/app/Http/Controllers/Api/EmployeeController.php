@@ -13,6 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 
@@ -112,6 +114,19 @@ class EmployeeController extends Controller
 
     private function sendPasswordResetEmail(User $employee): void
     {
+        // One click must never produce two mails. A double submit, a retried
+        // request or an impatient second click all land here within seconds of
+        // each other, so the same address is only mailed once per minute.
+        $cooldownKey = 'vergo:password-reset:'.$employee->id;
+
+        if (! Cache::add($cooldownKey, true, now()->addSeconds(60))) {
+            Log::info('Vergo password reset email skipped: already sent moments ago', [
+                'employee_id' => $employee->id,
+            ]);
+
+            return;
+        }
+
         $token = Password::broker()->createToken($employee);
         $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
         $resetUrl = sprintf(

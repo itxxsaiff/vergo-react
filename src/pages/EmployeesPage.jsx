@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PageContent from '../components/PageContent'
 import { confirmDelete, showActionSuccess, showDeleteSuccess } from '../lib/alerts'
 import { useLanguage } from '../context/LanguageContext'
@@ -28,6 +28,9 @@ function EmployeesPage() {
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [sendingResetId, setSendingResetId] = useState(null)
+  // State updates only land on the next render, so two clicks fired in the same
+  // instant would both get through. A ref blocks the second one immediately.
+  const isSendingResetRef = useRef(false)
 
   async function loadEmployees() {
     setIsLoading(true)
@@ -191,10 +194,11 @@ function EmployeesPage() {
   }
 
   async function handleSendReset(employeeId) {
-    if (sendingResetId) {
+    if (isSendingResetRef.current) {
       return
     }
 
+    isSendingResetRef.current = true
     setSendingResetId(employeeId)
 
     try {
@@ -204,6 +208,7 @@ function EmployeesPage() {
     } catch (sendError) {
       setError(t(sendError.message))
     } finally {
+      isSendingResetRef.current = false
       setSendingResetId(null)
     }
   }

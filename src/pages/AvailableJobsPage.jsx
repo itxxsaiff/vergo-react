@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatDateDisplay, formatTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
+import { formatSwissMoney, formatSwissQuantity } from '../lib/numberFormat'
 import {
   ADD_SERVICE_OPTION_VALUE,
   calculateQuoteVatBreakdown,
@@ -136,7 +137,18 @@ function getInspectionCardAction(providerBid, isQuoteRequest) {
     return { label: 'Neue Preise erfassen', disabled: false, submitted: false }
   }
 
-  if (['submitted', 'shortlisted', 'approved', 'accepted', 'completed'].includes(bidStatus)) {
+  // A finished job still has to open: the invoicing summary and its PDF live
+  // inside, and a disabled card would put them out of reach.
+  if (bidStatus === 'completed') {
+    return { label: 'Rechnungsangaben ansehen', disabled: false, submitted: false }
+  }
+
+  // Work in progress - they open it to mark the job as done.
+  if (['approved', 'accepted'].includes(bidStatus)) {
+    return { label: 'Auftrag öffnen', disabled: false, submitted: false }
+  }
+
+  if (['submitted', 'shortlisted'].includes(bidStatus)) {
     return { label: 'Angebot eingereicht', disabled: true, submitted: true }
   }
 
@@ -157,7 +169,7 @@ function getInspectionCardAction(providerBid, isQuoteRequest) {
 
 function AvailableJobsPage() {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
   const [searchParams] = useSearchParams()
   const [orders, setOrders] = useState([])
   const [submittedBids, setSubmittedBids] = useState([])
@@ -347,6 +359,11 @@ function AvailableJobsPage() {
     setError('')
     loadItemPhotos(order.id)
     loadPriceChangeRequests(order.id)
+
+    // Reopening a finished job brings the invoicing details back.
+    if (providerBidByOrderId[order.id]?.status === 'completed') {
+      loadCompletionSummary(order.id)
+    }
   }
 
   function closeModal() {
@@ -413,6 +430,16 @@ function AvailableJobsPage() {
     await handleAssignProvider(email)
   }
 
+  async function loadCompletionSummary(orderId) {
+    try {
+      const response = await api.getCompletionSummary(orderId)
+      setCompletionSummary(response.data ?? null)
+    } catch {
+      // A job that is not finished yet simply has no summary.
+      setCompletionSummary(null)
+    }
+  }
+
   async function handleProviderDecision(status) {
     const providerBid = providerBidByOrderId[selectedOrder?.id]
 
@@ -465,6 +492,11 @@ function AvailableJobsPage() {
         setOrders((current) => current.map((order) => (
           order.id === selectedOrder.id ? applyPreferredAppointment(order) : order
         )))
+      }
+
+      // The job is done: fetch everything they need to write the invoice.
+      if (status === 'completed') {
+        await loadCompletionSummary(selectedOrder.id)
       }
     } catch (actionError) {
       setError(t(actionError.message))
@@ -1421,7 +1453,18 @@ function AvailableJobsPage() {
 
                         {completionSummary ? (
                           <div className="mt-3 pt-3 border-top">
-                            <div className="fw-semibold mb-2">{t('Zusammenfassung für Ihre Rechnung')}</div>
+                            <div className="d-flex align-items-center justify-content-between gap-3 mb-2">
+                              <div className="fw-semibold">{t('Zusammenfassung für Ihre Rechnung')}</div>
+                              {/* The same details as a document they can file. */}
+                              <button
+                                type="button"
+                                className="btn btn-light-primary btn-sm"
+                                onClick={() => api.openCompletionSummaryPdf(selectedOrder.id, language)}
+                              >
+                                <i className="ti ti-file-download me-1"></i>
+                                {t('Als PDF öffnen')}
+                              </button>
+                            </div>
                             <div className="row g-3 small">
                               <div className="col-md-6">
                                 <div className="text-muted">{t('Auftragsnummer')}</div>
@@ -1457,10 +1500,66 @@ function AvailableJobsPage() {
                                 <div className="text-muted">
                                   {[completionSummary.billing_address?.address, completionSummary.billing_address?.postal_code, completionSummary.billing_address?.city].filter(Boolean).join(', ') || '-'}
                                 </div>
-                                {completionSummary.billing_address?.email ? (
-                                  <div className="text-muted">{completionSummary.billing_address.email}</div>
-                                ) : null}
                               </div>
+
+                              {/* The one line that decides where the invoice
+                                  actually goes - email or post, never both. */}
+                              <div className="col-12">
+                                <div className="alert alert-light border mb-0 py-2">
+                                  <span className="text-muted">{t('Rechnung senden an')}: </span>
+                                  <strong>
+                                    {completionSummary.invoice_delivery?.method === 'email'
+                                      ? (completionSummary.invoice_delivery?.email || '-')
+                                      : (completionSummary.invoice_delivery?.postal_address || '-')}
+                                  </strong>
+                                  <span className="text-muted">
+                                    {completionSummary.invoice_delivery?.method === 'email'
+                                      ? ` (${t('per E-Mail')})`
+                                      : ` (${t('per Post')})`}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {(completionSummary.line_items ?? []).length > 0 ? (
+                                <div className="col-12">
+                                  <div className="text-muted mb-1">{t('Erbrachte Leistungen')}</div>
+                                  <div className="table-responsive border rounded-3">
+                                    <table className="table align-middle mb-0">
+                                      <thead>
+                                        <tr>
+                                          <th>{t('Position')}</th>
+                                          <th>{t('Einheit')}</th>
+                                          <th className="text-end">{t('Menge')}</th>
+                                          <th className="text-end">{t('Preis')}</th>
+                                          <th className="text-end">{t('Betrag')}</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {completionSummary.line_items.map((item, index) => (
+                                          <tr key={`${item.label}-${index}`}>
+                                            <td>
+                                              <div className="fw-semibold">{item.label}</div>
+                                              {item.category ? <div className="text-muted">{item.category}</div> : null}
+                                            </td>
+                                            <td>{item.unit || '-'}</td>
+                                            <td className="text-end">{formatSwissQuantity(item.quantity)}</td>
+                                            <td className="text-end">{formatSwissMoney(item.unit_price)}</td>
+                                            <td className="text-end fw-semibold">{formatSwissMoney(item.subtotal)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                      <tfoot>
+                                        <tr>
+                                          <td colSpan="4" className="text-end fw-semibold">{t('Gesamtsumme')}</td>
+                                          <td className="text-end fw-semibold">
+                                            {formatSwissMoney(completionSummary.total)} {completionSummary.currency || 'CHF'}
+                                          </td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         ) : null}
@@ -1538,6 +1637,7 @@ function AvailableJobsPage() {
                       </div>
                     ) : null}
 
+                    {selectedOrderCompleted ? null : (
                     <div className="vergo-quote-section vergo-quote-section-muted">
                       <div className="vergo-quote-section-head">
                         <span className="vergo-quote-step">{nextQuoteStep()}</span>
@@ -1569,8 +1669,9 @@ function AvailableJobsPage() {
                         </div>
                       </div>
                     </div>
+                    )}
 
-                    {selectedOrderIsInspection ? (
+                    {selectedOrderIsInspection && !selectedOrderCompleted ? (
                       <>
                         <div className="vergo-quote-section vergo-quote-section-muted">
                           <div className="vergo-quote-section-head">
@@ -1668,7 +1769,9 @@ function AvailableJobsPage() {
                     ) : null}
 
                     <div id="vergo-bid-form-anchor"></div>
-                    {(!selectedOrderIsInspection || isOrderQuoteRequest(selectedOrder)) ? (
+                    {/* A finished job has nothing left to fill in - the modal
+                        is only there to show the invoicing details. */}
+                    {selectedOrderCompleted ? null : (!selectedOrderIsInspection || isOrderQuoteRequest(selectedOrder)) ? (
                       <div className="row">
                         {selectedOrder?.attachment_name ? (
                           <div className="col-12 mb-3">

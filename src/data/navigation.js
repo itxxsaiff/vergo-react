@@ -32,6 +32,12 @@ export const navigationByRole = {
       href: '/owner-analytics',
     },
     {
+      // Finished jobs per company and period, with a PDF overview.
+      title: 'Abgeschlossene Aufträge',
+      icon: 'ti ti-checkbox',
+      href: '/completed-jobs',
+    },
+    {
       title: 'Support-Tickets',
       icon: 'ti ti-ticket',
       href: '/support-tickets',
@@ -60,6 +66,12 @@ export const navigationByRole = {
       children: [
         { title: 'Rechnungen', href: '/documents?type=invoice' },
       ],
+    },
+    {
+      // Finished jobs per company and period, with a PDF overview.
+      title: 'Abgeschlossene Aufträge',
+      icon: 'ti ti-checkbox',
+      href: '/completed-jobs',
     },
     {
       title: 'Support-Tickets',
@@ -98,6 +110,12 @@ export const navigationByRole = {
       title: 'Auswertungen',
       icon: 'ti ti-chart-histogram',
       href: '/owner-analytics',
+    },
+    {
+      // Finished jobs per company and period, with a PDF overview.
+      title: 'Abgeschlossene Aufträge',
+      icon: 'ti ti-checkbox',
+      href: '/completed-jobs',
     },
     {
       title: 'Support-Tickets',

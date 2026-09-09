@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -343,6 +344,23 @@ function BidsPage() {
                           >
                             Als erledigt markieren
                           </button>
+                        ) : isProvider && bid.status === 'inspection_confirmed' ? (
+                          // The visit is booked; the quote is written on the job
+                          // itself, so send them straight there.
+                          <Link
+                            to={`/available-jobs?order_id=${bid.order?.id ?? bid.order_id}`}
+                            className="btn btn-light-primary btn-sm"
+                          >
+                            {t('Offerte erstellen')}
+                          </Link>
+                        ) : isProvider && bid.status === 'completed' ? (
+                          // Finished job: everything needed for the invoice.
+                          <Link
+                            to={`/available-jobs?order_id=${bid.order?.id ?? bid.order_id}`}
+                            className="btn btn-light-primary btn-sm"
+                          >
+                            {t('Rechnungsangaben ansehen')}
+                          </Link>
                         ) : (
                           <span className="text-muted">Gesperrt</span>
                         )}

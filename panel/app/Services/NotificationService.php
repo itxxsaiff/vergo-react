@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Models\Document;
 use App\Models\Bid;
 use App\Models\Order;
+use App\Support\SwissNumber;
 use App\Models\Property;
 use App\Models\PropertyManagerProfile;
 use App\Models\ServiceProvider;
 use App\Models\User;
 use App\Mail\InspectionAppointmentConfirmedMail;
+use App\Mail\OrderAwardedMail;
 use App\Mail\ProviderOrderNoticeMail;
 use App\Mail\QuotePreservedDatesRequestedMail;
 use App\Mail\QuoteScopeChangedMail;
@@ -103,8 +105,63 @@ class NotificationService
             title: 'Direct Award Assigned',
             message: sprintf('You have been invited to accept the job "%s".', $order->title),
             type: 'success',
-            actionUrl: '/bids',
+            actionUrl: '/available-jobs',
         ));
+
+        // An in-app notice alone is missed: the company also gets a mail with a
+        // button that takes them straight to confirming the job.
+        $this->sendOrderAwardedEmails($order, $providers);
+    }
+
+    /**
+     * Tells the company their offer was accepted and links them to the button
+     * that starts the job.
+     */
+    public function sendOrderAwardedEmails(Order $order, iterable $providers): void
+    {
+        $order->loadMissing(['property', 'propertyObject', 'approvedBid']);
+        $frontendBase = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+
+        foreach ($providers as $provider) {
+            if (! $provider) {
+                continue;
+            }
+
+            $bid = $order->bids()
+                ->where('service_provider_id', $provider->id)
+                ->latest('id')
+                ->first();
+
+            $email = $provider->order_email ?: ($bid?->assigned_provider_email ?: $provider->contact_email);
+
+            if (! $email) {
+                Log::warning('Vergo award email skipped: no address', [
+                    'order_id' => $order->id,
+                    'provider_id' => $provider->id,
+                ]);
+
+                continue;
+            }
+
+            try {
+                Mail::mailer('orders')->to($email)->send(new OrderAwardedMail(
+                    order: $order,
+                    provider: $provider,
+                    loginUrl: $this->providerLoginUrl($frontendBase, $provider->id, $email),
+                    tradeLabel: $this->tradeLabel($order->service_type),
+                    propertyAddress: $this->orderAddressLine($order),
+                    amount: $bid?->amount !== null ? SwissNumber::money($bid->amount, $bid->currency ?: 'CHF') : null,
+                    startDate: $bid?->estimated_start_date?->format('d.m.Y'),
+                    completionDate: $bid?->estimated_completion_date?->format('d.m.Y'),
+                ));
+            } catch (\Throwable $exception) {
+                Log::error('Vergo award email failed', [
+                    'order_id' => $order->id,
+                    'provider_id' => $provider->id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function sendProviderOrderEmails(Order $order, iterable $providers, string $noticeType): void

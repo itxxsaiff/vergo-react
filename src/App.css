@@ -134,13 +134,15 @@ body {
   color: inherit;
 }
 
-/* A menu title must never be cut off mid-word - it wraps onto a second line
-   instead of ending in an ellipsis. */
+/* Menu titles stay on one line. Wrapping looked fine when the sidebar was open,
+   but every width change - hover or the collapse button - runs the label
+   through a narrow container first and broke it one letter per line. The label
+   keeps its natural width and the rail simply reveals it. */
 .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link .hide-menu {
   flex: 1 1 auto;
-  min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  min-width: max-content;
+  white-space: nowrap;
+  overflow: hidden;
   line-height: 1.25;
 }
 
@@ -3035,4 +3037,32 @@ body {
   .vergo-analytics-detail-scroll {
     max-height: none;
   }
+}
+
+/* Collapsed sidebar: the rail is only 44px wide, so a wrapping label breaks
+   into one letter per line for the moment before the hover expansion finishes.
+   Hide the text entirely while collapsed and bring it back on hover - the icon
+   carries the meaning in that state. */
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav ul .sidebar-item .hide-menu,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav .nav-small-cap .hide-menu {
+  display: none;
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .sidebar-nav ul .sidebar-item .hide-menu,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .sidebar-nav .nav-small-cap .hide-menu {
+  display: block;
+}
+
+/* While the rail animates open the container is still narrow, so the label must
+   not wrap mid-word - it is clipped for those few frames and then sits fully
+   visible once the sidebar has reached its full width. */
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link .hide-menu {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Same for every other sidebar label: section captions and the sub-items. */
+.left-sidebar .sidebar-nav .hide-menu {
+  white-space: nowrap;
+  overflow: hidden;
 }

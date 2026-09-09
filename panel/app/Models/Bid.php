@@ -40,6 +40,7 @@ class Bid extends Model
         'status',
         'rejection_reason',
         'submitted_at',
+        'completion_reminded_at',
     ];
 
     protected function casts(): array
@@ -58,6 +59,7 @@ class Bid extends Model
             'draft_payload' => 'array',
             'draft_saved_at' => 'datetime',
             'submitted_at' => 'datetime',
+            'completion_reminded_at' => 'datetime',
         ];
     }
 

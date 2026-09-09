@@ -12,6 +12,7 @@ use App\Services\OrderCompletionService;
 use App\Services\ProviderRatingService;
 use App\Services\VergoRankingService;
 use Illuminate\Http\JsonResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class OrderCompletionController extends Controller
@@ -59,6 +60,100 @@ class OrderCompletionController extends Controller
         return response()->json([
             'data' => $completionService->buildSummary($order),
         ]);
+    }
+
+    /**
+     * The same invoicing summary as a printable document with the Vergo logo,
+     * so the company can file it or work from it while writing the invoice.
+     */
+    public function summaryPdf(Request $request, Order $order, OrderCompletionService $completionService)
+    {
+        $this->authorizeProviderForOrder($request, $order);
+
+        $language = in_array($request->query('language'), ['de', 'en', 'fr', 'it'], true)
+            ? $request->query('language')
+            : 'de';
+
+        $pdf = Pdf::loadView('pdf.completion-summary', [
+            'summary' => $completionService->buildSummary($order),
+            'order' => $order,
+            'logoDataUri' => $this->pdfLogoDataUri(),
+            'generatedAt' => now()->format('d.m.Y H:i'),
+            'labels' => $this->summaryLabels($language),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream(($order->order_number ?: 'vergo-auftrag').'-rechnungsangaben.pdf');
+    }
+
+    /**
+     * Wording for the invoicing sheet, in the language the provider works in.
+     *
+     * @return array<string, string>
+     */
+    private function summaryLabels(string $language): array
+    {
+        $all = [
+            'de' => [
+                'title' => 'Angaben zur Rechnungsstellung', 'order' => 'Auftrag', 'generated' => 'erstellt am',
+                'object' => 'Objekt', 'property' => 'Liegenschaft', 'address' => 'Adresse', 'zip_city' => 'PLZ / Ort',
+                'owner' => 'Eigentuemer', 'management' => 'Bewirtschaftung', 'recipient' => 'Rechnungsempfaenger',
+                'company' => 'Firma', 'name' => 'Name', 'send_to' => 'Rechnung senden an',
+                'by_email' => 'per E-Mail', 'by_post' => 'per Post', 'services' => 'Erbrachte Leistungen',
+                'position' => 'Position', 'unit' => 'Einheit', 'quantity' => 'Menge', 'price' => 'Preis',
+                'amount' => 'Betrag', 'total' => 'Total', 'no_items' => 'Keine Positionen erfasst.',
+                'none' => 'Keine Angaben hinterlegt.', 'your_quote_number' => 'Ihre Angebotsnummer',
+            ],
+            'en' => [
+                'title' => 'Invoicing details', 'order' => 'Order', 'generated' => 'created on',
+                'object' => 'Object', 'property' => 'Property', 'address' => 'Address', 'zip_city' => 'ZIP / City',
+                'owner' => 'Owner', 'management' => 'Property management', 'recipient' => 'Invoice recipient',
+                'company' => 'Company', 'name' => 'Name', 'send_to' => 'Send invoice to',
+                'by_email' => 'by e-mail', 'by_post' => 'by post', 'services' => 'Services provided',
+                'position' => 'Item', 'unit' => 'Unit', 'quantity' => 'Quantity', 'price' => 'Price',
+                'amount' => 'Amount', 'total' => 'Total', 'no_items' => 'No items recorded.',
+                'none' => 'No details on file.', 'your_quote_number' => 'Your quote number',
+            ],
+            'it' => [
+                'title' => 'Dati per la fatturazione', 'order' => 'Ordine', 'generated' => 'creato il',
+                'object' => 'Oggetto', 'property' => 'Immobile', 'address' => 'Indirizzo', 'zip_city' => 'CAP / Citta',
+                'owner' => 'Proprietario', 'management' => 'Amministrazione', 'recipient' => 'Destinatario fattura',
+                'company' => 'Azienda', 'name' => 'Nome', 'send_to' => 'Inviare la fattura a',
+                'by_email' => 'via e-mail', 'by_post' => 'per posta', 'services' => 'Prestazioni eseguite',
+                'position' => 'Voce', 'unit' => 'Unita', 'quantity' => 'Quantita', 'price' => 'Prezzo',
+                'amount' => 'Importo', 'total' => 'Totale', 'no_items' => 'Nessuna voce registrata.',
+                'none' => 'Nessun dato disponibile.', 'your_quote_number' => 'Il tuo numero di offerta',
+            ],
+            'fr' => [
+                'title' => 'Donnees de facturation', 'order' => 'Commande', 'generated' => 'cree le',
+                'object' => 'Objet', 'property' => 'Bien', 'address' => 'Adresse', 'zip_city' => 'NPA / Localite',
+                'owner' => 'Proprietaire', 'management' => 'Gerance', 'recipient' => 'Destinataire de la facture',
+                'company' => 'Entreprise', 'name' => 'Nom', 'send_to' => 'Envoyer la facture a',
+                'by_email' => 'par e-mail', 'by_post' => 'par courrier', 'services' => 'Prestations fournies',
+                'position' => 'Poste', 'unit' => 'Unite', 'quantity' => 'Quantite', 'price' => 'Prix',
+                'amount' => 'Montant', 'total' => 'Total', 'no_items' => 'Aucun poste enregistre.',
+                'none' => 'Aucune donnee disponible.', 'your_quote_number' => 'Votre numero d offre',
+            ],
+        ];
+
+        return $all[$language] ?? $all['de'];
+    }
+
+    /**
+     * The Vergo logo inlined, so the PDF renders it without a network call.
+     */
+    private function pdfLogoDataUri(): string
+    {
+        $logoPath = collect([
+            public_path('VERGO.png'),
+            base_path('../public/VERGO.png'),
+            base_path('../../public/VERGO.png'),
+        ])->first(fn (string $path) => file_exists($path));
+
+        if (! $logoPath) {
+            return '';
+        }
+
+        return 'data:'.(mime_content_type($logoPath) ?: 'image/png').';base64,'.base64_encode(file_get_contents($logoPath));
     }
 
     /**

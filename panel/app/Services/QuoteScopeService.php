@@ -219,8 +219,7 @@ class QuoteScopeService
     private function quotedItemCount(Bid $bid): int
     {
         return collect($bid->line_items ?? [])
-            ->filter(fn ($item): bool => filled(data_get($item, 'label'))
-                && (float) data_get($item, 'quantity', 0) > 0)
+            ->filter(fn ($item): bool => filled(data_get($item, 'label')))
             ->count();
     }
 

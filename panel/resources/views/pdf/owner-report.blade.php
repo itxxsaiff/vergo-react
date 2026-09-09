@@ -42,7 +42,12 @@
     </table>
 
     @foreach($blocks as $block)
-        <h2>{{ $block['title'] }}</h2>
+        <h2>
+            {{ $block['title'] }}
+            @if(!empty($block['filter']))
+                <span style="font-size:10px;color:#6b7280;font-weight:normal;">- {{ $labels['filter'] }}: "{{ $block['filter'] }}"</span>
+            @endif
+        </h2>
 
         @if(empty($block['rows']))
             <div class="empty">{{ $labels['empty'] }}</div>

@@ -6,18 +6,30 @@ import { api } from '../lib/api'
 import { formatDateDisplay } from '../lib/dateFormat'
 import { formatSwissMoney } from '../lib/numberFormat'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
+import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
 
 const MONTHS = [
   'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
 ]
 
-const initialFilters = { year: String(new Date().getFullYear()), month: '', quarter: '', provider_id: '' }
+const initialFilters = {
+  year: String(new Date().getFullYear()), month: '', quarter: '', provider_id: '', status: '',
+}
+
+// Two groupings that span several raw statuses, then every status the data
+// actually contains is listed underneath.
+const STATUS_GROUPS = [
+  { value: '', label: 'Alle Status' },
+  { value: 'active', label: 'Alle offenen' },
+  { value: 'completed', label: 'Abgeschlossen' },
+]
 
 function CompletedJobsPage() {
   const { language, t } = useLanguage()
   const [jobs, setJobs] = useState([])
   const [providers, setProviders] = useState([])
+  const [statuses, setStatuses] = useState([])
   const [totals, setTotals] = useState({ job_count: 0, total_value: 0 })
   const [filters, setFilters] = useState(initialFilters)
   const [search, setSearch] = useState('')
@@ -43,6 +55,10 @@ function CompletedJobsPage() {
 
         if (Array.isArray(response.providers)) {
           setProviders(response.providers)
+        }
+
+        if (Array.isArray(response.statuses)) {
+          setStatuses(response.statuses)
         }
       })
       .catch((loadError) => !cancelled && setError(t(loadError.message)))
@@ -78,13 +94,31 @@ function CompletedJobsPage() {
 
   return (
     <PageContent
-      title={t('Abgeschlossene Aufträge')}
-      subtitle={t('Alle erledigten Aufträge mit Dienstleister, Adresse, Datum und Preis.')}
-      breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: t('Abgeschlossene Aufträge') }]}
+      title={t('Aufträge')}
+      subtitle={t('Alle Aufträge mit Status, Dienstleister, Adresse, Datum und Preis.')}
+      breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: t('Aufträge') }]}
     >
       <div className="card">
         <div className="card-body p-4">
           <div className="row g-3 align-items-end">
+            <div className="col-lg-2 col-md-4">
+              <label className="form-label">{t('Status')}</label>
+              <select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+                {STATUS_GROUPS.map((option) => (
+                  <option key={option.value} value={option.value}>{t(option.label)}</option>
+                ))}
+                {statuses.length > 0 ? (
+                  <optgroup label={t('Einzelner Status')}>
+                    {statuses.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {t(formatStatusLabel(status.value))} ({status.count})
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+              </select>
+            </div>
+
             <div className="col-lg-2 col-md-4">
               <label className="form-label">{t('Jahr')}</label>
               <select className="form-select" name="year" value={filters.year} onChange={handleFilterChange}>
@@ -180,6 +214,7 @@ function CompletedJobsPage() {
                     <th><h6 className="fs-4 fw-semibold mb-0">{t('Dienstleister')}</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">{t('Adresse')}</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">{t('Gewerk')}</h6></th>
+                    <th><h6 className="fs-4 fw-semibold mb-0">{t('Status')}</h6></th>
                     <th className="text-end"><h6 className="fs-4 fw-semibold mb-0">{t('Preis')}</h6></th>
                   </tr>
                 </thead>
@@ -190,13 +225,18 @@ function CompletedJobsPage() {
                         <Link to={`/orders/${job.order_id}`} className="fw-semibold">{job.order_number || '-'}</Link>
                         <div className="text-muted">{job.title}</div>
                       </td>
-                      <td>{formatDateDisplay(job.completed_at)}</td>
+                      <td>{job.completed_at ? formatDateDisplay(job.completed_at) : '-'}</td>
                       <td>{job.provider || '-'}</td>
                       <td>
                         <div>{job.address || '-'}</div>
                         <div className="text-muted">{job.property || ''}</div>
                       </td>
                       <td>{getOptionLabel(JOB_TYPE_OPTIONS, job.trade) || job.trade || '-'}</td>
+                      <td>
+                        <span className={getStatusBadgeClass(job.status)}>
+                          {t(formatStatusLabel(job.status))}
+                        </span>
+                      </td>
                       <td className="text-end fw-semibold">
                         {formatSwissMoney(job.amount)} {job.currency || 'CHF'}
                       </td>
@@ -206,7 +246,7 @@ function CompletedJobsPage() {
                   {visibleJobs.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="text-center text-muted py-4">
-                        {t('Keine abgeschlossenen Aufträge im Zeitraum.')}
+                        {t('Keine Aufträge im Zeitraum gefunden.')}
                       </td>
                     </tr>
                   ) : null}

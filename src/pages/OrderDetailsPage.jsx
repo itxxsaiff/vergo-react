@@ -153,7 +153,7 @@ function getOrderDueDateLabel(order, t) {
   }
 
   if (order?.workflow_meta?.assignment?.completion_mode === 'asap') {
-    return t('So bald wie möglich')
+    return t('So schnell wie möglich')
   }
 
   return t('Nicht festgelegt')

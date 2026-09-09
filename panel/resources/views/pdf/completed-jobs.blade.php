@@ -40,6 +40,7 @@
                         <th style="width:120px;">{{ $labels['order_number'] }}</th>
                         <th style="width:90px;">{{ $labels['completed_on'] }}</th>
                         <th style="width:90px;">{{ $labels['trade'] }}</th>
+                        <th style="width:80px;">{{ $labels['status'] }}</th>
                         <th>{{ $labels['address'] }}</th>
                         <th class="r" style="width:95px;">{{ $labels['price'] }}</th>
                     </tr>
@@ -50,6 +51,7 @@
                             <td>{{ $row['order_number'] ?: '-' }}</td>
                             <td>{{ $row['completed_at'] ? \Carbon\Carbon::parse($row['completed_at'])->format('d.m.Y') : '-' }}</td>
                             <td>{{ $row['trade'] ?: '-' }}</td>
+                            <td>{{ ucfirst(str_replace('_', ' ', (string) ($row['status'] ?? '-'))) }}</td>
                             <td>{{ $row['address'] ?: '-' }}</td>
                             <td class="r">{{ App\Support\SwissNumber::format($row['amount'] ?? 0) }}</td>
                         </tr>

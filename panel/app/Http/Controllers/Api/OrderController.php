@@ -960,7 +960,9 @@ class OrderController extends Controller
     private function sanitizeQuoteItems(array $items): array
     {
         return collect($items)
-            ->filter(fn ($item) => filled(data_get($item, 'label')) && (float) data_get($item, 'quantity', 0) > 0)
+            // A named position always counts. A flat rate carries no quantity, so
+            // requiring one silently dropped those items from the list.
+            ->filter(fn ($item) => filled(data_get($item, 'label')))
             ->map(function ($item) {
                 $category = data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label');
 

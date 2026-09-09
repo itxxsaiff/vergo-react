@@ -37,13 +37,23 @@ class BidPhotoController extends Controller
     public function store(Request $request, Order $order): JsonResponse
     {
         $actor = $request->user();
-        abort_unless($actor instanceof User && $actor->role?->name === 'provider', 403);
+        $isProvider = $actor instanceof User && $actor->role?->name === 'provider';
 
-        $provider = $actor->serviceProvider;
-        abort_unless($provider, 403);
+        $provider = null;
+        $bid = null;
 
-        $bid = $order->bids()->where('service_provider_id', $provider->id)->first();
-        abort_unless($bid, 403, 'You have no quote on this order.');
+        if ($isProvider) {
+            $provider = $actor->serviceProvider;
+            abort_unless($provider, 403);
+
+            $bid = $order->bids()->where('service_provider_id', $provider->id)->first();
+            abort_unless($bid, 403, 'You have no quote on this order.');
+        } else {
+            // The manager photographs the items they entered themselves. There
+            // is no bid behind those, so the photo hangs on the order alone and
+            // is published to the providers straight away.
+            $this->authorizeManager($request, $order);
+        }
 
         $validated = $request->validate([
             'line_item_index' => ['required', 'integer', 'min:0'],
@@ -57,14 +67,15 @@ class BidPhotoController extends Controller
 
         $photo = BidLineItemPhoto::query()->create([
             'order_id' => $order->id,
-            'bid_id' => $bid->id,
-            'service_provider_id' => $provider->id,
+            'bid_id' => $bid?->id,
+            'service_provider_id' => $provider?->id,
             'line_item_index' => (int) $validated['line_item_index'],
             'name' => $file->getClientOriginalName(),
             'path' => $path,
             'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
-            'is_published' => false,
+            'is_published' => ! $isProvider,
+            'published_at' => $isProvider ? null : now(),
         ]);
 
         return response()->json(['data' => $this->present($photo)], 201);

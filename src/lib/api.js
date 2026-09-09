@@ -595,9 +595,16 @@ export const api = {
   getOwnerAnalytics(ownerId = null) {
     return request(`/owner/analytics${ownerId ? `?owner_id=${encodeURIComponent(ownerId)}` : ''}`)
   },
-  openOwnerAnalyticsReport({ sections = [], owner_id: ownerId = null, search = '', language = 'de' } = {}) {
+  openOwnerAnalyticsReport({ sections = [], owner_id: ownerId = null, search = '', filters = {}, language = 'de' } = {}) {
     const params = new URLSearchParams()
     sections.forEach((section) => params.append('sections[]', section))
+
+    // One filter per section, so each block of the PDF can be narrowed on its own.
+    Object.entries(filters).forEach(([key, value]) => {
+      if (String(value ?? '').trim() !== '') {
+        params.set(`filters[${key}]`, String(value).trim())
+      }
+    })
 
     if (ownerId) {
       params.set('owner_id', ownerId)

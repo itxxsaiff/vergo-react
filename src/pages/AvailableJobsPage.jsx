@@ -15,6 +15,7 @@ import {
   getOptionLabel,
   getTradeActivityOptions,
   getTradeUnitOptions,
+  lineItemQuantity,
   JOB_TYPE_OPTIONS,
 } from '../lib/vergoOptions'
 
@@ -39,7 +40,7 @@ const emptyLineItem = {
   unit: '',
   quantity: '',
   unit_price: '',
-  is_custom: true,
+  is_custom: false,
 }
 
 function getInspectionSlots(order) {
@@ -299,7 +300,7 @@ function AvailableJobsPage() {
       : (draft?.line_items
         ?? ((order.quote_items ?? []).length > 0
           ? order.quote_items
-          : [createQuoteLineItem(tradeGroup, { ...emptyLineItem, category: '', code: '', quantity: '', source: 'custom', is_custom: true })]))
+          : [createQuoteLineItem(tradeGroup, { ...emptyLineItem, category: '', code: '', quantity: '', source: 'custom', is_custom: false })]))
 
     return {
       ...initialBidForm,
@@ -318,7 +319,10 @@ function AvailableJobsPage() {
         code: item.code ?? item.category ?? '',
         label: item.label ?? '',
         unit_price: (draft || keepsOwnPrices) ? item.unit_price : '',
-        is_custom: item.is_custom ?? false,
+        // A row with no category always opens on the list, whatever an older
+        // autosaved draft stored. Free text is only kept for a value that
+        // really is outside the list.
+        is_custom: item.category ? (item.is_custom ?? false) : false,
       })),
     }
   }
@@ -335,7 +339,7 @@ function AvailableJobsPage() {
           code: '',
           quantity: '',
           source: 'custom',
-          is_custom: true,
+          is_custom: false,
         }),
       ],
     }))
@@ -529,7 +533,7 @@ function AvailableJobsPage() {
         item.category?.trim()
         && item.label?.trim()
         && item.unit?.trim()
-        && Number(item.quantity || 0) > 0
+        && lineItemQuantity(item) > 0
         && Number(item.unit_price || 0) > 0
       ))
 
@@ -585,15 +589,31 @@ function AvailableJobsPage() {
     const keepsOwnPrices = Boolean(providerBidByOrderId[selectedOrder.id]?.workflow_meta?.awaiting_schedule)
 
     if (isQuoteRequest && !keepsOwnPrices) {
-      const validLineItems = (bidForm.line_items ?? []).filter((item) => (
+      const isComplete = (item) => Boolean(
         item.category?.trim()
         && item.label?.trim()
         && item.unit?.trim()
-        && Number(item.quantity || 0) > 0
-        && Number(item.unit_price || 0) > 0
-      ))
+        && lineItemQuantity(item) > 0
+        && Number(item.unit_price || 0) > 0,
+      )
+      // A row nobody typed in is just a spare line and can be ignored. A row
+      // that was started but left incomplete must be pointed out - dropping it
+      // silently is how a position goes missing without anyone noticing.
+      const isStarted = (item) => Boolean(
+        item.category?.trim() || item.label?.trim() || item.quantity || item.unit_price,
+      )
+      const incomplete = (bidForm.line_items ?? [])
+        .map((item, index) => ({ item, position: index + 1 }))
+        .filter(({ item }) => isStarted(item) && !isComplete(item))
 
-      if (validLineItems.length === 0) {
+      if (incomplete.length > 0) {
+        const positions = incomplete.map(({ position }) => position).join(', ')
+        setError(`${t('Bitte vervollständigen Sie Position')} ${positions} - ${t('Kategorie, Service, Einheit, Menge und Preis werden benötigt.')}`)
+        setIsSaving(false)
+        return
+      }
+
+      if ((bidForm.line_items ?? []).filter(isComplete).length === 0) {
         setError('Bitte erfassen Sie mindestens eine Position mit Kategorie, Service, Einheit, Menge und Preis.')
         setIsSaving(false)
         return
@@ -689,7 +709,12 @@ function AvailableJobsPage() {
     && ['approved', 'accepted'].includes(activeProviderBid?.status)
     && !['completed', 'closed'].includes(String(selectedOrder?.status || '').toLowerCase())
   const requoteItemCount = Number(activeProviderBid?.workflow_meta?.requote_item_count ?? 0)
-  const canSubmitCurrentOrder = selectedOrder
+  // The offer stage is over once the job has been awarded to this company or
+  // is finished: there is nothing left to bid on, so the quote is read only and
+  // the submit buttons make no sense any more.
+  const quoteStageClosed = ['awarded_pending_acceptance', 'accepted', 'approved', 'completed']
+    .includes(activeProviderBid?.status)
+  const canSubmitCurrentOrder = selectedOrder && !quoteStageClosed
     ? selectedOrder.workflow_status === 'public_inspection_open' || isOrderQuoteRequest(selectedOrder)
     : false
   // Reference only: the deadline the manager set for the work to be finished.
@@ -709,7 +734,7 @@ function AvailableJobsPage() {
     && getTodayDateValue() < String(confirmedInspectionSlot.date).slice(0, 10)
   // Nothing in the quote is editable until somebody in the company has taken
   // the job on. Assign first, then fill in the offer.
-  const canEditQuote = isAssignedToMe && !inspectionDayNotReached
+  const canEditQuote = isAssignedToMe && !inspectionDayNotReached && !quoteStageClosed
 
   useEffect(() => {
     if (!selectedOrder || !activeProviderBid?.id || !isAssignedToMe) {
@@ -1566,6 +1591,38 @@ function AvailableJobsPage() {
                       </div>
                     ) : null}
 
+                    {/* Why the form is locked is the first thing the provider
+                        needs to know, before they scroll into the fields. On a
+                        finished job there is no form at all - only the invoice
+                        summary - so saying it is locked helps nobody. */}
+                    {selectedOrderCompleted ? null : (
+                      <>
+                        {quoteStageClosed ? (
+                          <div className="mb-3">
+                            <div className="alert alert-light border mb-0">
+                              <i className="ti ti-lock me-1"></i>
+                              {t('Ihre Offerte wurde angenommen. Positionen und Preise können nicht mehr geändert werden.')}
+                            </div>
+                          </div>
+                        ) : inspectionDayNotReached ? (
+                          <div className="mb-3">
+                            <div className="alert alert-warning border mb-0">
+                              <i className="ti ti-calendar-time me-1"></i>
+                              {t('Die Offerte kann erst am Tag der Besichtigung erfasst werden')}
+                              {confirmedInspectionSlot?.date ? ` (${formatDateDisplay(confirmedInspectionSlot.date)}).` : '.'}
+                            </div>
+                          </div>
+                        ) : isOrderQuoteRequest(selectedOrder) && !canEditQuote ? (
+                          <div className="mb-3">
+                            <div className="alert alert-warning border mb-0">
+                              <i className="ti ti-lock me-1"></i>
+                              {t('Bitte übernehmen Sie den Auftrag zuerst. Erst danach können Sie Positionen und Preise bearbeiten.')}
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+
                     {canAssignJob ? (
                       <div className="vergo-quote-section">
                         <div className="vergo-quote-section-head">
@@ -1841,37 +1898,10 @@ function AvailableJobsPage() {
                             </div>
                           </div>
                         ) : null}
-                        {inspectionDayNotReached ? (
-                          <div className="col-12 mb-3">
-                            <div className="alert alert-warning border mb-0">
-                              <i className="ti ti-calendar-time me-1"></i>
-                              {t('Die Offerte kann erst am Tag der Besichtigung erfasst werden')}
-                              {confirmedInspectionSlot?.date ? ` (${formatDateDisplay(confirmedInspectionSlot.date)}).` : '.'}
-                            </div>
-                          </div>
-                        ) : isOrderQuoteRequest(selectedOrder) && !canEditQuote ? (
-                          <div className="col-12 mb-3">
-                            <div className="alert alert-warning border mb-0">
-                              <i className="ti ti-lock me-1"></i>
-                              {t('Bitte übernehmen Sie den Auftrag zuerst. Erst danach können Sie Positionen und Preise bearbeiten.')}
-                            </div>
-                          </div>
-                        ) : null}
-
-                        {isOrderQuoteRequest(selectedOrder) && orderCompletionDeadline ? (
-                          <div className="col-12 mb-3">
-                            <div className="alert alert-light border mb-0 d-flex align-items-center gap-2">
-                              <i className="ti ti-flag"></i>
-                              <span>
-                                <strong>{t('Fertigstellung bis')}:</strong> {orderCompletionDeadline}
-                                <span className="text-muted"> - {t('Vorgabe der Verwaltung, nur zur Information.')}</span>
-                              </span>
-                            </div>
-                          </div>
-                        ) : null}
-
                         {isOrderQuoteRequest(selectedOrder) ? (
                           <div className="col-12 mb-3">
+                            {/* Heading inside the box, like every other section. */}
+                            <div className="vergo-quote-section">
                             <div className="vergo-quote-section-head">
                               <span className="vergo-quote-step">{nextQuoteStep()}</span>
                               <div>
@@ -1882,11 +1912,26 @@ function AvailableJobsPage() {
                             {/* The quote was taken over unchanged - the prices
                                 are settled, only the schedule is still open. */}
                             <fieldset className="border rounded-3" disabled={awaitingSchedule}>
+                              {/* Said once at the top, before any photo button
+                                  is reached, rather than after the last row. */}
+                              <div className="p-3 border-bottom">
+                                <div className="alert alert-light border small mb-0">
+                                  <i className="ti ti-alert-circle me-1"></i>
+                                  {t('Bitte laden Sie hier keine offiziellen Offerten Ihrer Firma hoch - nur Fotos zur jeweiligen Position.')}
+                                </div>
+                              </div>
+
                               {(bidForm.line_items ?? []).map((item, index) => {
-                                const usesCustomCategory = Boolean(item.is_custom || (item.category && !selectedQuoteCategoryOptions.includes(item.category)))
+                                // The list is the default. Free text is only used when the row
+                                // already holds a value that is not in the list, or when the
+                                // provider asked for it - never just because older data was
+                                // saved with is_custom set.
+                                const usesCustomCategory = item.category
+                                  ? !selectedQuoteCategoryOptions.includes(item.category)
+                                  : Boolean(item.is_custom)
 
                                 return (
-                                  <div key={item.id || index} className="p-3 border-bottom vergo-provider-quote-line">
+                                  <div key={item.id || index} className="p-3 vergo-provider-quote-line">
                                     <div className="row g-2 g-xl-3 align-items-start vergo-provider-quote-line-grid">
                                       <div className="col-lg-1 col-md-2 vergo-provider-quote-line-item-number">
                                         <label className="form-label mb-1">{t('Position')}</label>
@@ -1907,17 +1952,27 @@ function AvailableJobsPage() {
                                             </button>
                                           </>
                                         ) : (
-                                          <select
-                                            className="form-select"
-                                            value={item.category || ''}
-                                            onChange={(event) => handleLineItemChange(index, 'category', event.target.value)}
-                                          >
-                                            <option value="">{t('Kategorie auswählen')}</option>
-                                            {selectedQuoteCategoryOptions.map((option) => (
-                                              <option key={option} value={option}>{option}</option>
-                                            ))}
-                                            <option value={ADD_SERVICE_OPTION_VALUE}>{t('Service hinzufügen')}</option>
-                                          </select>
+                                          <>
+                                            <select
+                                              className="form-select"
+                                              value={item.category || ''}
+                                              onChange={(event) => handleLineItemChange(index, 'category', event.target.value)}
+                                            >
+                                              <option value="">{t('Kategorie auswählen')}</option>
+                                              {selectedQuoteCategoryOptions.map((option) => (
+                                                <option key={option} value={option}>{option}</option>
+                                              ))}
+                                            </select>
+                                            {/* The list is the normal way in; free text is the exception
+                                                and sits underneath it. */}
+                                            <button
+                                              type="button"
+                                              className="btn btn-link btn-sm p-0 mt-1"
+                                              onClick={() => handleLineItemChange(index, 'category', ADD_SERVICE_OPTION_VALUE)}
+                                            >
+                                              {t('Freitext eingeben')}
+                                            </button>
+                                          </>
                                         )}
                                       </div>
                                       <div className="col-lg-3 col-md-5 vergo-provider-quote-line-service">
@@ -1970,7 +2025,7 @@ function AvailableJobsPage() {
                                       <div className="col-lg-2 col-md-6 vergo-provider-quote-line-subtotal">
                                         <div className="text-muted small mb-1">{t('Zwischensumme')}</div>
                                         <div className="fw-semibold">
-                                          {formatCurrencyAmount(Number(item.quantity || 0) * Number(item.unit_price || 0), bidForm.currency)}
+                                          {formatCurrencyAmount(lineItemQuantity(item) * Number(item.unit_price || 0), bidForm.currency)}
                                         </div>
                                       </div>
                                       <div className="col-lg-1 col-md-6 vergo-provider-quote-line-remove">
@@ -1986,7 +2041,7 @@ function AvailableJobsPage() {
                                       </div>
                                     </div>
 
-                                    <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
+                                    <div className="d-flex flex-wrap align-items-center gap-2 mt-2 vergo-provider-quote-photos">
                                       {/* capture="environment" opens the camera on a phone; without it
                                           the same input is a normal file picker. */}
                                       <label className="btn btn-light-primary btn-sm mb-0">
@@ -2033,12 +2088,6 @@ function AvailableJobsPage() {
                                   </div>
                                 )
                               })}
-                              <div className="px-3 pb-3">
-                                <div className="alert alert-light border small mb-0">
-                                  <i className="ti ti-alert-circle me-1"></i>
-                                  {t('Bitte laden Sie hier keine offiziellen Offerten Ihrer Firma hoch - nur Fotos zur jeweiligen Position.')}
-                                </div>
-                              </div>
                               <div className="p-3 border-bottom">
                                 <button type="button" className="btn btn-light-primary btn-sm" onClick={addLineItem}>
                                   <i className="ti ti-plus me-1"></i>
@@ -2084,6 +2133,7 @@ function AvailableJobsPage() {
                                 </div>
                               </div>
                             ) : null}
+                            </div>
                           </div>
                         ) : (
                           <div className="col-md-6 mb-3">
@@ -2093,16 +2143,37 @@ function AvailableJobsPage() {
                         )}
 
                         {isInspectionSeedQuote ? null : (
-                          <>
+                          <div className="col-12">
+                          <div className="vergo-quote-section mt-3">
+                            <div className="row g-3">
                             <div className="col-12">
-                              <div className="vergo-quote-section-head mt-2">
+                              <div className="vergo-quote-section-head">
                                 <span className="vergo-quote-step">{nextQuoteStep()}</span>
                                 <div>
-                                  <h6 className="vergo-quote-section-title">{t('Termine und Angaben')}</h6>
+                                  <h6 className="vergo-quote-section-title">{t('Termine')}</h6>
                                   <p className="vergo-quote-section-hint mb-0">{t('Wann können Sie starten und fertigstellen?')}</p>
                                 </div>
                               </div>
                             </div>
+
+                            {/* The deadline the manager set belongs right where the
+                                provider picks their own dates, and has to be hard
+                                to miss. */}
+                            {orderCompletionDeadline ? (
+                              <div className="col-12 mb-3">
+                                <div className="vergo-quote-deadline">
+                                  <i className="ti ti-flag-filled"></i>
+                                  <div>
+                                    <div className="vergo-quote-deadline-value">
+                                      {t('Fertigstellung bis')}: {orderCompletionDeadline}
+                                    </div>
+                                    <div className="vergo-quote-deadline-hint">
+                                      {t('Vorgabe der Verwaltung, nur zur Information.')}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
 
                             <div className="col-md-6 mb-3">
                               <label className="form-label">{t('Voraussichtliches Startdatum')} *</label>
@@ -2112,8 +2183,23 @@ function AvailableJobsPage() {
                               <label className="form-label">{t('Voraussichtliches Fertigstellungsdatum')} *</label>
                               <input type="date" className="form-control" name="estimated_completion_date" value={bidForm.estimated_completion_date} min={bidForm.estimated_start_date || getTodayDateValue()} onChange={handleBidChange} />
                             </div>
-                          </>
+                            </div>
+                          </div>
+                          </div>
                         )}
+
+                        {/* Everything optional the provider may add, gathered in
+                            its own section instead of trailing after the dates. */}
+                        <div className="col-12">
+                        <div className="vergo-quote-section mt-3">
+                          <div className="vergo-quote-section-head">
+                            <span className="vergo-quote-step">{nextQuoteStep()}</span>
+                            <div>
+                              <h6 className="vergo-quote-section-title">{t('Zusätzliche Angaben')}</h6>
+                              <p className="vergo-quote-section-hint mb-0">{t('Optionale Angaben zu Ihrer Offerte.')}</p>
+                            </div>
+                          </div>
+                          <div className="row g-3">
                         <div className="col-md-6 mb-3">
                           <label className="form-label">{t('Eigene Angebotsnummer')}</label>
                           <input
@@ -2136,22 +2222,15 @@ function AvailableJobsPage() {
                           <input type="file" className="form-control" name="attachment" onChange={handleBidChange} />
                           <div className="form-text">{t('Optional. Laden Sie ein Angebot, einen Kostenvoranschlag oder eine unterstützende Datei bis zu 10 MB hoch.')}</div>
                         </div>
+                          </div>
+                        </div>
+                        </div>
                           </fieldset>
                         </div>
                       </div>
                     ) : null}
                     {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
 
-                    {isOrderQuoteRequest(selectedOrder) ? (
-                      <div className="vergo-quote-total-bar mt-3">
-                        <span className="text-muted">
-                          {(bidForm.line_items ?? []).length} {t('Positionen')} · {t('inkl. MwSt.')}
-                        </span>
-                        <span className="vergo-quote-total-value">
-                          {formatCurrencyAmount(quoteBidBreakdown.total, bidForm.currency)}
-                        </span>
-                      </div>
-                    ) : null}
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>{t('Abbrechen')}</button>

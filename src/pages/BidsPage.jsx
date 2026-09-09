@@ -17,6 +17,12 @@ const initialForm = {
   status: 'submitted',
 }
 
+// A signup for a site visit is not an offer: it belongs to an inspection order
+// and never carries a price of its own in this list.
+function isSiteVisit(bid) {
+  return bid?.order?.workflow_type === 'inspection'
+}
+
 function BidsPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -244,6 +250,7 @@ function BidsPage() {
               <table className="table border-none text-nowrap customize-table mb-0 align-middle">
                 <thead className="text-dark fs-4">
                   <tr>
+                    <th width="120"><h6 className="fs-4 fw-semibold mb-0">{t('Typ')}</h6></th>
                     <th><h6 className="fs-4 fw-semibold mb-0">Auftrag</h6></th>
                     {!isProvider ? <th><h6 className="fs-4 fw-semibold mb-0">Anbieter</h6></th> : null}
                     <th><h6 className="fs-4 fw-semibold mb-0">Betrag</h6></th>
@@ -257,6 +264,16 @@ function BidsPage() {
                 <tbody>
                   {filteredBids.map((bid) => (
                     <tr key={bid.id}>
+                      {/* The same job appears twice - once for the site visit,
+                          once for the quote that followed - so the type has to
+                          be visible. */}
+                      <td>
+                        <span className={`badge rounded-pill px-3 py-2 ${isSiteVisit(bid)
+                          ? 'bg-light-warning text-warning'
+                          : 'bg-light-primary text-primary'}`}>
+                          {isSiteVisit(bid) ? t('Besichtigung') : t('Angebot')}
+                        </span>
+                      </td>
                       <td>
                         <div className="fw-semibold">{bid.order?.title ?? '-'}</div>
                         <div className="text-muted">
@@ -271,7 +288,11 @@ function BidsPage() {
                         </td>
                       ) : null}
 
-                      <td>{formatSwissMoney(bid.amount)} {bid.currency}</td>
+                      <td>
+                        {isSiteVisit(bid)
+                          ? <span className="text-muted">-</span>
+                          : `${formatSwissMoney(bid.amount)} ${bid.currency ?? ''}`}
+                      </td>
 
                       <td>
                         <div>{bid.estimated_start_date || '-'}</div>
@@ -370,7 +391,7 @@ function BidsPage() {
 
                   {filteredBids.length === 0 ? (
                     <tr>
-                      <td colSpan={isProvider ? '6' : '7'} className="text-center text-muted py-4">
+                      <td colSpan={isProvider ? '7' : '8'} className="text-center text-muted py-4">
                         Keine Angebote gefunden.
                       </td>
                     </tr>

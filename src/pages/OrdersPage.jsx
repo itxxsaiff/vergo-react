@@ -8,17 +8,7 @@ import { confirmDelete, showDeleteSuccess } from '../lib/alerts'
 import { api } from '../lib/api'
 import { formatDateDisplay, formatDateTimeDisplay } from '../lib/dateFormat'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
-import {
-  ADD_SERVICE_OPTION_VALUE,
-  createQuoteLineItem,
-  getTradeActivityOptions,
-  getTradeUnitOptions,
-  getOptionLabel,
-  JOB_TYPE_OPTIONS,
-  TRADE_ACTIVITY_OPTIONS_BY_GROUP,
-  TRADE_OBJECT_OPTIONS_BY_GROUP,
-  normalizeServiceTypeForApi,
-} from '../lib/vergoOptions'
+import { ADD_SERVICE_OPTION_VALUE, JOB_TYPE_OPTIONS, TRADE_ACTIVITY_OPTIONS_BY_GROUP, TRADE_OBJECT_OPTIONS_BY_GROUP, createQuoteLineItem, getOptionLabel, getOrderFlowTypeLabel, getTradeActivityOptions, getTradeUnitOptions, lineItemQuantity, normalizeServiceTypeForApi } from '../lib/vergoOptions'
 
 const initialForm = {
   property_id: '',
@@ -294,15 +284,6 @@ function isPastDateTime(dateValue, timeValue) {
 }
 
 
-function getOrderFlowTypeLabel(order) {
-  const isInspection = order?.workflow_type === 'inspection'
-    || order?.workflow_meta?.flow_type === 'inspection'
-    || (order?.workflow_meta?.inspection?.preferred_slots ?? []).length > 0
-    || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected'].includes(order?.workflow_status)
-
-  return isInspection ? 'Besichtigung' : 'Auftrag'
-}
-
 function buildManagerWorkflowMeta(wizard, selectedObjects) {
   return {
     flow_type: wizard.flow_type,
@@ -414,6 +395,10 @@ function OrdersPage() {
   const [serviceProviders, setServiceProviders] = useState([])
   const [form, setForm] = useState(initialForm)
   const [managerWizard, setManagerWizard] = useState(getInitialManagerWizard())
+  // Photos the manager attaches to their own items. The order does not exist
+  // yet while the wizard is open, so they are held here and uploaded the moment
+  // it has been saved. Keyed by the item id.
+  const [itemPhotos, setItemPhotos] = useState({})
   const [managerStep, setManagerStep] = useState(1)
   const [providerCantonFilter, setProviderCantonFilter] = useState('')
   const [isCompanyRequestModalOpen, setIsCompanyRequestModalOpen] = useState(false)
@@ -587,7 +572,8 @@ function OrdersPage() {
           id: `gen-${index}`,
           category: item.category ?? item.code ?? '',
           source: 'provider',
-          is_custom: item.is_custom ?? true,
+          // An empty category always opens on the list, whatever a draft stored.
+          is_custom: item.category ? (item.is_custom ?? false) : false,
         }))
 
         setEditingOrderId(null)
@@ -842,7 +828,7 @@ function OrdersPage() {
           label: '',
           quantity: 1,
           source: 'custom',
-          is_custom: true,
+          is_custom: false,
         }),
       ],
     }))
@@ -869,6 +855,57 @@ function OrdersPage() {
           : item
       )),
     }))
+  }
+
+  function handleItemPhotoSelected(event, itemId) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    setItemPhotos((current) => ({
+      ...current,
+      [itemId]: [...(current[itemId] ?? []), file],
+    }))
+  }
+
+  function removeItemPhoto(itemId, fileIndex) {
+    setItemPhotos((current) => ({
+      ...current,
+      [itemId]: (current[itemId] ?? []).filter((_, index) => index !== fileIndex),
+    }))
+  }
+
+  /**
+   * Sends the held photos once the order has an id. The item's position in the
+   * list is what ties a photo to a line item.
+   */
+  async function uploadPendingItemPhotos(orderId, quoteItems) {
+    const pending = Object.entries(itemPhotos).filter(([, files]) => (files ?? []).length > 0)
+
+    if (!orderId || pending.length === 0) {
+      return
+    }
+
+    await Promise.all(pending.flatMap(([itemId, files]) => {
+      const lineItemIndex = quoteItems.findIndex((item) => String(item.id) === String(itemId))
+
+      if (lineItemIndex < 0) {
+        return []
+      }
+
+      return files.map((file) => {
+        const formData = new FormData()
+        formData.append('line_item_index', lineItemIndex)
+        formData.append('photo', file)
+
+        return api.uploadOrderPhoto(orderId, formData).catch(() => null)
+      })
+    }))
+
+    setItemPhotos({})
   }
 
   function removeQuoteItem(itemId) {
@@ -1029,6 +1066,8 @@ function OrdersPage() {
         ...item,
         id: item.id || `draft-${index}`,
         category: item.category ?? item.code ?? '',
+        // An empty category always opens on the list, whatever the draft stored.
+        is_custom: (item.category ?? item.code) ? (item.is_custom ?? false) : false,
       }))
       : baseWizard.quote_items
 
@@ -1250,7 +1289,7 @@ function OrdersPage() {
             !String(item.category || '').trim()
             || !String(item.label || '').trim()
             || !String(item.unit || '').trim()
-            || Number(item.quantity || 0) <= 0
+            || lineItemQuantity(item) <= 0
           ))
 
           if (!hasQuoteItems || hasInvalidQuoteItem) {
@@ -1403,6 +1442,9 @@ function OrdersPage() {
       return [response.data, ...nextOrders]
     })
 
+    // The order now has an id, so the photos held during the wizard can go up.
+    await uploadPendingItemPhotos(response.data.id, managerWizard.quote_items ?? [])
+
     // The system checks whether this repeats a cancelled job or splits work
     // that is already out to tender on the same property.
     try {
@@ -1411,8 +1453,10 @@ function OrdersPage() {
       if (check.data?.requires_explanation) {
         setDuplicatePrompt({ order: response.data, matches: check.data.matches ?? [] })
       }
-    } catch {
-      // A failed check must never block saving the order.
+    } catch (checkError) {
+      // Saving must not fail because of the check - but staying silent made it
+      // look like duplicates were never detected at all, so say so.
+      setError(`${t('Die Duplikatsprüfung konnte nicht ausgeführt werden.')} ${t(checkError.message)}`)
     }
 
     return response.data
@@ -1655,9 +1699,26 @@ function OrdersPage() {
   // Finished work moves out of the working list into its own section. A site
   // inspection that a tender was raised from is completed automatically, so it
   // lands here without the manager having to do anything.
+  // "As soon as possible" is a real answer to the deadline question, so it is
+  // shown as such instead of leaving the column empty.
+  const getDueDateLabel = (order) => {
+    if (order?.due_date) {
+      return formatDateDisplay(order.due_date)
+    }
+
+    return order?.workflow_meta?.assignment?.completion_mode === 'asap'
+      ? t('So schnell wie möglich')
+      : '-'
+  }
+
   const isCompletedOrder = (order) => ['completed', 'closed'].includes(String(order.status || '').toLowerCase())
-  const activeOrders = filteredOrders.filter((order) => !isCompletedOrder(order))
-  const completedOrders = filteredOrders.filter(isCompletedOrder)
+  // A cancelled order is neither running nor finished, so it gets its own
+  // section rather than sitting in the working list.
+  const isCancelledOrder = (order) => String(order.status || '').toLowerCase() === 'cancelled'
+    || Boolean(order.cancelled_at)
+  const activeOrders = filteredOrders.filter((order) => !isCompletedOrder(order) && !isCancelledOrder(order))
+  const completedOrders = filteredOrders.filter((order) => isCompletedOrder(order) && !isCancelledOrder(order))
+  const cancelledOrders = filteredOrders.filter(isCancelledOrder)
 
   const requiresProviderSelection = managerWizard.flow_type === 'inspection' && managerWizard.inspection_request_mode === 'direct'
   const visibleServiceProviders = useMemo(() => (
@@ -1824,7 +1885,7 @@ function OrdersPage() {
                             <div className="text-muted">{order.requester_email || '-'}</div>
                           </td>
 
-                          <td>{formatDateDisplay(order.due_date)}</td>
+                          <td>{getDueDateLabel(order)}</td>
 
                           <td>
                             <span className={getStatusBadgeClass(order.status)}>
@@ -1953,6 +2014,78 @@ function OrdersPage() {
                       <tr>
                         <td colSpan="6" className="text-center text-muted py-4">
                           {t('Noch keine abgeschlossenen Aufträge vorhanden.')}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="row">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-body p-4">
+              <div className="mb-3">
+                <h5 className="fw-semibold mb-1">{t('Stornierte Aufträge')}</h5>
+                <div className="text-muted small">
+                  {t('Aufträge, die storniert wurden, mit der jeweils angegebenen Begründung.')}
+                </div>
+              </div>
+
+              <div className="table-responsive rounded-2 mb-0 vergo-table-scroll">
+                <table className="table border text-nowrap customize-table mb-0 align-middle">
+                  <thead className="text-dark fs-4">
+                    <tr>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Titel')}</h6></th>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Immobilie')}</h6></th>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Objekt')}</h6></th>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Typ')}</h6></th>
+                      <th><h6 className="fs-4 fw-semibold mb-0">{t('Begründung')}</h6></th>
+                      <th width="90"><h6 className="fs-4 fw-semibold mb-0">{t('Aktion')}</h6></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cancelledOrders.map((order) => (
+                      <tr key={order.id}>
+                        <td>
+                          <div className="fw-semibold">{order.title}</div>
+                          <div className="text-muted">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
+                        </td>
+                        <td>
+                          <div className="fw-semibold">{order.property?.li_number ?? '-'}</div>
+                          <div className="text-muted">{order.property?.title ?? '-'}</div>
+                        </td>
+                        <td>{getOrderObjectLabel(order)}</td>
+                        <td>
+                          <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
+                            {t(getOrderFlowTypeLabel(order))}
+                          </span>
+                        </td>
+                        <td style={{ whiteSpace: 'normal', minWidth: '220px' }}>
+                          {order.cancellation_reason || '-'}
+                        </td>
+                        <td>
+                          <div className="table-action-group">
+                            <Link
+                              to={`/orders/${order.id}`}
+                              className="table-action-btn table-action-view"
+                              title={t('Auftrag ansehen')}
+                            >
+                              <i className="ti ti-eye"></i>
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {cancelledOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="text-center text-muted py-4">
+                          {t('Keine stornierten Aufträge vorhanden.')}
                         </td>
                       </tr>
                     ) : null}
@@ -2526,12 +2659,16 @@ function OrdersPage() {
                                   ) : (
                                   <div className="row g-3">
                                     {(managerWizard.quote_items ?? []).map((item, index) => {
-                                      const usesCustomCategory = Boolean(item.is_custom || (item.category && !managerQuoteServiceOptions.includes(item.category)))
+                                      // The list is the default; free text only for a value that
+                                      // is not in the list, or when explicitly asked for.
+                                      const usesCustomCategory = item.category
+                                        ? !managerQuoteServiceOptions.includes(item.category)
+                                        : Boolean(item.is_custom)
 
                                       return (
                                         <div className="col-12" key={item.id}>
                                           <div className="border rounded-3 p-3">
-                                            <div className="row g-3 align-items-end">
+                                            <div className="row g-3 align-items-start vergo-quote-item-row">
                                               <div className="col-lg-1 col-md-2">
                                                 <label className="form-label">{t('Position')}</label>
                                                 <input className="form-control text-center" value={index + 1} readOnly />
@@ -2554,18 +2691,30 @@ function OrdersPage() {
                                                     ) : null}
                                                   </>
                                                 ) : (
-                                                  <select
-                                                    className="form-select"
-                                                    value={item.category || ''}
-                                                    disabled={generateLock}
-                                                    onChange={(event) => updateQuoteItem(item.id, 'category', event.target.value)}
-                                                  >
-                                                    <option value="">{t('Kategorie auswählen')}</option>
-                                                    {managerQuoteServiceOptions.map((option) => (
-                                                      <option key={option} value={option}>{option}</option>
-                                                    ))}
-                                                    {!generateLock ? <option value={ADD_SERVICE_OPTION_VALUE}>{t('Service hinzufügen')}</option> : null}
-                                                  </select>
+                                                  <>
+                                                    <select
+                                                      className="form-select"
+                                                      value={item.category || ''}
+                                                      disabled={generateLock}
+                                                      onChange={(event) => updateQuoteItem(item.id, 'category', event.target.value)}
+                                                    >
+                                                      <option value="">{t('Kategorie auswählen')}</option>
+                                                      {managerQuoteServiceOptions.map((option) => (
+                                                        <option key={option} value={option}>{option}</option>
+                                                      ))}
+                                                    </select>
+                                                    {/* The list is the normal way in; free text is the
+                                                        exception and sits underneath it. */}
+                                                    {!generateLock ? (
+                                                      <button
+                                                        type="button"
+                                                        className="btn btn-link btn-sm p-0 mt-1"
+                                                        onClick={() => updateQuoteItem(item.id, 'category', ADD_SERVICE_OPTION_VALUE)}
+                                                      >
+                                                        {t('Freitext eingeben')}
+                                                      </button>
+                                                    ) : null}
+                                                  </>
                                                 )}
                                               </div>
                                               <div className={generateLock ? 'col-lg-4 col-md-5' : 'col-lg-3 col-md-5'}>
@@ -2608,10 +2757,57 @@ function OrdersPage() {
                                                 />
                                               </div>
                                               {!generateLock ? (
-                                                <div className="col-lg-1 col-md-4">
+                                                <div className="col-lg-1 col-md-4 vergo-quote-item-remove">
                                                   <button type="button" className="btn btn-light-danger text-danger w-100" onClick={() => removeQuoteItem(item.id)} aria-label={t('Position entfernen')}>
                                                     <i className="ti ti-trash"></i>
                                                   </button>
+                                                </div>
+                                              ) : null}
+
+                                              {/* Photos of the item itself, so the companies
+                                                  can see what the work involves. Held here and
+                                                  uploaded once the order has been saved. */}
+                                              {!generateLock ? (
+                                                <div className="col-12 vergo-quote-item-photos">
+                                                  <div className="d-flex flex-wrap align-items-center gap-2">
+                                                    <label className="btn btn-light-primary btn-sm mb-0">
+                                                      <i className="ti ti-camera me-1"></i>
+                                                      {t('Foto aufnehmen')}
+                                                      <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        capture="environment"
+                                                        className="d-none"
+                                                        onChange={(event) => handleItemPhotoSelected(event, item.id)}
+                                                      />
+                                                    </label>
+                                                    <label className="btn btn-light-primary btn-sm mb-0">
+                                                      <i className="ti ti-upload me-1"></i>
+                                                      {t('Foto hochladen')}
+                                                      <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="d-none"
+                                                        onChange={(event) => handleItemPhotoSelected(event, item.id)}
+                                                      />
+                                                    </label>
+
+                                                    {(itemPhotos[item.id] ?? []).map((file, fileIndex) => (
+                                                      <span
+                                                        key={`${file.name}-${fileIndex}`}
+                                                        className="badge bg-light-primary text-primary d-inline-flex align-items-center gap-2 px-2 py-2"
+                                                      >
+                                                        <i className="ti ti-photo"></i>
+                                                        <span className="text-truncate" style={{ maxWidth: '160px' }}>{file.name}</span>
+                                                        <button
+                                                          type="button"
+                                                          className="btn-close btn-close-sm"
+                                                          aria-label={t('Foto entfernen')}
+                                                          onClick={() => removeItemPhoto(item.id, fileIndex)}
+                                                        ></button>
+                                                      </span>
+                                                    ))}
+                                                  </div>
                                                 </div>
                                               ) : null}
                                             </div>

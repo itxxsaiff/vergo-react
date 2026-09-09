@@ -677,9 +677,21 @@ function roundMoney(value) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
 }
 
+// A flat rate ("Pauschal") is charged once and carries no quantity, so an empty
+// quantity counts as one instead of wiping the line out of the total.
+export function lineItemQuantity(item) {
+  const raw = Number(item?.quantity)
+
+  if (Number.isFinite(raw) && raw > 0) {
+    return raw
+  }
+
+  return String(item?.unit || '').trim().toLowerCase() === 'pauschal' ? 1 : 0
+}
+
 export function calculateQuoteVatBreakdown(lineItems = [], isVatSubject = false, vatIncluded = false) {
   const enteredTotal = lineItems.reduce((sum, item) => (
-    sum + (Number(item.quantity || 0) * Number(item.unit_price || 0))
+    sum + (lineItemQuantity(item) * Number(item.unit_price || 0))
   ), 0)
 
   if (!isVatSubject) {
@@ -734,3 +746,18 @@ export const DOCUMENT_TYPE_OPTIONS = [
   { value: 'proposal', label: 'Angebot' },
   { value: 'other', label: 'Sonstiges' },
 ]
+
+/**
+ * Tells a site visit apart from a real order. The workflow type is the reliable
+ * signal, with the wizard's own flag and the inspection statuses as fallbacks
+ * for orders saved before that field existed.
+ */
+export function getOrderFlowTypeLabel(order) {
+  const isInspection = order?.workflow_type === 'inspection'
+    || order?.workflow_meta?.flow_type === 'inspection'
+    || (order?.workflow_meta?.inspection?.preferred_slots ?? []).length > 0
+    || ['inspection_requested', 'public_inspection_open', 'inspection_signup_closed', 'inspection_company_selected']
+      .includes(order?.workflow_status)
+
+  return isInspection ? 'Besichtigung' : 'Auftrag'
+}

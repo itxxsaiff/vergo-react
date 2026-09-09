@@ -43,6 +43,9 @@ class BidResource extends JsonResource
             'order' => $this->whenLoaded('order', fn () => [
                 'id' => $this->order->id,
                 'title' => $this->order->title,
+                // Tells a site-visit signup apart from a real quote in the
+                // provider's list of submitted offers.
+                'workflow_type' => $this->order->workflow_type,
                 'service_type' => $this->order->service_type,
                 'job_type' => $this->order->service_type,
                 'status' => $this->order->status,

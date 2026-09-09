@@ -91,6 +91,17 @@ class BidController extends Controller
         $currency = 'CHF';
         $workflowMeta = $request->input('workflow_meta', []);
 
+        // The quote form does not resend the appointment the company confirmed,
+        // so replacing the stored meta wholesale would erase it and the
+        // manager's "confirmed appointments" list would empty out.
+        foreach (['selected_slot_index', 'selected_slot'] as $keep) {
+            $stored = data_get($existingBid?->workflow_meta ?? [], $keep);
+
+            if ($stored !== null && ! array_key_exists($keep, $workflowMeta)) {
+                $workflowMeta[$keep] = $stored;
+            }
+        }
+
         $isQuoteSubmission = $order->workflow_status === 'published_for_quotes'
             || ($order->workflow_status === 'inspection_signup_closed' && $existingBid)
             || $isConfirmedInspectionBid;
@@ -213,6 +224,11 @@ class BidController extends Controller
             'estimated_start_date' => $request->input('estimated_start_date'),
             'estimated_completion_date' => $request->input('estimated_completion_date'),
             'notes' => $request->input('notes'),
+            // The company's own quote number. Only they ever see it, but it was
+            // never persisted - so it vanished the moment they reopened the job.
+            'provider_reference' => $request->filled('provider_reference')
+                ? $request->input('provider_reference')
+                : $existingBid?->provider_reference,
             'workflow_meta' => $workflowMeta,
             'attachment_name' => $attachment?->getClientOriginalName(),
             'attachment_path' => $attachmentPath,
@@ -784,7 +800,9 @@ class BidController extends Controller
         }
 
         $quoteItems = collect($lineItems)
-            ->filter(fn ($item) => filled(data_get($item, 'label')) && (float) data_get($item, 'quantity', 0) > 0)
+            // A named position always counts. A flat rate carries no quantity, so
+            // requiring one silently dropped those items from the list.
+            ->filter(fn ($item) => filled(data_get($item, 'label')))
             ->map(fn ($item) => [
                 'category' => data_get($item, 'category') ?: data_get($item, 'code') ?: data_get($item, 'label'),
                 'label' => data_get($item, 'label'),

@@ -163,6 +163,9 @@ function OwnerAnalyticsPage() {
   const [categorySearch, setCategorySearch] = useState('')
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [reportSections, setReportSections] = useState([])
+  // One filter per chosen category: a canton for the provider list, a manager
+  // for the order counts - each block narrowed on its own.
+  const [reportFilters, setReportFilters] = useState({})
   const [isBuildingReport, setIsBuildingReport] = useState(false)
   // Superusers read the same report across every owner and can narrow it down;
   // an owner only ever sees their own portfolio.
@@ -219,9 +222,18 @@ function OwnerAnalyticsPage() {
   }
 
   function toggleReportSection(key) {
-    setReportSections((current) => (
-      current.includes(key) ? current.filter((entry) => entry !== key) : [...current, key]
-    ))
+    setReportSections((current) => {
+      if (!current.includes(key)) {
+        return [...current, key]
+      }
+
+      // Unticking a category drops its filter with it.
+      setReportFilters((filters) => Object.fromEntries(
+        Object.entries(filters).filter(([entryKey]) => entryKey !== key),
+      ))
+
+      return current.filter((entry) => entry !== key)
+    })
   }
 
   async function handleCreateReport() {
@@ -236,6 +248,7 @@ function OwnerAnalyticsPage() {
         sections: reportSections,
         owner_id: canFilterByOwner && ownerId ? ownerId : null,
         search: categorySearch.trim(),
+        filters: reportFilters,
         language,
       })
       setIsReportOpen(false)
@@ -434,6 +447,21 @@ function OwnerAnalyticsPage() {
                           <div className="text-muted small">
                             {(data?.[category.key] ?? []).length} {t('Einträge')}
                           </div>
+
+                          {/* Its own filter, so one report can show e.g. only
+                              providers in Zürich and only one manager's orders. */}
+                          {reportSections.includes(category.key) ? (
+                            <input
+                              type="search"
+                              className="form-control form-control-sm mt-2"
+                              value={reportFilters[category.key] ?? ''}
+                              onChange={(event) => setReportFilters((current) => ({
+                                ...current,
+                                [category.key]: event.target.value,
+                              }))}
+                              placeholder={t('Diese Kategorie filtern (optional)')}
+                            />
+                          ) : null}
                         </div>
                       </div>
                     ))}

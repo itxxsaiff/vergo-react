@@ -31,6 +31,9 @@ class CompletedJobsController extends Controller
         return response()->json([
             'data' => $jobs,
             'providers' => $this->selectableProviders(),
+            // Built from the data itself, so the dropdown can never drift from
+            // the statuses orders really have.
+            'statuses' => $this->selectableStatuses(),
             'totals' => [
                 'job_count' => $jobs->count(),
                 'total_value' => round($jobs->sum(fn (array $row): float => (float) ($row['amount'] ?? 0)), 2),
@@ -68,6 +71,7 @@ class CompletedJobsController extends Controller
         $pdf = Pdf::loadView('pdf.completed-jobs', [
             'groups' => $groups,
             'labels' => $this->labels($language),
+            'statusFilter' => (string) $request->query('status', ''),
             'periodLabel' => $this->periodLabel($request),
             'generatedAt' => now()->format('d.m.Y H:i'),
             'logoDataUri' => $this->logoDataUri(),
@@ -88,9 +92,24 @@ class CompletedJobsController extends Controller
                 'propertyObject:id,name,address,postal_code,city',
                 'approvedBid.serviceProvider:id,company_name',
             ])
-            ->whereIn('status', ['completed', 'closed'])
-            ->whereNotNull('completed_at')
-            ->orderByDesc('completed_at');
+            // Finished jobs first, then whatever is still running.
+            ->orderByRaw('completed_at IS NULL')
+            ->orderByDesc('completed_at')
+            ->orderByDesc('created_at');
+
+        $status = (string) $request->query('status', '');
+
+        if ($status === 'completed') {
+            $query->whereIn('status', ['completed', 'closed']);
+        } elseif ($status === 'active') {
+            // Everything still in play - not finished and not written off.
+            $query->whereNotIn('status', ['completed', 'closed', 'cancelled'])
+                ->whereNull('cancelled_at');
+        } elseif ($status === 'cancelled') {
+            $query->where(fn ($inner) => $inner->where('status', 'cancelled')->orWhereNotNull('cancelled_at'));
+        } elseif ($status !== '') {
+            $query->where('status', $status);
+        }
 
         if ($providerId = $request->integer('provider_id')) {
             $query->whereHas('approvedBid', fn ($bid) => $bid->where('service_provider_id', $providerId));
@@ -98,21 +117,25 @@ class CompletedJobsController extends Controller
 
         $year = $request->integer('year') ?: null;
 
+        // A running job has no completion date, so the period filters fall back
+        // to when it was raised.
+        $dateColumn = in_array($status, ['completed', ''], true) ? 'completed_at' : 'created_at';
+
         if ($month = $request->integer('month')) {
-            $query->whereMonth('completed_at', $month);
+            $query->whereMonth($dateColumn, $month);
 
             if ($year) {
-                $query->whereYear('completed_at', $year);
+                $query->whereYear($dateColumn, $year);
             }
         } elseif ($quarter = $request->integer('quarter')) {
             $months = range(($quarter - 1) * 3 + 1, $quarter * 3);
-            $query->whereIn(DB::raw('MONTH(completed_at)'), $months);
+            $query->whereIn(DB::raw('MONTH('.$dateColumn.')'), $months);
 
             if ($year) {
-                $query->whereYear('completed_at', $year);
+                $query->whereYear($dateColumn, $year);
             }
         } elseif ($year) {
-            $query->whereYear('completed_at', $year);
+            $query->whereYear($dateColumn, $year);
         }
 
         return $query;
@@ -131,7 +154,9 @@ class CompletedJobsController extends Controller
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'title' => $order->title,
+            'status' => $order->cancelled_at ? 'cancelled' : $order->status,
             'completed_at' => $order->completed_at?->toDateString(),
+            'created_at' => $order->created_at?->toDateString(),
             'provider' => $bid?->serviceProvider?->company_name,
             'provider_id' => $bid?->service_provider_id,
             'trade' => $order->service_type,
@@ -156,6 +181,25 @@ class CompletedJobsController extends Controller
             ->map(fn (ServiceProvider $provider): array => [
                 'id' => $provider->id,
                 'company_name' => $provider->company_name,
+            ])
+            ->all();
+    }
+
+    /**
+     * The statuses orders actually carry, with how many of each.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function selectableStatuses(): array
+    {
+        return Order::query()
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->orderBy('status')
+            ->get()
+            ->map(fn ($row): array => [
+                'value' => $row->status,
+                'count' => (int) $row->total,
             ])
             ->all();
     }
@@ -191,22 +235,25 @@ class CompletedJobsController extends Controller
     private function labels(string $language): array
     {
         $all = [
-            'de' => ['title' => 'Abgeschlossene Auftraege', 'period' => 'Zeitraum', 'generated' => 'erstellt am',
+            'de' => ['title' => 'Abgeschlossene Aufträge', 'period' => 'Zeitraum', 'generated' => 'erstellt am',
                 'order_number' => 'Auftragsnummer', 'completed_on' => 'Abgeschlossen am', 'trade' => 'Gewerk',
-                'address' => 'Adresse', 'price' => 'Preis', 'total' => 'Total', 'jobs' => 'Auftraege',
-                'grand_total' => 'Gesamtsumme', 'empty' => 'Keine abgeschlossenen Auftraege im Zeitraum.'],
+                'status' => 'Status',
+                'address' => 'Adresse', 'price' => 'Preis', 'total' => 'Total', 'jobs' => 'Aufträge',
+                'grand_total' => 'Gesamtsumme', 'empty' => 'Keine abgeschlossenen Aufträge im Zeitraum.'],
             'en' => ['title' => 'Completed jobs', 'period' => 'Period', 'generated' => 'created on',
                 'order_number' => 'Job number', 'completed_on' => 'Completed on', 'trade' => 'Trade',
+                'status' => 'Status',
                 'address' => 'Address', 'price' => 'Price', 'total' => 'Total', 'jobs' => 'Jobs',
                 'grand_total' => 'Grand total', 'empty' => 'No completed jobs in this period.'],
             'it' => ['title' => 'Lavori completati', 'period' => 'Periodo', 'generated' => 'creato il',
-                'order_number' => 'Numero ordine', 'completed_on' => 'Completato il', 'trade' => 'Settore',
+                'order_number' => 'Numéro ordine', 'completed_on' => 'Completato il', 'trade' => 'Settore',
                 'address' => 'Indirizzo', 'price' => 'Prezzo', 'total' => 'Totale', 'jobs' => 'Lavori',
                 'grand_total' => 'Totale generale', 'empty' => 'Nessun lavoro completato nel periodo.'],
-            'fr' => ['title' => 'Travaux termines', 'period' => 'Periode', 'generated' => 'cree le',
-                'order_number' => 'Numero de commande', 'completed_on' => 'Termine le', 'trade' => 'Corps de metier',
+            'fr' => ['title' => 'Travaux terminés', 'period' => 'Période', 'generated' => 'créé le',
+                'order_number' => 'Numéro de commande', 'completed_on' => 'Terminé le', 'trade' => 'Corps de métier',
+                'status' => 'Statut',
                 'address' => 'Adresse', 'price' => 'Prix', 'total' => 'Total', 'jobs' => 'Travaux',
-                'grand_total' => 'Total general', 'empty' => 'Aucun travail termine sur la periode.'],
+                'grand_total' => 'Total général', 'empty' => 'Aucun travail terminé sur la période.'],
         ];
 
         return $all[$language] ?? $all['de'];

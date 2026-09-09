@@ -188,15 +188,21 @@ class OwnerAnalyticsController extends Controller
         abort_if($requested->isEmpty(), 422, 'Please choose at least one section for the report.');
 
         $search = trim((string) $request->input('search', ''));
+        // Each section can carry its own filter - one canton for the provider
+        // list, one manager for the order counts - so a single report can be
+        // narrowed differently per block.
+        $sectionFilters = collect($request->input('filters', []))
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter(fn (string $value): bool => $value !== '');
 
-        $blocks = $requested->map(function (string $key) use ($sections, $data, $search): array {
+        $blocks = $requested->map(function (string $key) use ($sections, $data, $search, $sectionFilters): array {
             $rows = collect($data[$key] ?? []);
+            // The section's own filter wins; the box on the page applies to
+            // anything left unfiltered.
+            $term = $sectionFilters->get($key, $search);
 
-            if ($search !== '') {
-                $rows = $rows->filter(fn ($row): bool => str_contains(
-                    mb_strtolower((string) $this->rowLabel($row)),
-                    mb_strtolower($search),
-                ));
+            if ($term !== '') {
+                $rows = $rows->filter(fn ($row): bool => $this->rowMatches($row, $term));
             }
 
             return [
@@ -205,6 +211,7 @@ class OwnerAnalyticsController extends Controller
                 'value_heading' => $sections[$key]['value'],
                 'value_key' => $sections[$key]['key'],
                 'money' => $sections[$key]['money'] ?? false,
+                'filter' => $sectionFilters->get($key),
                 'rows' => $rows->values()->all(),
             ];
         })->all();
@@ -259,14 +266,14 @@ class OwnerAnalyticsController extends Controller
         $all = [
             'de' => [
                 'spend_by_property' => 'Ausgaben pro Liegenschaft', 'spend_by_object' => 'Ausgaben pro Objekt',
-                'spend_by_canton' => 'Ausgaben pro Kanton', 'orders_by_property' => 'Auftraege pro Liegenschaft',
-                'orders_by_object' => 'Auftraege pro Objekt', 'orders_by_management' => 'Auftraege pro Bewirtschaftung',
-                'orders_by_manager_email' => 'Auftraege pro Bewirtschafter', 'cancellations_by_manager' => 'Stornierungen pro Bewirtschafter',
+                'spend_by_canton' => 'Ausgaben pro Kanton', 'orders_by_property' => 'Aufträge pro Liegenschaft',
+                'orders_by_object' => 'Aufträge pro Objekt', 'orders_by_management' => 'Aufträge pro Bewirtschaftung',
+                'orders_by_manager_email' => 'Aufträge pro Bewirtschafter', 'cancellations_by_manager' => 'Stornierungen pro Bewirtschafter',
                 'duplicates_by_manager' => 'Duplikate pro Bewirtschafter', 'providers' => 'Dienstleister',
                 'providers_by_canton' => 'Dienstleister pro Kanton', 'providers_by_property' => 'Dienstleister pro Liegenschaft',
                 'property' => 'Liegenschaft', 'object' => 'Objekt', 'canton' => 'Kanton', 'management' => 'Bewirtschaftung',
                 'email' => 'E-Mail', 'company' => 'Firma', 'company_canton' => 'Firma - Kanton',
-                'spend' => 'Ausgaben', 'orders' => 'Auftraege', 'cancelled' => 'Storniert',
+                'spend' => 'Ausgaben', 'orders' => 'Aufträge', 'cancelled' => 'Storniert',
                 'duplicates' => 'Duplikate', 'completed' => 'Abgeschlossen',
             ],
             'en' => [
@@ -294,16 +301,16 @@ class OwnerAnalyticsController extends Controller
                 'duplicates' => 'Duplicati', 'completed' => 'Completati',
             ],
             'fr' => [
-                'spend_by_property' => 'Depenses par bien', 'spend_by_object' => 'Depenses par objet',
-                'spend_by_canton' => 'Depenses par canton', 'orders_by_property' => 'Commandes par bien',
+                'spend_by_property' => 'Dépenses par bien', 'spend_by_object' => 'Dépenses par objet',
+                'spend_by_canton' => 'Dépenses par canton', 'orders_by_property' => 'Commandes par bien',
                 'orders_by_object' => 'Commandes par objet', 'orders_by_management' => 'Commandes par gerance',
                 'orders_by_manager_email' => 'Commandes par gestionnaire', 'cancellations_by_manager' => 'Annulations par gestionnaire',
                 'duplicates_by_manager' => 'Doublons par gestionnaire', 'providers' => 'Prestataires',
                 'providers_by_canton' => 'Prestataires par canton', 'providers_by_property' => 'Prestataires par bien',
-                'property' => 'Bien', 'object' => 'Objet', 'canton' => 'Canton', 'management' => 'Gerance',
+                'property' => 'Bien', 'object' => 'Objet', 'canton' => 'Canton', 'management' => 'Gérance',
                 'email' => 'E-mail', 'company' => 'Entreprise', 'company_canton' => 'Entreprise - canton',
-                'spend' => 'Depenses', 'orders' => 'Commandes', 'cancelled' => 'Annulees',
-                'duplicates' => 'Doublons', 'completed' => 'Terminees',
+                'spend' => 'Dépenses', 'orders' => 'Commandes', 'cancelled' => 'Annulées',
+                'duplicates' => 'Doublons', 'completed' => 'Terminées',
             ],
         ];
 
@@ -318,8 +325,8 @@ class OwnerAnalyticsController extends Controller
     private function reportChrome(string $language): array
     {
         $all = [
-            'de' => ['heading' => 'Vergo Auswertung', 'all_owners' => 'Alle Eigentuemer', 'owner' => 'Eigentuemer',
-                'filter' => 'Filter', 'generated' => 'Erstellt am', 'orders' => 'Auftraege', 'active' => 'Aktiv',
+            'de' => ['heading' => 'Vergo Auswertung', 'all_owners' => 'Alle Eigentümer', 'owner' => 'Eigentümer',
+                'filter' => 'Filter', 'generated' => 'Erstellt am', 'orders' => 'Aufträge', 'active' => 'Aktiv',
                 'completed' => 'Abgeschlossen', 'cancelled' => 'Storniert', 'properties' => 'Liegenschaften',
                 'spend' => 'Ausgaben', 'empty' => 'Keine Daten vorhanden.'],
             'en' => ['heading' => 'Vergo Analysis', 'all_owners' => 'All owners', 'owner' => 'Owner',
@@ -330,13 +337,31 @@ class OwnerAnalyticsController extends Controller
                 'filter' => 'Filtro', 'generated' => 'Creato il', 'orders' => 'Ordini', 'active' => 'Attivi',
                 'completed' => 'Completati', 'cancelled' => 'Annullati', 'properties' => 'Immobili',
                 'spend' => 'Spese', 'empty' => 'Nessun dato disponibile.'],
-            'fr' => ['heading' => 'Analyse Vergo', 'all_owners' => 'Tous les proprietaires', 'owner' => 'Proprietaire',
-                'filter' => 'Filtre', 'generated' => 'Cree le', 'orders' => 'Commandes', 'active' => 'Actives',
-                'completed' => 'Terminees', 'cancelled' => 'Annulees', 'properties' => 'Biens',
-                'spend' => 'Depenses', 'empty' => 'Aucune donnee disponible.'],
+            'fr' => ['heading' => 'Analyse Vergo', 'all_owners' => 'Tous les propriétaires', 'owner' => 'Propriétaire',
+                'filter' => 'Filtre', 'generated' => 'Créé le', 'orders' => 'Commandes', 'active' => 'Actives',
+                'completed' => 'Terminées', 'cancelled' => 'Annulées', 'properties' => 'Biens',
+                'spend' => 'Dépenses', 'empty' => 'Aucune donnée disponible.'],
         ];
 
         return $all[$language] ?? $all['de'];
+    }
+
+    /**
+     * Does any text on this row contain the term? Rows differ per section - a
+     * canton sits in the label, a company in company_name - so every string
+     * field is searched rather than one guessed column.
+     */
+    private function rowMatches(mixed $row, string $term): bool
+    {
+        $needle = mb_strtolower($term);
+
+        foreach ((array) $row as $value) {
+            if (is_string($value) && str_contains(mb_strtolower($value), $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function rowLabel(mixed $row): string

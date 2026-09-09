@@ -4,7 +4,7 @@ import PageContent from '../components/PageContent'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { formatStatusLabel, getStatusBadgeClass } from '../lib/tableStatus'
-import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
+import { JOB_TYPE_OPTIONS, getOptionLabel, getOrderFlowTypeLabel } from '../lib/vergoOptions'
 import { formatSwissMoney } from '../lib/numberFormat'
 
 function getLatestBidComparison(results) {
@@ -178,7 +178,16 @@ function PriceComparisonPage() {
                         <span className={getStatusBadgeClass(order.status)}>{formatStatusLabel(order.status)}</span>
                       </div>
                       <div className="small opacity-75">{order.property?.li_number ?? '-'} - {order.property?.title ?? '-'}</div>
-                      <div className="small opacity-75">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)} • {order.bids_count ?? 0} bids</div>
+                      <div className="d-flex align-items-center flex-wrap gap-2 small opacity-75 mt-1">
+                        {/* A site visit and a tender look identical otherwise, so
+                            the type is spelled out rather than guessed at. */}
+                        <span className={`badge rounded-pill px-2 py-1 ${getOrderFlowTypeLabel(order) === 'Besichtigung'
+                          ? 'bg-light-warning text-warning'
+                          : 'bg-light-primary text-primary'}`}>
+                          {t(getOrderFlowTypeLabel(order))}
+                        </span>
+                        <span>{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)} • {order.bids_count ?? 0} bids</span>
+                      </div>
                     </button>
                   ))}
                   {filteredOrders.length === 0 ? <div className="text-muted">Keine Aufträge für den Vergleich gefunden.</div> : null}

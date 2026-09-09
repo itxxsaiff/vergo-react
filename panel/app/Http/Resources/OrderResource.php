@@ -285,7 +285,9 @@ class OrderResource extends JsonResource
             ->sortBy(fn ($bid) => $bid->submitted_at?->toDateTimeString() ?? $bid->created_at?->toDateTimeString() ?? '')
             ->map(function ($bid) {
                 $lineItems = collect($this->scopeOnlyLineItems($bid->line_items ?? []))
-                    ->filter(fn ($item) => filled(data_get($item, 'label')) && (float) data_get($item, 'quantity', 0) > 0)
+                    // A named position always counts. A flat rate carries no quantity, so
+                    // requiring one silently dropped those items from the list.
+                    ->filter(fn ($item) => filled(data_get($item, 'label')))
                     ->map(fn ($item, $index) => [
                         ...$item,
                         'source' => 'provider',

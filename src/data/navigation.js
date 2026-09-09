@@ -32,8 +32,8 @@ export const navigationByRole = {
       href: '/owner-analytics',
     },
     {
-      // Finished jobs per company and period, with a PDF overview.
-      title: 'Abgeschlossene Aufträge',
+      // Every order, filterable by status, company and period, with a PDF.
+      title: 'Aufträge',
       icon: 'ti ti-checkbox',
       href: '/completed-jobs',
     },
@@ -68,8 +68,8 @@ export const navigationByRole = {
       ],
     },
     {
-      // Finished jobs per company and period, with a PDF overview.
-      title: 'Abgeschlossene Aufträge',
+      // Every order, filterable by status, company and period, with a PDF.
+      title: 'Aufträge',
       icon: 'ti ti-checkbox',
       href: '/completed-jobs',
     },
@@ -112,8 +112,8 @@ export const navigationByRole = {
       href: '/owner-analytics',
     },
     {
-      // Finished jobs per company and period, with a PDF overview.
-      title: 'Abgeschlossene Aufträge',
+      // Every order, filterable by status, company and period, with a PDF.
+      title: 'Aufträge',
       icon: 'ti ti-checkbox',
       href: '/completed-jobs',
     },
@@ -167,7 +167,7 @@ export const navigationByRole = {
         // the objects of a property. The separate object page is gone.
         // The order the client asked for: properties, orders, analysis, reports.
         { title: 'Liegenschaften', href: '/properties' },
-        { title: 'Bestellungen', href: '/orders' },
+        { title: 'Aufträge', href: '/orders' },
         { title: 'Auswertungen', href: '/owner-analytics' },
         // Manager decisions with the reason that was given: rejected best
         // offers, cancellations and duplicates.
@@ -204,7 +204,7 @@ export const navigationByRole = {
       children: [
         { title: 'Objektübersicht', href: '/properties' },
         { title: 'Eigenschaftenobjekte', href: '/property-objects' },
-        { title: 'Bestellungen', href: '/orders' },
+        { title: 'Aufträge', href: '/orders' },
         { title: 'Gebote', href: '/bids' },
         { title: 'Preisvergleich', href: '/price-comparison' },
         { title: 'Unterlagen', href: '/documents' },

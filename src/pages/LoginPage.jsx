@@ -215,6 +215,12 @@ function LoginPage() {
     { icon: 'ti ti-bolt', label: t('Effizient') },
     { icon: 'ti ti-leaf', label: t('Nachhaltig') },
   ]
+  // One photo per step, and no photo used on two different screens.
+  const imageByStep = {
+    li: '/assets/images/ui-images/iStock-475654381.jpg',
+    email: '/assets/images/ui-images/iStock-2152759035.jpg',
+    otp: '/assets/images/ui-images/iStock-1353601970.jpg',
+  }
   const mediaByStep = {
     li: {
       headline: t('Intelligente Bewirtschaftung für lebenswerte Immobilien.'),
@@ -240,9 +246,7 @@ function LoginPage() {
         ? `${t('Wir haben Ihnen einen 6-stelligen Code an')} ${email} ${t('gesendet.')}\n${t('Bitte geben Sie den Code ein, um fortzufahren.')}`
         : t(contentByStep[step].subtitle)}
       logoHref="/type"
-      imageSrc={step === 'otp'
-        ? '/assets/images/ui-images/otp-page.png'
-        : '/assets/images/ui-images/property-number-page.png'}
+      imageSrc={imageByStep[step]}
       backLink={step === 'li'
         ? { to: '/type', label: t('Zurück zur Auswahl') }
         : { onClick: resetLiFlow, label: t('Zurück') }}

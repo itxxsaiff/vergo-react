@@ -62,7 +62,7 @@ function UserLoginPage() {
       title={t('Administrator-Anmeldung')}
       subtitle={t('Bitte melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.')}
       logoHref="/admin-login"
-      imageSrc="/assets/images/ui-images/otp-page.png"
+      imageSrc="/assets/images/ui-images/admin-login.jpg"
       media={mediaContent}
     >
       <form onSubmit={handleSubmit}>

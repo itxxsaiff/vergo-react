@@ -3292,8 +3292,10 @@ body {
 .vergo-auth-split-footer {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1.5rem;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  padding-top: 2rem;
   color: var(--vergo-auth-muted);
   font-size: 0.8rem;
   letter-spacing: 0.1em;
@@ -3307,6 +3309,31 @@ body {
 
 .vergo-auth-split-footer a:hover {
   color: var(--vergo-auth-ink);
+}
+
+/* Privacy policy and legal notice, bottom left on every public screen. */
+.vergo-auth-split-legal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-right: auto;
+}
+
+.vergo-auth-split-legal a {
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.vergo-auth-split-legal a:hover {
+  border-bottom-color: currentColor;
+}
+
+.vergo-auth-split-legal-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
 }
 
 .vergo-auth-split-media {

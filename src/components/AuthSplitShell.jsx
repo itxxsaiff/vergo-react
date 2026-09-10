@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import SupportTicketButton from './SupportTicketButton'
-import VergoLogo from '../../public/Vergo-dark.png'
+import VergoLogo from '../../public/assets/images/logo/VERGO_01.png'
 
-const AUTH_IMAGE = '/assets/images/ui-images/type-page.png'
+const AUTH_IMAGE = '/assets/images/ui-images/iStock-2224095230.jpg'
+const PRIVACY_URL = 'https://www.vergo.ch/privacy-policy'
+const IMPRINT_URL = 'https://www.vergo.ch/legal-notice'
 
 /**
  * The public login screens: content on the left, a full-height photo on the
@@ -157,19 +159,23 @@ function AuthSplitShell({
           {children}
         </div>
 
-        {/* Only rendered when a page supplies something; the choose-login screen
-            deliberately has no footer. */}
-        {footer || footerNote ? (
-          <div className="vergo-auth-split-footer">
-            {footerNote ? (
-              <span className="vergo-auth-split-footer-note">
-                <span className="vergo-auth-split-rule" aria-hidden="true"></span>
-                {footerNote}
-              </span>
-            ) : null}
-            {footer}
+        {/* The two legal pages are required on every public screen, so they
+            live here rather than in each page. */}
+        <div className="vergo-auth-split-footer">
+          <div className="vergo-auth-split-legal">
+            <a href={PRIVACY_URL} target="_blank" rel="noreferrer">{t('Datenschutz')}</a>
+            <span className="vergo-auth-split-legal-dot" aria-hidden="true"></span>
+            <a href={IMPRINT_URL} target="_blank" rel="noreferrer">{t('Impressum')}</a>
           </div>
-        ) : null}
+
+          {footerNote ? (
+            <span className="vergo-auth-split-footer-note">
+              <span className="vergo-auth-split-rule" aria-hidden="true"></span>
+              {footerNote}
+            </span>
+          ) : null}
+          {footer}
+        </div>
       </div>
 
       <div className="vergo-auth-split-media" style={{ backgroundImage: `url("${imageSrc}")` }}>

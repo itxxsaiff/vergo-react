@@ -182,7 +182,7 @@ function EmailOtpLoginPage() {
         ? `${t('Wir haben Ihnen einen 6-stelligen Code an')} ${form.email} ${t('gesendet.')}\n${t('Bitte geben Sie den Code ein, um fortzufahren.')}`
         : t(contentByStep[step].subtitle)}
       logoHref="/type"
-      imageSrc="/assets/images/ui-images/enter-email-page.png"
+      imageSrc="/assets/images/ui-images/iStock-1395005842.jpg"
       backLink={step === 'email'
         ? { to: '/type', label: t('Zurück zur Auswahl') }
         : { onClick: resetFlow, label: t('Zurück') }}

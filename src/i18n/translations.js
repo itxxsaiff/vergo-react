@@ -1881,6 +1881,10 @@ const supplementalTranslations = {
     'Noch keine Angebote eingegangen.': 'Noch keine Angebote eingegangen.',
   },
   en: {
+    'Bitte melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.': 'Please sign in with your e-mail address and password.',
+    'Passwort eingeben': 'Enter password',
+    'Passwort anzeigen': 'Show password',
+    'Passwort verbergen': 'Hide password',
     'Anmeldedaten eingeben': 'Enter login details',
     'Bitte geben Sie Ihre Kundennummer und E-Mail-Adresse ein. Wir verwenden diese, um Ihnen einen Bestätigungscode zu senden.': 'Please enter your customer number and e-mail address. We will use them to send you a confirmation code.',
     'Kundennummer': 'Customer number',
@@ -2215,6 +2219,10 @@ const supplementalTranslations = {
     'Hochwertige Materialien': 'High-quality Materials',
   },
   it: {
+    'Bitte melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.': 'Accedi con il tuo indirizzo e-mail e la tua password.',
+    'Passwort eingeben': 'Inserisci la password',
+    'Passwort anzeigen': 'Mostra password',
+    'Passwort verbergen': 'Nascondi password',
     'Anmeldedaten eingeben': 'Inserisci i dati di accesso',
     'Bitte geben Sie Ihre Kundennummer und E-Mail-Adresse ein. Wir verwenden diese, um Ihnen einen Bestätigungscode zu senden.': 'Inserisci il numero cliente e l’indirizzo e-mail. Li useremo per inviarti un codice di conferma.',
     'Kundennummer': 'Numero cliente',
@@ -2515,6 +2523,10 @@ const supplementalTranslations = {
     'Hochwertige Materialien': 'Materiali di alta qualità',
   },
   fr: {
+    'Bitte melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.': 'Veuillez vous connecter avec votre adresse e-mail et votre mot de passe.',
+    'Passwort eingeben': 'Saisir le mot de passe',
+    'Passwort anzeigen': 'Afficher le mot de passe',
+    'Passwort verbergen': 'Masquer le mot de passe',
     'Anmeldedaten eingeben': 'Saisir les identifiants',
     'Bitte geben Sie Ihre Kundennummer und E-Mail-Adresse ein. Wir verwenden diese, um Ihnen einen Bestätigungscode zu senden.': 'Veuillez saisir votre numéro de client et votre adresse e-mail. Nous les utiliserons pour vous envoyer un code de confirmation.',
     'Kundennummer': 'Numéro de client',

@@ -3476,6 +3476,29 @@ body {
   color: #9aa4b1;
 }
 
+/* Show/hide the password, sitting inside the field box. */
+.vergo-auth-field-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vergo-auth-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.vergo-auth-field-toggle:hover,
+.vergo-auth-field-toggle:focus-visible {
+  color: var(--vergo-auth-ink);
+}
+
+.vergo-auth-field-toggle i {
+  font-size: 1.25rem;
+}
+
 .vergo-auth-split-footer-note {
   display: inline-flex;
   align-items: center;

@@ -4595,11 +4595,17 @@ body {
   box-shadow: 0 0 0 3px rgba(22, 32, 43, 0.12);
 }
 
+/* Create Order is a link, not a button, so a fixed height alone left its label
+   sitting at the top. Centre the content instead. */
 .vergo-page-orders .vergo-action-buttons .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 48px;
   padding: 0 1.2rem;
   border-radius: 12px;
   font-weight: 600;
+  line-height: 1;
 }
 
 .vergo-page-orders .vergo-action-buttons .btn-light-primary {
@@ -4762,8 +4768,658 @@ body {
   color: #c03a36;
 }
 
-/* The filters sit above the section cards, on the page background. */
+
+/* ==========================================================================
+   Order wizard - a full page rather than a pop-up
+   ========================================================================== */
+
+.vergo-wizard-page {
+  display: none;
+}
+
+/* The wizard fills the working area but leaves the header, and the sidebar
+   where there is one, in place. */
+.vergo-wizard-page.is-open {
+  display: block;
+  position: fixed;
+  top: var(--vergo-header-height);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 12;
+  overflow-y: auto;
+  background: var(--vergo-shell-bg);
+}
+
+#main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .vergo-wizard-page.is-open,
+#main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .vergo-wizard-footer {
+  left: var(--vergo-sidebar-base-width);
+}
+
+/* The property manager runs without a sidebar, so the wizard starts at the
+   very left edge. Written at least as specific as the rule above, or the
+   sidebar offset wins and the orders list shows through the gap. */
+#main-wrapper.vergo-layout-no-sidebar[data-layout=vertical][data-sidebar-position=fixed] .vergo-wizard-page.is-open,
+#main-wrapper.vergo-layout-no-sidebar[data-layout=vertical][data-sidebar-position=fixed] .vergo-wizard-footer,
+#main-wrapper.vergo-layout-no-sidebar[data-layout=vertical] .vergo-wizard-page.is-open,
+#main-wrapper.vergo-layout-no-sidebar[data-layout=vertical] .vergo-wizard-footer {
+  left: 0 !important;
+}
+
+@media (max-width: 1199px) {
+  #main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .vergo-wizard-page.is-open,
+  #main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .vergo-wizard-footer {
+    left: 0;
+  }
+}
+
+.vergo-wizard-shell {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 7rem;
+}
+
+/* --- Page head --- */
+.vergo-wizard-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6b7385;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.vergo-wizard-back:hover {
+  color: var(--vergo-accent);
+}
+
+.vergo-wizard-head h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.vergo-wizard-head p {
+  margin: 0.15rem 0 1.6rem;
+  color: #8a94a8;
+  font-size: 1rem;
+}
+
+/* --- Stepper --- */
+.vergo-order-stepper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin-bottom: 1.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.vergo-order-stepper-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  flex: 1 1 0;
+  min-width: 168px;
+  padding: 0.6rem 0.75rem;
+  border-radius: 14px;
+  background: transparent;
+}
+
+.vergo-order-stepper-item::after {
+  content: none;
+}
+
+/* The connector runs from the previous step into this one. */
+.vergo-order-stepper-line {
+  position: absolute;
+  top: 1.55rem;
+  right: 100%;
+  width: 2.4rem;
+  height: 2px;
+  background: #e3e7ee;
+}
+
+.vergo-order-stepper-node {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #eef0f4;
+  color: #8a94a8;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.vergo-order-stepper-copy {
+  min-width: 0;
+}
+
+.vergo-order-stepper-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7385;
+  line-height: 1.3;
+}
+
+.vergo-order-stepper-helper {
+  color: #9aa4b7;
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.vergo-order-stepper-item.is-active {
+  background: #f1f2f5;
+}
+
+.vergo-order-stepper-item.is-active .vergo-order-stepper-node {
+  background: var(--vergo-accent);
+  color: #ffffff;
+}
+
+.vergo-order-stepper-item.is-active .vergo-order-stepper-title {
+  color: var(--vergo-accent);
+}
+
+.vergo-order-stepper-item.is-complete .vergo-order-stepper-node {
+  background: var(--vergo-accent);
+  color: #ffffff;
+}
+
+.vergo-order-stepper-item.is-complete .vergo-order-stepper-title {
+  color: #4a5563;
+}
+
+/* --- Step card --- */
+.vergo-wizard-card {
+  padding: 1.6rem 1.75rem;
+  border: 1px solid #e8ecf3;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.vergo-wizard-card .vergo-section-head {
+  margin-bottom: 1.35rem;
+}
+
+.vergo-wizard-card .vergo-section-head h5 {
+  font-size: 1.4rem;
+}
+
+.vergo-wizard-card .form-label {
+  color: #4a5563;
+  font-weight: 500;
+}
+
+.vergo-wizard-card .form-control,
+.vergo-wizard-card .form-select {
+  min-height: 48px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #f8f9fc;
+}
+
+.vergo-wizard-card .form-control:focus,
+.vergo-wizard-card .form-select:focus {
+  border-color: var(--vergo-accent);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(22, 32, 43, 0.1);
+}
+
+.vergo-wizard-card textarea.form-control {
+  min-height: 120px;
+}
+
+.vergo-wizard-body {
+  padding: 0;
+}
+
+/* --- Footer bar --- */
+.vergo-wizard-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 13;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem clamp(1.5rem, 6vw, 6rem);
+  border-top: 1px solid #e8ecf3;
+  background: #ffffff;
+}
+
+.vergo-wizard-footer-end {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.vergo-wizard-footer .btn {
+  min-height: 46px;
+  padding: 0 1.35rem;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.vergo-wizard-footer .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.vergo-wizard-cancel {
+  color: #6b7385 !important;
+  text-decoration: none;
+}
+
+.vergo-wizard-cancel:hover {
+  color: var(--vergo-accent) !important;
+}
+
+@media (max-width: 767px) {
+  .vergo-wizard-shell {
+    padding: 1.25rem 1rem 8.5rem;
+  }
+
+  .vergo-wizard-footer {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .vergo-wizard-footer-end {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+/* --- Wizard option cards: icon, wording, and a radio on the right --- */
+.vergo-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.vergo-choice-card {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  width: 100%;
+  padding: 1.5rem 1.5rem;
+  border: 1px solid #e3e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.vergo-choice-card:hover {
+  border-color: #c8d0dc;
+}
+
+.vergo-choice-card.is-selected {
+  border-color: var(--vergo-accent);
+  background: #f4f5f7;
+}
+
+.vergo-choice-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 16px;
+  background: #eef0f4;
+  color: #5f6877;
+  font-size: 1.7rem;
+}
+
+.vergo-choice-card.is-selected .vergo-choice-icon {
+  background: #e4e7ec;
+  color: var(--vergo-accent);
+}
+
+.vergo-choice-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vergo-choice-title {
+  font-size: 1.18rem;
+  font-weight: 700;
+  color: #1f2a44;
+  line-height: 1.25;
+}
+
+.vergo-choice-card.is-selected .vergo-choice-title {
+  color: var(--vergo-accent);
+}
+
+.vergo-choice-helper {
+  color: #8a94a8;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+/* The radio on the right: an empty ring, filled once the card is chosen. */
+.vergo-choice-radio {
+  flex: 0 0 auto;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #cbd2dc;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.vergo-choice-card.is-selected .vergo-choice-radio {
+  border-color: var(--vergo-accent);
+  background: var(--vergo-accent);
+}
+
+.vergo-choice-card.is-selected .vergo-choice-radio::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.vergo-choice-note {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 1.35rem 0 0;
+  color: #8a94a8;
+  font-size: 0.92rem;
+}
+
+.vergo-choice-note i {
+  font-size: 1.1rem;
+}
+
+@media (max-width: 767px) {
+  .vergo-choice-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vergo-choice-card {
+    padding: 1.15rem;
+  }
+
+  .vergo-choice-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 1.45rem;
+  }
+}
+
+/* --- Wizard step 1: the objects an order covers --- */
+.vergo-object-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.vergo-object-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid #e3e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.vergo-object-card:hover {
+  border-color: #c8d0dc;
+}
+
+.vergo-object-card.is-selected {
+  border-color: var(--vergo-accent);
+  background: #f4f5f7;
+}
+
+.vergo-object-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #eef0f4;
+  color: #5f6877;
+  font-size: 1.3rem;
+}
+
+.vergo-object-card.is-selected .vergo-object-icon {
+  background: #e4e7ec;
+  color: var(--vergo-accent);
+}
+
+.vergo-object-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vergo-object-title {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: #1f2a44;
+  line-height: 1.3;
+}
+
+.vergo-object-meta {
+  color: #8a94a8;
+  font-size: 0.9rem;
+}
+
+.vergo-object-check {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #cbd2dc;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.vergo-object-card.is-selected .vergo-object-check {
+  border-color: var(--vergo-accent);
+  background: var(--vergo-accent);
+}
+
+@media (max-width: 767px) {
+  .vergo-object-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Shown while the order-entry page is still fetching what the wizard needs. */
+.vergo-wizard-loading {
+  min-height: calc(100vh - var(--vergo-header-height));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a94a8;
+  background: var(--vergo-shell-bg);
+}
+
+/* The filter row is no longer inside a card, so it needs its own gutter and
+   room for the icons that sit inside the fields. */
 .vergo-orders-filters {
   margin-top: 0.25rem;
-  padding: 0 0.5rem;
+  padding: 0;
+}
+
+.vergo-page-orders .vergo-search-input-icon,
+.vergo-page-orders .vergo-select-input-icon {
+  left: 1rem;
+  color: #8a94a8;
+}
+
+.vergo-page-orders .vergo-search-input-wrap .form-control,
+.vergo-page-orders .vergo-select-input-wrap .form-select {
+  padding-left: 2.8rem !important;
+}
+
+.vergo-page-orders .vergo-action-buttons {
+  justify-content: flex-end;
+}
+
+.vergo-wizard-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* --- Wizard summary page --- */
+.vergo-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.vergo-summary-card {
+  padding: 1.2rem 1.3rem;
+  border: 1px solid #e8ecf3;
+  border-radius: 14px;
+  background: #fbfcfe;
+}
+
+.vergo-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.vergo-summary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #eef0f4;
+  color: var(--vergo-accent);
+  font-size: 1.15rem;
+}
+
+.vergo-summary-head h6 {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.vergo-summary-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vergo-accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vergo-summary-edit:hover {
+  text-decoration: underline;
+}
+
+.vergo-summary-list {
+  margin: 0;
+}
+
+.vergo-summary-list > div {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.vergo-summary-list dt {
+  flex: 0 0 40%;
+  color: #8a94a8;
+  font-weight: 500;
+}
+
+.vergo-summary-list dd {
+  flex: 1 1 auto;
+  margin: 0;
+  color: #1f2a44;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.vergo-summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.vergo-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #e3e8f0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2f3441;
+  font-size: 0.88rem;
+}
+
+.vergo-summary-note {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.9rem 1.1rem;
+  border-radius: 12px;
+  background: #f1f2f5;
+  color: #5f6877;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 991px) {
+  .vergo-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vergo-summary-list > div {
+    flex-direction: column;
+    gap: 0.1rem;
+  }
 }

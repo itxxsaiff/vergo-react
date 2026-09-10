@@ -17,6 +17,7 @@ import DatabaseBackupsPage from './pages/DatabaseBackupsPage'
 import EmailOtpLoginPage from './pages/EmailOtpLoginPage'
 import LoginPage from './pages/LoginPage'
 import TypePage from './pages/TypePage'
+import OrderCreatePage from './pages/OrderCreatePage'
 import OrdersPage from './pages/OrdersPage'
 import EmployeeOrdersPage from './pages/EmployeeOrdersPage'
 import OrderDetailsPage from './pages/OrderDetailsPage'
@@ -184,6 +185,15 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['admin', 'owner', 'manager', 'employee']}>
               <OrdersRoute />
+            </ProtectedRoute>
+          }
+        />
+        {/* Order entry runs on its own page rather than in a pop-up. */}
+        <Route
+          path="order-create"
+          element={
+            <ProtectedRoute allowRoles={['admin', 'manager']}>
+              <OrderCreatePage />
             </ProtectedRoute>
           }
         />

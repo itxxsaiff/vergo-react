@@ -486,7 +486,7 @@ function DashboardPage({ role }) {
             <div className="vergo-md-hero" style={{ backgroundImage: `url("${MANAGER_HERO_IMAGE}")` }}>
               <div className="vergo-md-hero-body">
                 <h2>{t('Effizient. Digital. Verlässlich.')}</h2>
-                <Link to="/orders?open=create" className="vergo-md-hero-cta">
+                <Link to="/order-create" className="vergo-md-hero-cta">
                   <span>{t('Auftrag erfassen')}</span>
                   <i className="ti ti-arrow-right"></i>
                 </Link>

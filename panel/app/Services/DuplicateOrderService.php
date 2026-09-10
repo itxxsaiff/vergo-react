@@ -42,7 +42,9 @@ class DuplicateOrderService
             ->withTrashed()
             ->with('propertyManager:id,name,email')
             ->where('property_id', $order->property_id)
-            ->where('id', '!=', $order->id)
+            // The order being checked may not exist yet: the wizard runs this
+            // before saving so the manager can decide whether to publish.
+            ->when($order->exists, fn ($query) => $query->where('id', '!=', $order->id))
             // A site inspection and the request for proposals generated from it
             // are two phases of the same job, not two jobs. Only compare like
             // with like.

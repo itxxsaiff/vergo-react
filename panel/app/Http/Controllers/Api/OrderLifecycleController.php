@@ -67,6 +67,45 @@ class OrderLifecycleController extends Controller
      * re-raised cancelled order, or like one of several near-identical orders
      * on the same property.
      */
+    /**
+     * The same check, run against an order that has not been saved yet.
+     *
+     * The wizard calls this before it posts, so the manager is warned while
+     * they can still decide whether to publish the job or go back and edit it.
+     */
+    public function duplicatePreview(Request $request, DuplicateOrderService $duplicates): JsonResponse
+    {
+        $data = $request->validate([
+            'property_id' => ['required', 'integer', 'exists:properties,id'],
+            'workflow_type' => ['nullable', 'string', 'max:50'],
+            'service_type' => ['nullable', 'string', 'max:100'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'quote_items' => ['nullable', 'array'],
+            'workflow_meta' => ['nullable', 'array'],
+        ]);
+
+        // Not saved and never saved: only used to compare against what exists.
+        $draft = new Order([
+            'property_id' => $data['property_id'],
+            'workflow_type' => $data['workflow_type'] ?? 'direct_order',
+            'service_type' => $data['service_type'] ?? null,
+            'title' => $data['title'] ?? null,
+            'description' => $data['description'] ?? null,
+            'quote_items' => $data['quote_items'] ?? [],
+            'workflow_meta' => $data['workflow_meta'] ?? [],
+        ]);
+
+        $matches = $duplicates->findDuplicates($draft);
+
+        return response()->json([
+            'data' => [
+                'requires_explanation' => $matches !== [],
+                'matches' => $matches,
+            ],
+        ]);
+    }
+
     public function duplicateCheck(Request $request, Order $order, DuplicateOrderService $duplicates): JsonResponse
     {
         $this->authorizeManagerSide($request, $order);

@@ -338,7 +338,7 @@ function OrderDetailsPage() {
         saved_at: new Date().toISOString(),
       }))
 
-      navigate(`/orders?generate-from=${orderId}`)
+      navigate(`/order-create?generate-from=${orderId}`)
     } catch {
       setError(t('Die ausgewählten Positionen konnten nicht vorbereitet werden.'))
     }

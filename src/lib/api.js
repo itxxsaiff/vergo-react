@@ -652,6 +652,13 @@ export const api = {
       body: JSON.stringify({ reason }),
     })
   },
+  // Run before the order is saved, so the manager can decide whether to publish.
+  previewOrderDuplicates(data) {
+    return request('/orders/duplicate-check', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
   checkOrderDuplicates(id) {
     return request(`/orders/${id}/duplicate-check`)
   },

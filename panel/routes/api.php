@@ -153,6 +153,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     // Cancellation, duplicate detection and sequential bid disclosure.
     Route::post('/orders/{order}/cancel', [OrderLifecycleController::class, 'cancel']);
+    // Checked before the order is saved, so the manager can decide whether to
+    // publish it after seeing the warning.
+    Route::post('/orders/duplicate-check', [OrderLifecycleController::class, 'duplicatePreview']);
     Route::get('/orders/{order}/duplicate-check', [OrderLifecycleController::class, 'duplicateCheck']);
     Route::post('/orders/{order}/duplicate-explanation', [OrderLifecycleController::class, 'acknowledgeDuplicate']);
     Route::get('/orders/{order}/bid-disclosure', [OrderLifecycleController::class, 'disclosure']);

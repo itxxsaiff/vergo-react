@@ -1881,6 +1881,7 @@ const supplementalTranslations = {
     'Noch keine Angebote eingegangen.': 'Noch keine Angebote eingegangen.',
   },
   en: {
+    'Hilfe & Support': 'Help & support',
     'Bitte melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.': 'Please sign in with your e-mail address and password.',
     'Passwort eingeben': 'Enter password',
     'Passwort anzeigen': 'Show password',
@@ -2219,6 +2220,7 @@ const supplementalTranslations = {
     'Hochwertige Materialien': 'High-quality Materials',
   },
   it: {
+    'Hilfe & Support': 'Aiuto e supporto',
     'Bitte melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.': 'Accedi con il tuo indirizzo e-mail e la tua password.',
     'Passwort eingeben': 'Inserisci la password',
     'Passwort anzeigen': 'Mostra password',
@@ -2523,6 +2525,7 @@ const supplementalTranslations = {
     'Hochwertige Materialien': 'Materiali di alta qualità',
   },
   fr: {
+    'Hilfe & Support': 'Aide et assistance',
     'Bitte melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.': 'Veuillez vous connecter avec votre adresse e-mail et votre mot de passe.',
     'Passwort eingeben': 'Saisir le mot de passe',
     'Passwort anzeigen': 'Afficher le mot de passe',

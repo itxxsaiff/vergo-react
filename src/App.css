@@ -1,19 +1,22 @@
 :root {
-  --vergo-accent: #aa8874;
-  --vergo-accent-strong: #937160;
-  --vergo-accent-soft: #efe2da;
-  --vergo-accent-soft-2: #f7efea;
-  --vergo-sidebar-top: #b2907d;
-  --vergo-sidebar-bottom: #a3806c;
-  --vergo-shell-bg: #f6f8fc;
+  /* The primary colour is black. The old brown is gone from the whole shell. */
+  --vergo-accent: #16202b;
+  --vergo-accent-strong: #0f1a2a;
+  --vergo-accent-soft: #e8ebef;
+  --vergo-accent-soft-2: #f2f4f7;
+  --vergo-sidebar-top: #ffffff;
+  --vergo-sidebar-bottom: #ffffff;
+  --vergo-shell-bg: #f7f8fa;
   --vergo-card-bg: #ffffff;
-  --vergo-table-head: #f4ebe6;
-  --vergo-table-border: #eee3dc;
-  --vergo-input-bg: #fbf7f4;
-  --vergo-input-border: #eaded7;
-  --vergo-text-main: #2f3441;
-  --vergo-text-soft: #7f8596;
-  --vergo-shadow-soft: 0 14px 34px rgba(33, 35, 43, 0.06);
+  --vergo-table-head: #f5f6f8;
+  --vergo-table-border: #e8eaee;
+  --vergo-input-bg: #f8f9fb;
+  --vergo-input-border: #dfe3e9;
+  --vergo-text-main: #1b2430;
+  --vergo-text-soft: #7a8493;
+  --vergo-sidebar-ink: #4a5563;
+  --vergo-sidebar-line: #ebedf1;
+  --vergo-shadow-soft: 0 14px 34px rgba(27, 36, 48, 0.06);
   --vergo-shell-gap: 10px;
   --vergo-sidebar-base-width: 270px;
   --vergo-sidebar-float-width: 232px;
@@ -41,7 +44,7 @@ body {
 
 .left-sidebar {
   background: linear-gradient(180deg, var(--vergo-sidebar-top) 0%, var(--vergo-sidebar-bottom) 100%) !important;
-  box-shadow: 14px 0 36px rgba(74, 47, 31, 0.12);
+  box-shadow: 14px 0 36px rgba(35,42,49, 0.12);
 }
 
 #main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .left-sidebar {
@@ -51,13 +54,13 @@ body {
   width: var(--vergo-sidebar-float-width);
   height: auto;
   border-radius: 28px;
-  border: 1px solid rgba(255, 247, 241, 0.24);
+  border: 1px solid rgba(247,248,249, 0.24);
   overflow: hidden;
 }
 
 .card.bg-light-info {
-  background: linear-gradient(180deg, #fbf4ef 0%, #f5ece5 100%) !important;
-  border-color: #ede1d8 !important;
+  background: linear-gradient(180deg, #f4f5f6 0%, #ebedef 100%) !important;
+  border-color: #e0e2e5 !important;
 }
 
 .card.bg-light-info .text-muted,
@@ -98,7 +101,7 @@ body {
 .left-sidebar .sidebar-link,
 .left-sidebar .sidebar-link .ti,
 .left-sidebar .sidebar-link.has-arrow::after {
-  color: #fff7f1 !important;
+  color: #f7f8f9 !important;
 }
 
 .sidebar-nav ul .sidebar-item .sidebar-link {
@@ -155,7 +158,7 @@ body {
 }
 
 .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-button:focus-visible {
-  outline: 2px solid rgba(255, 250, 247, 0.8);
+  outline: 2px solid rgba(251,251,251, 0.8);
   outline-offset: -2px;
   border-radius: 16px;
 }
@@ -179,9 +182,9 @@ body {
 
 .sidebar-nav ul .sidebar-item.selected>.sidebar-link,
 .sidebar-nav ul .sidebar-item>.sidebar-link.active {
-  background: #fffaf7 !important;
+  background: #fbfbfb !important;
   color: var(--vergo-accent-strong) !important;
-  box-shadow: 0 8px 20px rgba(79, 46, 28, 0.14);
+  box-shadow: 0 8px 20px rgba(35,43,51, 0.14);
   transform: translateX(4px);
 }
 
@@ -197,24 +200,24 @@ body {
   opacity: 0.94;
   margin-left: 0.8rem;
   margin-right: 0.45rem;
-  color: rgba(255, 247, 241, 0.9) !important;
+  color: rgba(247,248,249, 0.9) !important;
   border-radius: 12px;
   transform: none;
 }
 
 .sidebar-nav ul .sidebar-item .first-level .sidebar-item>.sidebar-link:hover {
-  background: rgba(255, 248, 243, 0.16) !important;
-  color: #fffaf7 !important;
+  background: rgba(248,249,250, 0.16) !important;
+  color: #fbfbfb !important;
 }
 
 .sidebar-nav ul .sidebar-item .first-level .sidebar-item>.sidebar-link.active {
-  background: rgba(245, 227, 215, 0.18) !important;
-  color: #fffaf7 !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 240, 231, 0.14);
+  background: rgba(228,230,232, 0.18) !important;
+  color: #fbfbfb !important;
+  box-shadow: inset 0 0 0 1px rgba(242,243,244, 0.14);
 }
 
 .sidebar-nav ul .sidebar-item .first-level .sidebar-item>.sidebar-link.active::before {
-  background: rgba(255, 245, 239, 0.88) !important;
+  background: rgba(246,247,248, 0.88) !important;
 }
 
 .sidebar-nav ul .sidebar-item .first-level .sidebar-item>.sidebar-link.active .ti,
@@ -297,7 +300,7 @@ body {
 }
 
 .app-header .navbar.vergo-manager-header {
-  background: #937160;
+  background: #2d4258;
   border-bottom: 1px solid rgba(233, 236, 242, 0.95);
 }
 
@@ -389,12 +392,12 @@ body {
   --bs-btn-focus-shadow-rgb: 183, 132, 103;
   border-radius: 12px;
   font-weight: 600;
-  box-shadow: 0 6px 14px rgba(183, 132, 103, 0.2);
+  box-shadow: 0 6px 14px rgba(37,54,72, 0.2);
 }
 
 .btn-light-primary {
-  background: #f6ece6 !important;
-  border-color: #f6ece6 !important;
+  background: #eceef0 !important;
+  border-color: #eceef0 !important;
   color: var(--vergo-accent-strong) !important;
   border-radius: 12px;
   font-weight: 600;
@@ -419,9 +422,9 @@ body {
 
 .form-control:focus,
 .form-select:focus {
-  border-color: rgba(183, 132, 103, 0.42);
+  border-color: rgba(37,54,72, 0.42);
   background-color: #ffffff;
-  box-shadow: 0 0 0 0.2rem rgba(183, 132, 103, 0.12);
+  box-shadow: 0 0 0 0.2rem rgba(37,54,72, 0.12);
 }
 
 .vergo-filter-bar {
@@ -431,7 +434,7 @@ body {
 .vergo-filter-bar .form-control,
 .vergo-filter-bar .form-select {
   border: 0;
-  border-bottom: 2px solid #d9cdc6;
+  border-bottom: 2px solid #cdcfd2;
   border-radius: 0;
   background-color: transparent;
   padding-left: 1.7rem;
@@ -489,7 +492,7 @@ body {
   top: 50%;
   transform: translateY(-50%);
   font-size: 1rem;
-  color: #9c897d;
+  color: #26374a;
   pointer-events: none;
 }
 
@@ -511,7 +514,7 @@ body {
   top: 50%;
   transform: translateY(-50%);
   font-size: 1rem;
-  color: #9c897d;
+  color: #26374a;
   pointer-events: none;
   z-index: 1;
 }
@@ -548,7 +551,7 @@ body {
 
 .customize-table tbody td {
   border: 0 !important;
-  border-bottom: 1px solid #f1e7e1 !important;
+  border-bottom: 1px solid #e7e9eb !important;
   background: #ffffff;
   vertical-align: middle;
   color: var(--vergo-text-main);
@@ -557,7 +560,7 @@ body {
 }
 
 .customize-table tbody tr:hover td {
-  background: #fcf8f5;
+  background: #f8f8f9;
 }
 
 .table-action-btn {
@@ -625,22 +628,22 @@ body {
 
 .vergo-admin-directory-card {
   min-height: 270px;
-  border: 1px solid #eadfd8;
+  border: 1px solid #dfe1e3;
   border-radius: 24px;
   background:
-    linear-gradient(180deg, #fffdfa 0%, #f8f1ec 100%);
+    linear-gradient(180deg, #fffdfa 0%, #f1f2f3 100%);
   box-shadow:
     0 16px 34px rgba(33, 35, 43, 0.06),
-    0 4px 10px rgba(183, 132, 103, 0.06);
+    0 4px 10px rgba(37,54,72, 0.06);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .vergo-admin-directory-card:hover {
   transform: translateY(-3px);
-  border-color: #d8c9c0;
+  border-color: #c9cccf;
   box-shadow:
     0 20px 42px rgba(33, 35, 43, 0.09),
-    0 8px 18px rgba(183, 132, 103, 0.1);
+    0 8px 18px rgba(37,54,72, 0.1);
 }
 
 .vergo-admin-directory-card-inner {
@@ -654,8 +657,8 @@ body {
   overflow: hidden;
   position: relative;
   background:
-    radial-gradient(circle at top left, rgba(183, 132, 103, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(249, 241, 235, 0.96), rgba(245, 236, 229, 0.9));
+    radial-gradient(circle at top left, rgba(37,54,72, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(241,242,243, 0.96), rgba(235,237,239, 0.9));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -717,7 +720,7 @@ body {
   flex-direction: column;
   gap: 0.18rem;
   padding-top: 0.65rem;
-  border-top: 1px solid #ece1da;
+  border-top: 1px solid #e1e3e5;
 }
 
 .vergo-admin-directory-location-label {
@@ -725,7 +728,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #9b8a7f;
+  color: #263749;
 }
 
 .vergo-admin-directory-location-value {
@@ -1318,8 +1321,8 @@ body {
 
 .table-action-btn.table-action-edit {
   color: var(--vergo-accent-strong);
-  background: rgba(183, 132, 103, 0.12);
-  border-color: rgba(183, 132, 103, 0.2);
+  background: rgba(37,54,72, 0.12);
+  border-color: rgba(37,54,72, 0.2);
 }
 
 .table-action-btn.table-action-view {
@@ -1329,9 +1332,9 @@ body {
 }
 
 .table-action-btn.table-action-delete {
-  color: #fa896b;
-  background: rgba(250, 137, 107, 0.14);
-  border-color: rgba(250, 137, 107, 0.18);
+  color: #17212c;
+  background: rgba(23,33,44, 0.14);
+  border-color: rgba(23,33,44, 0.18);
 }
 
 .table-action-btn:hover {
@@ -1496,8 +1499,8 @@ body {
 }
 
 .vergo-inspection-slot-card.is-preferred {
-  border-color: rgba(183, 132, 103, 0.42);
-  background: #fffaf7 !important;
+  border-color: rgba(37,54,72, 0.42);
+  background: #fbfbfb !important;
 }
 
 .vergo-inspection-slot-card.is-own {
@@ -1512,7 +1515,7 @@ body {
   max-width: 100%;
   padding: 0.22rem 0.46rem;
   border-radius: 999px;
-  background: rgba(183, 132, 103, 0.14);
+  background: rgba(37,54,72, 0.14);
   color: var(--vergo-accent-strong);
   font-size: 0.74rem;
   font-weight: 700;
@@ -1812,14 +1815,14 @@ body {
 }
 
 .vergo-order-stepper-item.is-active {
-  background: linear-gradient(180deg, rgba(183, 132, 103, 0.08) 0%, rgba(183, 132, 103, 0.02) 100%);
+  background: linear-gradient(180deg, rgba(37,54,72, 0.08) 0%, rgba(37,54,72, 0.02) 100%);
 }
 
 .vergo-order-stepper-item.is-active .vergo-order-stepper-node {
   border-color: var(--vergo-accent);
-  background: linear-gradient(180deg, #cbaa96 0%, #b08b75 100%);
+  background: linear-gradient(180deg, #17222d 0%, #243445 100%);
   color: #ffffff;
-  box-shadow: 0 12px 22px rgba(183, 132, 103, 0.24);
+  box-shadow: 0 12px 22px rgba(37,54,72, 0.24);
 }
 
 .vergo-order-stepper-item.is-active .vergo-order-stepper-title {
@@ -1827,7 +1830,7 @@ body {
 }
 
 .vergo-order-stepper-item.is-active::after {
-  background: linear-gradient(90deg, rgba(183, 132, 103, 0.35) 0%, #edf3fb 100%);
+  background: linear-gradient(90deg, rgba(37,54,72, 0.35) 0%, #edf3fb 100%);
 }
 
 .vergo-order-stepper-item.is-complete {
@@ -1873,8 +1876,8 @@ body {
 
 .vergo-order-choice-card.is-selected {
   border-color: var(--vergo-accent);
-  background: linear-gradient(180deg, #fffdfa 0%, #faf2ec 100%);
-  box-shadow: 0 14px 28px rgba(183, 132, 103, 0.12);
+  background: linear-gradient(180deg, #fffdfa 0%, #f2f3f4 100%);
+  box-shadow: 0 14px 28px rgba(37,54,72, 0.12);
 }
 
 .vergo-order-choice-check {
@@ -1893,9 +1896,9 @@ body {
 
 .vergo-order-choice-check.is-selected {
   border-color: var(--vergo-accent);
-  background: linear-gradient(180deg, #cbaa96 0%, #b08b75 100%);
+  background: linear-gradient(180deg, #17222d 0%, #243445 100%);
   color: #ffffff;
-  box-shadow: 0 10px 20px rgba(183, 132, 103, 0.22);
+  box-shadow: 0 10px 20px rgba(37,54,72, 0.22);
 }
 
 .vergo-manager-quick-link,
@@ -1907,21 +1910,21 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0.8rem 1.15rem;
-  border: 1px solid rgba(159, 109, 84, 0.24);
+  border: 1px solid rgba(45,66,88, 0.24);
   border-radius: 16px;
   background: linear-gradient(180deg, var(--vergo-accent) 0%, var(--vergo-accent-strong) 100%);
-  color: #fffaf7;
+  color: #fbfbfb;
   font-weight: 700;
-  box-shadow: 0 14px 28px rgba(159, 109, 84, 0.24);
+  box-shadow: 0 14px 28px rgba(45,66,88, 0.24);
   transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
 .vergo-manager-quick-link:hover,
 .vergo-manager-quick-link:focus {
-  color: #fffaf7;
+  color: #fbfbfb;
   filter: brightness(0.98);
   transform: translateY(-1px);
-  box-shadow: 0 16px 32px rgba(159, 109, 84, 0.28);
+  box-shadow: 0 16px 32px rgba(45,66,88, 0.28);
 }
 
 .vergo-manager-order-card {
@@ -1930,27 +1933,27 @@ body {
   flex-direction: column;
   gap: 0.7rem;
   padding: 0.95rem 1rem;
-  border: 1px solid #e4d9d3;
+  border: 1px solid #d9dbde;
   border-radius: 18px;
-  background: linear-gradient(180deg, #fffdfa 0%, #f8f1ec 100%);
+  background: linear-gradient(180deg, #fffdfa 0%, #f1f2f3 100%);
   color: #2f3441;
   text-decoration: none;
-  box-shadow: 0 10px 24px rgba(159, 109, 84, 0.10);
+  box-shadow: 0 10px 24px rgba(45,66,88, 0.10);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .vergo-manager-order-card:hover {
   color: #2f3441;
   transform: translateY(-2px);
-  border-color: #bd9f8f;
-  background: linear-gradient(180deg, #fffaf6 0%, #f3e7df 100%);
-  box-shadow: 0 18px 34px rgba(159, 109, 84, 0.16);
+  border-color: #1c2836;
+  background: linear-gradient(180deg, #fafafb 0%, #e7e9eb 100%);
+  box-shadow: 0 18px 34px rgba(45,66,88, 0.16);
 }
 
 .vergo-manager-order-card-label,
 .vergo-manager-order-card-meta span,
 .vergo-manager-order-card-grid span {
-  color: #9a7a68;
+  color: #2b3e53;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1989,27 +1992,27 @@ body {
   justify-content: center;
   text-align: center;
   min-height: 100%;
-  border-color: #ae8c7c;
-  background: linear-gradient(180deg, #a67f6c 0%, #846456 100%);
-  color: #fffaf7;
-  box-shadow: 0 16px 30px rgba(143, 96, 75, 0.22);
+  border-color: #233243;
+  background: linear-gradient(180deg, #27394d 0%, #50575f 100%);
+  color: #fbfbfb;
+  box-shadow: 0 16px 30px rgba(76,87,98, 0.22);
 }
 
 .vergo-manager-order-card-more:hover {
-  color: #fffaf7;
-  border-color: #846456;
-  background: linear-gradient(180deg, #997463 0%, #735649 100%);
-  box-shadow: 0 20px 36px rgba(143, 96, 75, 0.28);
+  color: #fbfbfb;
+  border-color: #50575f;
+  background: linear-gradient(180deg, #2c4055 0%, #444b52 100%);
+  box-shadow: 0 20px 36px rgba(76,87,98, 0.28);
 }
 
 .vergo-manager-order-card-more span {
-  color: rgba(255, 250, 247, 0.76);
+  color: rgba(251,251,251, 0.76);
   font-size: 0.92rem;
   font-weight: 700;
 }
 
 .vergo-manager-order-card-more strong {
-  color: #fffaf7;
+  color: #fbfbfb;
   font-size: 2rem;
   font-weight: 800;
   line-height: 1;
@@ -2037,8 +2040,8 @@ body {
 }
 
 .vergo-order-type-badge.is-job {
-  color: #846456;
-  background: #f3e2d8;
+  color: #50575f;
+  background: #e3e5e8;
 }
 
 .vergo-breadcrumb {
@@ -2057,7 +2060,7 @@ body {
   border: 1px solid var(--vergo-input-border);
   border-radius: 20px;
   background: var(--vergo-input-bg);
-  box-shadow: 0 10px 24px rgba(159, 109, 84, 0.07);
+  box-shadow: 0 10px 24px rgba(45,66,88, 0.07);
 }
 
 .vergo-inspection-section-title {
@@ -2151,16 +2154,16 @@ body {
 .vergo-quote-cta-card .btn-light {
   border: 1px solid var(--vergo-input-border);
   background: var(--vergo-card-bg);
-  color: #846456;
+  color: #50575f;
   font-weight: 700;
 }
 
 .vergo-inspection-quote-option {
   overflow: hidden;
   padding: 1rem;
-  border: 1px solid #e3d6cf;
+  border: 1px solid #d6d9dc;
   border-radius: 12px;
-  background: #fffaf7;
+  background: #fbfbfb;
 }
 
 .vergo-inspection-quote-option .table {
@@ -2500,7 +2503,7 @@ body {
   max-height: min(92vh, 760px);
   overflow: auto;
   background: #fff;
-  border: 1px solid rgba(159, 109, 84, 0.22);
+  border: 1px solid rgba(45,66,88, 0.22);
   border-radius: 22px;
   box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
 }
@@ -2550,9 +2553,9 @@ body {
 .vergo-support-stat-card {
   min-height: 68px;
   padding: 0.8rem 0.95rem;
-  border: 1px solid rgba(159, 109, 84, 0.16);
+  border: 1px solid rgba(45,66,88, 0.16);
   border-radius: 16px;
-  background: linear-gradient(135deg, #fffaf7 0%, #fff 100%);
+  background: linear-gradient(135deg, #fbfbfb 0%, #fff 100%);
 }
 
 .vergo-support-stat-card span {
@@ -2586,7 +2589,7 @@ body {
 
 .vergo-support-ticket-card {
   overflow: hidden;
-  border: 1px solid rgba(159, 109, 84, 0.15);
+  border: 1px solid rgba(45,66,88, 0.15);
   border-radius: 16px;
   background: #fff;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
@@ -2594,7 +2597,7 @@ body {
 
 .vergo-support-ticket-card:hover,
 .vergo-support-ticket-card.is-expanded {
-  border-color: rgba(159, 109, 84, 0.34);
+  border-color: rgba(45,66,88, 0.34);
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
@@ -2655,7 +2658,7 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 0.25rem;
-  color: #937160;
+  color: #2d4258;
   font-size: 0.82rem;
   font-weight: 800;
 }
@@ -2666,7 +2669,7 @@ body {
   gap: 0.9rem;
   padding: 0.9rem;
   border-top: 1px solid rgba(226, 232, 240, 0.95);
-  background: #fffaf7;
+  background: #fbfbfb;
 }
 
 .vergo-support-ticket-thread {
@@ -2676,7 +2679,7 @@ body {
 
 .vergo-support-ticket-contact {
   padding: 0.8rem;
-  border: 1px solid rgba(159, 109, 84, 0.14);
+  border: 1px solid rgba(45,66,88, 0.14);
   border-radius: 14px;
   background: #fff;
 }
@@ -2713,7 +2716,7 @@ body {
 
 .vergo-support-ticket-message {
   padding: 0.8rem;
-  border: 1px solid rgba(159, 109, 84, 0.14);
+  border: 1px solid rgba(45,66,88, 0.14);
   border-radius: 14px;
   background: #fff;
   white-space: pre-wrap;
@@ -3706,5 +3709,347 @@ body {
     width: 46px;
     height: 54px;
     font-size: 1.25rem;
+  }
+}
+
+/* ==========================================================================
+   Admin shell redesign - light panel, black primary.
+   Appended last so it overrides the older brown shell rules above.
+   Shared by admin, employee, owner and service provider; the property manager
+   runs without a sidebar and only picks up the header rules.
+   ========================================================================== */
+
+#main-wrapper[data-layout=vertical] {
+  background: var(--vergo-shell-bg);
+}
+
+/* --- Sidebar --- */
+.left-sidebar {
+  background: #ffffff !important;
+  box-shadow: none;
+  border-right: 1px solid var(--vergo-sidebar-line);
+}
+
+#main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .left-sidebar {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--vergo-sidebar-base-width);
+  height: 100%;
+  border-radius: 0;
+  border: 0;
+  border-right: 1px solid var(--vergo-sidebar-line);
+}
+
+/* The sidebar column holds the nav and a help button pinned to the bottom. */
+.left-sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.left-sidebar > div:first-child {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.left-sidebar .brand-logo {
+  padding: 1.4rem 1.5rem 1.2rem;
+  flex: 0 0 auto;
+}
+
+.left-sidebar .logo-img img {
+  width: auto;
+  height: 34px;
+  max-width: 100%;
+}
+
+.left-sidebar .scroll-sidebar {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  padding: 0 12px 10px;
+}
+
+.left-sidebar .nav-small-cap {
+  color: #98a1ae !important;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.75rem 0.6rem;
+}
+
+.left-sidebar .nav-small-cap .nav-small-cap-icon {
+  display: none;
+}
+
+.left-sidebar .sidebar-link,
+.left-sidebar .sidebar-link .ti,
+.left-sidebar .sidebar-link.has-arrow::after {
+  color: var(--vergo-sidebar-ink) !important;
+}
+
+.sidebar-nav ul .sidebar-item .sidebar-link {
+  margin: 0.12rem 0;
+  padding: 0.62rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+.sidebar-nav ul .sidebar-item .sidebar-link:hover {
+  background: #f4f5f7 !important;
+  transform: none;
+}
+
+/* The current page: a soft grey pill with a black label, as in the design. */
+.sidebar-nav ul .sidebar-item.selected > .sidebar-link,
+.sidebar-nav ul .sidebar-item > .sidebar-link.active,
+.sidebar-nav ul .sidebar-item .vergo-sidebar-group:has(.vergo-sidebar-parent-link.active) {
+  background: #f0f1f4 !important;
+  color: var(--vergo-accent-strong) !important;
+  box-shadow: none;
+  transform: none;
+  font-weight: 600;
+}
+
+.sidebar-nav ul .sidebar-item.selected > .sidebar-link .ti,
+.sidebar-nav ul .sidebar-item > .sidebar-link.active .ti,
+.sidebar-nav ul .sidebar-item.selected > .sidebar-link.has-arrow::after,
+.sidebar-nav ul .sidebar-item > .sidebar-link.active.has-arrow::after {
+  color: var(--vergo-accent-strong) !important;
+}
+
+/* Sub-items sit slightly indented with a thin guide line. */
+.sidebar-nav ul .sidebar-item .first-level {
+  margin: 0.1rem 0 0.35rem 1.45rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--vergo-sidebar-line);
+}
+
+.sidebar-nav ul .sidebar-item .first-level .sidebar-item > .sidebar-link {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  opacity: 1;
+  color: #6b7482 !important;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.sidebar-nav ul .sidebar-item .first-level .sidebar-item > .sidebar-link .ti {
+  font-size: 0.55rem;
+}
+
+.sidebar-nav ul .sidebar-item .first-level .sidebar-item > .sidebar-link:hover {
+  background: #f4f5f7 !important;
+  color: var(--vergo-accent-strong) !important;
+}
+
+.sidebar-nav ul .sidebar-item .first-level .sidebar-item > .sidebar-link.active {
+  background: #f0f1f4 !important;
+  color: var(--vergo-accent-strong) !important;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+/* Help and support, pinned to the bottom of the sidebar. */
+.vergo-sidebar-footer {
+  flex: 0 0 auto;
+  padding: 0.85rem 1.1rem 1.2rem;
+  border-top: 1px solid var(--vergo-sidebar-line);
+}
+
+.vergo-sidebar-help {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--vergo-sidebar-ink);
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vergo-sidebar-help:hover {
+  background: #f4f5f7;
+  color: var(--vergo-accent-strong);
+}
+
+.vergo-sidebar-help .vergo-support-icon,
+.vergo-sidebar-help i {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+}
+
+/* --- Header --- */
+.app-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--vergo-sidebar-line);
+  box-shadow: none;
+}
+
+.app-header .navbar {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  min-height: var(--vergo-header-height);
+}
+
+.app-header .nav-link {
+  color: #5a6472 !important;
+}
+
+.app-header .nav-icon-hover:hover {
+  color: var(--vergo-accent-strong) !important;
+}
+
+/* Language shown as "DE" with a caret, rather than a globe icon. */
+.vergo-header-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.vergo-header-language:hover {
+  background: #f4f5f7;
+}
+
+.vergo-header-language i {
+  font-size: 0.95rem;
+}
+
+/* The avatar sits in a bordered circle like the design. */
+.app-header .user-profile-img img {
+  border: 1px solid var(--vergo-sidebar-line);
+  background: #f4f5f7;
+}
+
+/* --- Body --- */
+.body-wrapper {
+  background: var(--vergo-shell-bg);
+}
+
+.body-wrapper .card {
+  border: 1px solid var(--vergo-sidebar-line);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+/* The old floating shell inset the content; the panel is flush now. */
+#main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .body-wrapper {
+  margin-left: var(--vergo-sidebar-base-width);
+}
+
+#main-wrapper.vergo-layout-no-sidebar .body-wrapper,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .body-wrapper {
+  margin-left: 0;
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar {
+  width: var(--vergo-sidebar-mini-width);
+}
+
+@media (max-width: 1199px) {
+  #main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .body-wrapper {
+    margin-left: 0;
+  }
+}
+
+/* --- Header sits flush at the very top, full width, no pill --- */
+#main-wrapper[data-layout=vertical][data-header-position=fixed] .app-header {
+  top: 0;
+  right: 0;
+  left: var(--vergo-sidebar-base-width);
+  width: auto;
+}
+
+#main-wrapper[data-layout=vertical][data-header-position=fixed] .app-header .navbar {
+  padding: 0.05rem 1.25rem;
+  border: 0;
+  border-bottom: 1px solid var(--vergo-sidebar-line);
+  border-radius: 0;
+  box-shadow: none;
+  background: #ffffff;
+}
+
+#main-wrapper[data-layout=vertical][data-header-position=fixed][data-sidebartype=full] .app-header,
+#main-wrapper[data-layout=vertical][data-header-position=fixed][data-sidebartype=mini-sidebar] .app-header {
+  left: var(--vergo-sidebar-base-width);
+  width: auto;
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=full] .body-wrapper,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .body-wrapper {
+  margin-left: var(--vergo-sidebar-base-width);
+}
+
+/* The sidebar is a fixed rail now, so the mini/collapsed widths no longer apply. */
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar {
+  width: var(--vergo-sidebar-base-width);
+}
+
+/* Content clears the header exactly - the old rule added the floating gap. */
+.body-wrapper > .container-fluid,
+.body-wrapper > .container-sm,
+.body-wrapper > .container-md,
+.body-wrapper > .container-lg,
+.body-wrapper > .container-xl,
+.body-wrapper > .container-xxl {
+  padding-top: calc(var(--vergo-header-height) + 1.25rem) !important;
+}
+
+.vergo-layout-no-sidebar .app-header {
+  left: 0 !important;
+  width: auto !important;
+}
+
+.vergo-layout-no-sidebar.app-header-offset,
+.vergo-layout-no-sidebar .body-wrapper > .container-fluid,
+.vergo-layout-no-sidebar .body-wrapper > .container-sm,
+.vergo-layout-no-sidebar .body-wrapper > .container-md,
+.vergo-layout-no-sidebar .body-wrapper > .container-lg,
+.vergo-layout-no-sidebar .body-wrapper > .container-xl,
+.vergo-layout-no-sidebar .body-wrapper > .container-xxl {
+  padding-top: calc(var(--vergo-header-height) + 1.25rem) !important;
+}
+
+@media (max-width: 1199px) {
+  #main-wrapper[data-layout=vertical][data-header-position=fixed] .app-header,
+  #main-wrapper[data-layout=vertical][data-header-position=fixed][data-sidebartype=full] .app-header,
+  #main-wrapper[data-layout=vertical][data-header-position=fixed][data-sidebartype=mini-sidebar] .app-header {
+    left: 0;
+  }
+
+  #main-wrapper[data-layout=vertical][data-sidebartype=full] .body-wrapper,
+  #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .body-wrapper {
+    margin-left: 0;
+  }
+}
+
+/* Selected language: grey and black, never the old brown. This covers the
+   header dropdown as well as the one on the public login screens. */
+.dropdown-menu .dropdown-item.bg-light-primary.text-primary,
+.dropdown-menu .dropdown-item.bg-light-primary.text-primary:hover,
+.dropdown-menu .dropdown-item.bg-light-primary.text-primary:focus {
+  background: #f0f1f4 !important;
+  color: var(--vergo-accent-strong) !important;
+}
+
+/* The sidebar no longer collapses, so its toggle is hidden on desktop. It stays
+   on small screens, where the sidebar slides in and there is no other way to
+   reach the menu. */
+@media (min-width: 1200px) {
+  #headerCollapse {
+    display: none !important;
   }
 }

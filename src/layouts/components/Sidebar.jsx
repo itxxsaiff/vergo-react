@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { closeSidebar } from '../../lib/sidebarLayout'
 import { useLanguage } from '../../context/LanguageContext'
-import VergoLogo from '../../../public/VERGO.png'
+import SupportTicketButton from '../../components/SupportTicketButton'
+import VergoLogo from '../../../public/assets/images/logo/VERGO_01.png'
 
 function Sidebar({ navigation, user }) {
   const location = useLocation()
@@ -143,6 +144,16 @@ function Sidebar({ navigation, user }) {
             })}
           </ul>
         </nav>
+      </div>
+
+      {/* Help sits at the foot of the sidebar and opens the support ticket
+          form, the same one the header used to hold on its own. */}
+      <div className="vergo-sidebar-footer">
+        <SupportTicketButton
+          asNavItem={false}
+          buttonClassName="vergo-sidebar-help"
+          label={t('Hilfe & Support')}
+        />
       </div>
     </aside>
   )

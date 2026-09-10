@@ -5,7 +5,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../lib/api'
 import { clearOpenOffer, getOpenOfferOrderId } from '../../lib/openOfferGuard'
 import { toggleSidebar } from '../../lib/sidebarLayout'
-import VergoLogo from '../../../public/VERGO.png'
+import VergoLogo from '../../../public/assets/images/logo/VERGO_01.png'
 import SupportTicketButton from '../../components/SupportTicketButton'
 
 const HEADER_PLACEHOLDER_IMAGE = 'https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg'
@@ -19,6 +19,7 @@ function Header({ user, showSidebarToggle = true }) {
   // Owners are greeted in the header bar itself - the manager already has the
   // same greeting on their dashboard card.
   const showHeaderGreeting = user?.role === 'owner'
+  const activeLanguage = languages.find((entry) => entry.value === language)
 
   useEffect(() => {
     let intervalId = null
@@ -145,42 +146,9 @@ function Header({ user, showSidebarToggle = true }) {
 
         <div className="collapse navbar-collapse justify-content-end" id="navbarNav">
           <ul className="navbar-nav flex-row ms-auto align-items-center justify-content-center">
-            <SupportTicketButton />
-
-            <li className="nav-item dropdown">
-              <button
-                type="button"
-                className="nav-link nav-icon-hover border-0 bg-transparent position-relative"
-                id="vergo-language-dropdown"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-                aria-label={t('Sprache')}
-                title={t('Sprache')}
-              >
-                <i className="ti ti-language"></i>
-              </button>
-              <div
-                className="dropdown-menu dropdown-menu-end dropdown-menu-animate-up"
-                aria-labelledby="vergo-language-dropdown"
-              >
-                <div className="py-3 px-4 pb-2">
-                  <h5 className="mb-0 fs-5 fw-semibold">{t('Sprache')}</h5>
-                </div>
-                <div className="px-2 pb-2" data-no-translate="true">
-                  {languages.map((entry) => (
-                    <button
-                      key={entry.value}
-                      type="button"
-                      className={`dropdown-item d-flex align-items-center justify-content-between rounded-2${language === entry.value ? ' bg-light-primary text-primary' : ''}`}
-                      onClick={() => handleLanguageChange(entry.value)}
-                    >
-                      <span>{entry.label}</span>
-                      <span className="small fw-semibold">{entry.shortLabel}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </li>
+            {/* Support lives at the foot of the sidebar now. The property
+                manager has no sidebar, so it stays in their header. */}
+            {!showSidebarToggle ? <SupportTicketButton /> : null}
 
             <li className="nav-item dropdown">
               <button
@@ -226,6 +194,42 @@ function Header({ user, showSidebarToggle = true }) {
                   )) : (
                     <div className="py-4 px-4 text-muted">{t('Noch keine Benachrichtigungen.')}</div>
                   )}
+                </div>
+              </div>
+            </li>
+
+            <li className="nav-item dropdown">
+              <button
+                type="button"
+                className="nav-link nav-icon-hover border-0 bg-transparent position-relative vergo-header-language"
+                id="vergo-language-dropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label={t('Sprache')}
+                title={t('Sprache')}
+              >
+                <span data-no-translate="true">{activeLanguage?.shortLabel ?? language.toUpperCase()}</span>
+                <i className="ti ti-chevron-down"></i>
+              </button>
+              <div
+                className="dropdown-menu dropdown-menu-end dropdown-menu-animate-up"
+                aria-labelledby="vergo-language-dropdown"
+              >
+                <div className="py-3 px-4 pb-2">
+                  <h5 className="mb-0 fs-5 fw-semibold">{t('Sprache')}</h5>
+                </div>
+                <div className="px-2 pb-2" data-no-translate="true">
+                  {languages.map((entry) => (
+                    <button
+                      key={entry.value}
+                      type="button"
+                      className={`dropdown-item d-flex align-items-center justify-content-between rounded-2${language === entry.value ? ' bg-light-primary text-primary' : ''}`}
+                      onClick={() => handleLanguageChange(entry.value)}
+                    >
+                      <span>{entry.label}</span>
+                      <span className="small fw-semibold">{entry.shortLabel}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </li>

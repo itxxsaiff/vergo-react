@@ -3381,12 +3381,24 @@ body {
 /* Back link, step indicator, fields and the photo overlay used by the
    multi-step property login. */
 .vergo-auth-split-back {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
   margin-bottom: 2.5rem;
   color: var(--vergo-auth-ink);
   font-size: 1rem;
+  text-decoration: none;
+}
+
+/* The link variant would otherwise inherit the old brown link colour on hover. */
+.vergo-auth-split-back,
+.vergo-auth-split-back:hover,
+.vergo-auth-split-back:focus {
+  color: var(--vergo-auth-ink);
   text-decoration: none;
 }
 
@@ -3506,6 +3518,8 @@ body {
   margin: 1.25rem 0 0;
   color: #fff;
   max-width: 18ch;
+  /* Some headlines are written as three deliberate lines. */
+  white-space: pre-line;
   font-size: clamp(1.4rem, 2.1vw, 2rem);
   font-weight: 500;
   line-height: 1.25;
@@ -3560,5 +3574,87 @@ body {
   /* The overlay text would crowd a short banner. */
   .vergo-auth-split-media-content {
     display: none;
+  }
+}
+
+/* Small note under a field - which property the login belongs to. */
+.vergo-auth-hint {
+  margin: 0.75rem 0 0;
+  color: var(--vergo-auth-muted);
+  font-size: 0.92rem;
+}
+
+/* Language menu on the public screens: the selected entry follows the black
+   primary colour instead of the old brown. */
+.vergo-public-language-menu .dropdown-item.bg-light-primary.text-primary {
+  background: #eff2f5 !important;
+  color: var(--vergo-auth-ink) !important;
+}
+
+/* One box per digit of the confirmation code. */
+.vergo-auth-code {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.vergo-auth-code-box {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid var(--vergo-auth-line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--vergo-auth-ink);
+  font-size: 1.5rem;
+  text-align: center;
+  outline: none;
+}
+
+.vergo-auth-code-box:focus {
+  border-color: var(--vergo-auth-ink);
+  box-shadow: 0 0 0 1px var(--vergo-auth-ink);
+}
+
+.vergo-auth-resend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vergo-auth-muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.vergo-auth-resend:disabled {
+  cursor: default;
+}
+
+.vergo-auth-resend-action {
+  color: var(--vergo-auth-ink);
+  text-decoration: underline;
+}
+
+.vergo-auth-resend:disabled .vergo-auth-resend-action {
+  color: var(--vergo-auth-muted);
+}
+
+/* The address the code went to is part of the sentence, so it stays readable
+   across the line break. */
+.vergo-auth-split-subtitle {
+  white-space: pre-line;
+}
+
+@media (max-width: 575.98px) {
+  .vergo-auth-code {
+    gap: 0.5rem;
+  }
+
+  .vergo-auth-code-box {
+    width: 46px;
+    height: 54px;
+    font-size: 1.25rem;
   }
 }

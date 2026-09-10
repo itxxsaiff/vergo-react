@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import AuthShell from '../components/AuthShell'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import AuthSplitShell from '../components/AuthSplitShell'
+import CodeInput from '../components/CodeInput'
 import { EMAIL_OTP_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
 
 const initialForm = {
   email: '',
@@ -20,7 +20,6 @@ function EmailOtpLoginPage() {
   const isCustomerEmailLink = ['DLS-', 'ETM-'].some((prefix) => customerNumberFromLink.trim().toUpperCase().startsWith(prefix))
   const { isAuthenticated, logout, requestUserOtp, verifyUserOtp } = useAuth()
   const { t } = useLanguage()
-  const backgroundStyle = useImmersiveAuthBackgroundStyle()
   const [form, setForm] = useState(() => ({
     ...initialForm,
     customer_number: customerNumberFromLink,
@@ -31,6 +30,18 @@ function EmailOtpLoginPage() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasAccess] = useState(() => sessionStorage.getItem(EMAIL_OTP_LOGIN_ACCESS_KEY) === 'granted')
+  // A short wait before the code can be requested again.
+  const [resendSeconds, setResendSeconds] = useState(0)
+
+  useEffect(() => {
+    if (resendSeconds <= 0) {
+      return undefined
+    }
+
+    const timerId = window.setTimeout(() => setResendSeconds((current) => current - 1), 1000)
+
+    return () => window.clearTimeout(timerId)
+  }, [resendSeconds])
 
   useEffect(() => {
     if (shouldForceOtpLogin && isAuthenticated && step === 'email') {
@@ -111,153 +122,154 @@ function EmailOtpLoginPage() {
     }
   }
 
-  function resetEmailStep() {
+  async function handleResendCode() {
+    if (resendSeconds > 0) {
+      return
+    }
+
+    setError('')
+    setIsSubmitting(true)
+
+    try {
+      await requestUserOtp({ email: form.email, customer_number: form.customer_number })
+      setOtpSentMessage(t('Wir haben Ihnen einen neuen Code gesendet.'))
+      setForm((current) => ({ ...current, code: '' }))
+      setResendSeconds(60)
+    } catch (resendError) {
+      setError(t(resendError.message))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Going back keeps the customer number and address so they are not retyped.
+  function resetFlow() {
     setStep('email')
-    setForm((current) => ({
-      ...current,
-      customer_number: '',
-      code: '',
-    }))
+    setForm((current) => ({ ...current, code: '' }))
     setOtpSentMessage('')
     setError('')
   }
 
   const contentByStep = {
     email: {
-      title: 'Eigentümer- und Dienstleisteranmeldung',
-      subtitle: 'Geben Sie Ihre Kundennummer und E-Mail-Adresse ein.',
+      index: 1,
+      title: 'Anmeldedaten eingeben',
+      subtitle: 'Bitte geben Sie Ihre Kundennummer und E-Mail-Adresse ein. Wir verwenden diese, um Ihnen einen Bestätigungscode zu senden.',
     },
     otp: {
-      title: 'Code eingeben',
-      subtitle: 'Prüfen Sie Ihre E-Mails und geben Sie den 6-stelligen Code ein.',
+      index: 2,
+      title: 'Bestätigungscode eingeben',
+      subtitle: null,
     },
   }
 
+  // The message laid over the photo.
+  const mediaFeatures = [
+    { icon: 'ti ti-stack-2', label: t('Digital') },
+    { icon: 'ti ti-bolt', label: t('Effizient') },
+    { icon: 'ti ti-leaf', label: t('Nachhaltig') },
+  ]
+  const mediaContent = {
+    headline: `${t('Mehr Transparenz.')}\n${t('Mehr Effizienz.')}\n${t('Mehr Lebensqualität.')}`,
+    features: mediaFeatures,
+    caption: t('Gemeinsam für eine smarte Immobilienwelt.'),
+  }
+
   return (
-    <AuthShell
+    <AuthSplitShell
       title={t(contentByStep[step].title)}
-      subtitle={t(contentByStep[step].subtitle)}
-      logoHref="/email-otp-login"
-      backgroundStyle={backgroundStyle}
-      {...immersiveAuthShellProps}
-      footer={<Link className="text-primary fw-medium" to="/type">{t('Zurück')}</Link>}
+      subtitle={step === 'otp'
+        ? `${t('Wir haben Ihnen einen 6-stelligen Code an')} ${form.email} ${t('gesendet.')}\n${t('Bitte geben Sie den Code ein, um fortzufahren.')}`
+        : t(contentByStep[step].subtitle)}
+      logoHref="/type"
+      imageSrc="/assets/images/ui-images/enter-email-page.png"
+      backLink={step === 'email'
+        ? { to: '/type', label: t('Zurück zur Auswahl') }
+        : { onClick: resetFlow, label: t('Zurück') }}
+      step={{ index: contentByStep[step].index, label: `${t('Schritt')} ${contentByStep[step].index} ${t('von')} 2` }}
+      stepCount={2}
+      media={mediaContent}
     >
       {step === 'email' ? (
         <form onSubmit={handleRequestOtp}>
-          <div className="mb-3">
-            <label className="form-label">{t('Kundennummer')}</label>
+          <label className="vergo-auth-label" htmlFor="vergo-customer-number">{t('Kundennummer')}</label>
+          <div className="vergo-auth-field">
+            <i className="ti ti-id-badge-2"></i>
             <input
-              className="form-control"
+              id="vergo-customer-number"
               name="customer_number"
               value={form.customer_number}
               onChange={handleChange}
-              placeholder="ETM-00001 oder DLS-00001"
+              placeholder={t('z. B. ETM-00001 oder DLS-00001')}
+              autoComplete="off"
+              required
             />
           </div>
-          <div className="form-text mb-3">
-            {t('Eigentümer verwenden ETM-Nummern, Dienstleister verwenden DLS-Nummern. Immobilienverwalter nutzen die LI-Anmeldung.')}
-          </div>
+          <p className="vergo-auth-hint">
+            {t('Eigentümer verwenden ETM-Nummern, Dienstleister verwenden DLS-Nummern.')}
+          </p>
 
-          <div className="mb-3">
-            <label className="form-label">{t('E-Mail')}</label>
+          <label className="vergo-auth-label mt-4" htmlFor="vergo-customer-email">{t('E-Mail-Adresse')}</label>
+          <div className="vergo-auth-field">
+            <i className="ti ti-mail"></i>
             <input
+              id="vergo-customer-email"
               type="email"
-              className="form-control"
               name="email"
               value={form.email}
               onChange={handleChange}
+              placeholder={t('z. B. name@beispiel.ch')}
+              autoComplete="email"
               required
             />
           </div>
 
-          {error ? <div className="alert alert-danger py-2">{t(error)}</div> : null}
+          {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{t(error)}</div> : null}
 
-          <div className="mt-3 d-grid">
-            <button
-              className="btn vergo-type-continue mb-4 rounded-2"
-              type="submit"
-              disabled={isSubmitting || !form.email.trim() || !form.customer_number.trim()}
-            >
-              <span className="vergo-type-continue-label">{isSubmitting ? t('OTP wird gesendet...') : t('OTP senden')}</span>
-              <span className="vergo-type-continue-icon" aria-hidden="true">
-                <i className="ti ti-arrow-right"></i>
-              </span>
-            </button>
-          </div>
+          <button
+            className="vergo-auth-submit mt-4"
+            type="submit"
+            disabled={isSubmitting || !form.email.trim() || !form.customer_number.trim()}
+          >
+            <span>{isSubmitting ? t('OTP wird gesendet...') : t('Weiter')}</span>
+            <i className="ti ti-arrow-right"></i>
+          </button>
         </form>
       ) : null}
 
       {step === 'otp' ? (
         <form onSubmit={handleVerifyOtp}>
-          {form.customer_number ? (
-            <div className="mb-3">
-              <label className="form-label">{t('Kundennummer')}</label>
-              <input
-                className="form-control"
-                name="customer_number"
-                value={form.customer_number}
-                readOnly
-              />
-            </div>
-          ) : null}
+          <CodeInput value={form.code} onChange={(next) => setForm((current) => ({ ...current, code: next }))} />
 
-          <div className="mb-3">
-            <label className="form-label">{t('E-Mail')}</label>
-            <div className="input-group">
-              <input
-                type="email"
-                className="form-control"
-                name="email"
-                value={form.email}
-                readOnly
-              />
-              <button type="button" className="btn btn-light" onClick={resetEmailStep}>
-                {t('Ändern')}
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            className="vergo-auth-resend"
+            onClick={handleResendCode}
+            disabled={resendSeconds > 0 || isSubmitting}
+          >
+            <i className="ti ti-mail"></i>
+            <span className="vergo-auth-resend-question">{t('Keinen Code erhalten?')}</span>
+            <span className="vergo-auth-resend-action">
+              {resendSeconds > 0
+                ? `${t('Code erneut senden')} (${t('in')} ${resendSeconds}s)`
+                : t('Code erneut senden')}
+            </span>
+          </button>
 
-          <div className="mb-3">
-            <label className="form-label">{t('OTP-Code')}</label>
-            <input
-              className="form-control"
-              name="code"
-              value={form.code}
-              onChange={handleChange}
-              maxLength="6"
-              required
-            />
-          </div>
+          {otpSentMessage ? <div className="alert alert-success py-2 mt-3">{otpSentMessage}</div> : null}
+          {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{t(error)}</div> : null}
 
-          {otpSentMessage ? <div className="alert alert-success py-2">{otpSentMessage}</div> : null}
-          {error ? <div className="alert alert-danger py-2">{t(error)}</div> : null}
-
-          <div className="mt-3 d-grid">
-            <button
-              className="btn vergo-type-continue mb-3 rounded-2"
-              type="submit"
-              disabled={isSubmitting || form.code.length !== 6}
-            >
-              <span className="vergo-type-continue-label">{isSubmitting ? t('Wird geprüft...') : t('Code bestätigen')}</span>
-              <span className="vergo-type-continue-icon" aria-hidden="true">
-                <i className="ti ti-arrow-right"></i>
-              </span>
-            </button>
-          </div>
-
-          <div className="mt-3 text-center">
-            <button
-              type="button"
-              className="btn btn-link p-0 text-primary"
-              onClick={sendOtp}
-              disabled={isSubmitting || !form.email.trim()}
-            >
-              {t('Code erneut senden')}
-            </button>
-          </div>
+          <button
+            className="vergo-auth-submit mt-4"
+            type="submit"
+            disabled={isSubmitting || form.code.length !== 6}
+          >
+            <span>{isSubmitting ? t('Wird geprüft...') : t('Weiter')}</span>
+            <i className="ti ti-arrow-right"></i>
+          </button>
         </form>
       ) : null}
-    </AuthShell>
+    </AuthSplitShell>
   )
 }
 

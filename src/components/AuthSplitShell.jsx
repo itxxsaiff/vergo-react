@@ -124,12 +124,19 @@ function AuthSplitShell({
         </Link>
 
         <div className="vergo-auth-split-content">
-          {backLink ? (
+          {/* Going back is a link between pages but an action within a
+              multi-step form, so both are supported. */}
+          {backLink ? (backLink.onClick ? (
+            <button type="button" className="vergo-auth-split-back" onClick={backLink.onClick}>
+              <i className="ti ti-arrow-left"></i>
+              <span>{backLink.label}</span>
+            </button>
+          ) : (
             <Link to={backLink.to} className="vergo-auth-split-back">
               <i className="ti ti-arrow-left"></i>
               <span>{backLink.label}</span>
             </Link>
-          ) : null}
+          )) : null}
 
           {/* How far through a multi-step login the user is. */}
           {step && stepCount ? (

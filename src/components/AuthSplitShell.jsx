@@ -18,6 +18,11 @@ function AuthSplitShell({
   subtitle,
   children,
   footer,
+  footerNote,
+  backLink,
+  step,
+  stepCount,
+  media,
   logoHref = '/type',
   imageSrc = AUTH_IMAGE,
 }) {
@@ -119,6 +124,25 @@ function AuthSplitShell({
         </Link>
 
         <div className="vergo-auth-split-content">
+          {backLink ? (
+            <Link to={backLink.to} className="vergo-auth-split-back">
+              <i className="ti ti-arrow-left"></i>
+              <span>{backLink.label}</span>
+            </Link>
+          ) : null}
+
+          {/* How far through a multi-step login the user is. */}
+          {step && stepCount ? (
+            <div className="vergo-auth-split-steps">
+              <span className="vergo-auth-split-step-label">{step.label}</span>
+              <div className="vergo-auth-split-step-bar">
+                {Array.from({ length: stepCount }, (_, index) => (
+                  <span key={index} className={index < step.index ? 'is-done' : ''}></span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {eyebrow ? <p className="vergo-auth-split-eyebrow">{eyebrow}</p> : null}
           {title ? <h1 className="vergo-auth-split-title">{title}</h1> : null}
           {subtitle ? <p className="vergo-auth-split-subtitle">{subtitle}</p> : null}
@@ -126,10 +150,49 @@ function AuthSplitShell({
           {children}
         </div>
 
-      
+        {/* Only rendered when a page supplies something; the choose-login screen
+            deliberately has no footer. */}
+        {footer || footerNote ? (
+          <div className="vergo-auth-split-footer">
+            {footerNote ? (
+              <span className="vergo-auth-split-footer-note">
+                <span className="vergo-auth-split-rule" aria-hidden="true"></span>
+                {footerNote}
+              </span>
+            ) : null}
+            {footer}
+          </div>
+        ) : null}
       </div>
 
       <div className="vergo-auth-split-media" style={{ backgroundImage: `url("${imageSrc}")` }}>
+        {/* Optional brand message laid over the photo. */}
+        {media ? (
+          <div className="vergo-auth-split-media-content">
+            <div className="vergo-auth-split-media-top">
+              <span className="vergo-auth-split-rule" aria-hidden="true"></span>
+              <h2>{media.headline}</h2>
+              {media.features?.length ? (
+                <ul className="vergo-auth-split-features">
+                  {media.features.map((feature) => (
+                    <li key={feature.label}>
+                      <i className={feature.icon}></i>
+                      <span>{feature.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+
+            {media.caption ? (
+              <div className="vergo-auth-split-media-caption">
+                <span className="vergo-auth-split-rule" aria-hidden="true"></span>
+                <p>{media.caption}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="vergo-auth-split-actions">
           <SupportTicketButton
             publicMode

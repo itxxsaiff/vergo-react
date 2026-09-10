@@ -3377,3 +3377,188 @@ body {
     padding: 2rem 0;
   }
 }
+
+/* Back link, step indicator, fields and the photo overlay used by the
+   multi-step property login. */
+.vergo-auth-split-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 2.5rem;
+  color: var(--vergo-auth-ink);
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+.vergo-auth-split-back:hover {
+  opacity: 0.7;
+}
+
+.vergo-auth-split-steps {
+  margin-bottom: 2.25rem;
+}
+
+.vergo-auth-split-step-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--vergo-auth-ink);
+  font-size: 0.95rem;
+}
+
+.vergo-auth-split-step-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  max-width: 380px;
+}
+
+.vergo-auth-split-step-bar span {
+  height: 5px;
+  border-radius: 999px;
+  background: #e3e6ea;
+}
+
+.vergo-auth-split-step-bar span.is-done {
+  background: var(--vergo-auth-ink);
+}
+
+.vergo-auth-label {
+  display: block;
+  margin-bottom: 0.6rem;
+  color: var(--vergo-auth-ink);
+  font-size: 1rem;
+}
+
+.vergo-auth-field {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.95rem 1.25rem;
+  border: 1px solid var(--vergo-auth-line);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.vergo-auth-field:focus-within {
+  border-color: var(--vergo-auth-ink);
+  box-shadow: 0 0 0 1px var(--vergo-auth-ink);
+}
+
+.vergo-auth-field i {
+  flex: 0 0 auto;
+  color: var(--vergo-auth-muted);
+  font-size: 1.25rem;
+}
+
+.vergo-auth-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vergo-auth-ink);
+  font-size: 1.05rem;
+  outline: none;
+}
+
+.vergo-auth-field input::placeholder {
+  color: #9aa4b1;
+}
+
+.vergo-auth-split-footer-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.9rem;
+}
+
+.vergo-auth-split-rule {
+  display: inline-block;
+  width: 34px;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+/* Brand message over the photo. */
+.vergo-auth-split-media-content {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(2rem, 4vw, 3.5rem);
+  color: #ffffff;
+  text-align: right;
+  pointer-events: none;
+}
+
+.vergo-auth-split-media-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-top: clamp(1rem, 4vh, 3rem);
+}
+
+.vergo-auth-split-media-top h2 {
+  margin: 1.25rem 0 0;
+  color: #fff;
+  max-width: 18ch;
+  font-size: clamp(1.4rem, 2.1vw, 2rem);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.vergo-auth-split-features {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vergo-auth-split-features li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.vergo-auth-split-features li + li {
+  padding-left: clamp(1rem, 3vw, 2.5rem);
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.vergo-auth-split-features i {
+  font-size: 1.45rem;
+}
+
+.vergo-auth-split-media-caption {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.85rem;
+}
+
+.vergo-auth-split-media-caption p {
+  margin: 0;
+  max-width: 22ch;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.vergo-auth-split-media-caption .vergo-auth-split-rule {
+  margin-top: 0.6rem;
+  opacity: 0.8;
+}
+
+@media (max-width: 991.98px) {
+  /* The overlay text would crowd a short banner. */
+  .vergo-auth-split-media-content {
+    display: none;
+  }
+}

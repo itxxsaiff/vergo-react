@@ -12,7 +12,7 @@
             wurde von der Bewirtschaftung abgesagt. Ihre eingereichte Offerte wird nicht weiter berücksichtigt.
         </p>
 
-        <div style="margin:0 0 16px;padding:14px 16px;background:#fbf7f4;border:1px solid #eae2dd;border-radius:8px;">
+        <div style="margin:0 0 16px;padding:14px 16px;background:#f7f8fa;border:1px solid #e6e8ec;border-radius:8px;">
             <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#8a94a8;margin-bottom:6px;">Begründung</div>
             <div style="line-height:1.5;">{{ $reason }}</div>
         </div>

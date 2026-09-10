@@ -8,7 +8,11 @@ import VergoLogo from '../../../public/assets/images/logo/VERGO_01.png'
 function Sidebar({ navigation, user }) {
   const location = useLocation()
   const { t } = useLanguage()
-  const [openSections, setOpenSections] = useState({})
+  // Groups the user expanded by hand, remembered only for the page they are on.
+  // Opening another page lets the menu follow the current page again instead of
+  // keeping the old group expanded.
+  const [manuallyOpened, setManuallyOpened] = useState({ path: location.pathname, sections: {} })
+  const openSections = manuallyOpened.path === location.pathname ? manuallyOpened.sections : {}
 
   const autoOpenSections = useMemo(() => {
     const nextOpenSections = {}
@@ -24,10 +28,14 @@ function Sidebar({ navigation, user }) {
   }, [location.pathname, navigation])
 
   function toggleSection(title) {
-    setOpenSections((current) => ({
-      ...current,
-      [title]: !current[title],
-    }))
+    setManuallyOpened((current) => {
+      const sections = current.path === location.pathname ? current.sections : {}
+
+      return {
+        path: location.pathname,
+        sections: { ...sections, [title]: !sections[title] },
+      }
+    })
   }
 
   function handleSectionToggle(title) {
@@ -65,7 +73,9 @@ function Sidebar({ navigation, user }) {
                 const isParentActive = item.href === location.pathname
                 const isChildActive = item.children.some((child) => child.href === location.pathname)
                 const isOpen = Boolean(openSections[item.title] || autoOpenSections[item.title] || isParentActive)
-                const isSelected = isOpen || isParentActive || isChildActive
+                // Only the group holding the current page is highlighted. Being
+                // expanded is not the same as being the page you are on.
+                const isSelected = isParentActive || isChildActive
 
                 return (
                   <li key={item.title} className={`sidebar-item${isSelected ? ' selected' : ''}`}>

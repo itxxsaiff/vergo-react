@@ -11,9 +11,9 @@
         <tr>
             <td align="center">
                 <table width="580" cellspacing="0" cellpadding="0"
-                    style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #eaded7;">
+                    style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e6ea;">
                     <tr>
-                        <td style="background:#9f6d54;padding:22px 32px;">
+                        <td style="background:#16202b;padding:22px 32px;">
                             <img src="{{ asset('VERGO.png') }}" alt="Vergo Logo" style="height:42px;display:block;">
                         </td>
                     </tr>
@@ -29,14 +29,14 @@
 
                             <p style="margin:0 0 24px;">
                                 <a href="{{ $resetUrl }}"
-                                    style="display:inline-block;padding:14px 24px;background:#9f6d54;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;">
+                                    style="display:inline-block;padding:14px 24px;background:#16202b;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;">
                                     Passwort festlegen
                                 </a>
                             </p>
 
                             <p style="margin:0 0 24px;font-size:13px;line-height:1.7;color:#5f6877;">
                                 Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:<br>
-                                <span style="color:#9f6d54;word-break:break-all;">{{ $resetUrl }}</span>
+                                <span style="color:#16202b;word-break:break-all;">{{ $resetUrl }}</span>
                             </p>
 
                             <p style="margin:0;font-size:14px;line-height:1.7;color:#5f6877;">

@@ -2233,7 +2233,7 @@ function AvailableJobsPage() {
 
                   </div>
                   <div className="modal-footer">
-                    <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>{t('Abbrechen')}</button>
+                    <button type="button" className="btn btn-light" onClick={closeModal}>{t('Abbrechen')}</button>
                     {canSubmitCurrentOrder && activeProviderBid?.id && isAssignedToMe ? (
                       <button type="button" className="btn btn-light-primary" disabled={isSavingDraft} onClick={handleSaveDraft}>
                         {isSavingDraft ? t('Wird gespeichert...') : t('Als Entwurf speichern')}
@@ -2373,7 +2373,7 @@ function AvailableJobsPage() {
                 {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setIsPriceChangeOpen(false)}>
+                <button type="button" className="btn btn-light" onClick={() => setIsPriceChangeOpen(false)}>
                   {t('Abbrechen')}
                 </button>
                 <button type="button" className="btn btn-primary" disabled={isSubmittingPriceChange} onClick={handleSubmitPriceChange}>

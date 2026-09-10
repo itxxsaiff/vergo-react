@@ -509,7 +509,7 @@ function PropertyManagersPage() {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-light-danger text-danger" onClick={() => setDetailKey(null)}>{t('Schließen')}</button>
+                  <button type="button" className="btn btn-light" onClick={() => setDetailKey(null)}>{t('Schließen')}</button>
                   <button type="button" className="btn btn-primary" onClick={() => handleEdit(detailCompany.representative)}>{t('Verwaltung bearbeiten')}</button>
                 </div>
               </div>
@@ -633,7 +633,7 @@ function PropertyManagersPage() {
                     {error ? <div className="alert alert-danger py-2 mb-0">{t(error)}</div> : null}
                   </div>
                   <div className="modal-footer">
-                    <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>{t('Abbrechen')}</button>
+                    <button type="button" className="btn btn-light" onClick={closeModal}>{t('Abbrechen')}</button>
                     <button type="submit" className="btn btn-primary" disabled={isSaving}>
                       {isSaving ? t('Wird gespeichert...') : editingManager ? t('Verwalter aktualisieren') : t('Verwalter erstellen')}
                     </button>

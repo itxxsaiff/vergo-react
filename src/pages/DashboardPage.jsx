@@ -5,6 +5,17 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
+import { formatDateDisplay } from '../lib/dateFormat'
+
+const MANAGER_HERO_IMAGE = '/assets/images/ui-images/manager-dashboard.jpg'
+const PRIVACY_URL = 'https://www.vergo.ch/privacy-policy'
+const IMPRINT_URL = 'https://www.vergo.ch/legal-notice'
+// Orders sitting with the manager: offers or quotes are in, and somebody
+// has to decide before the job can move on.
+const REVIEW_ORDER_STATUSES = new Set([
+  'submitted', 'shortlisted', 'awaiting_owner_approval', 'inspection_quote_created',
+  'in_review', 'review', 'pending', 'awarded_pending_acceptance',
+])
 
 const summaryCards = [
   {
@@ -41,6 +52,10 @@ function normalizeStatus(status) {
 
 function isCompletedOrder(status) {
   return COMPLETED_ORDER_STATUSES.has(normalizeStatus(status))
+}
+
+function isReviewOrder(status) {
+  return REVIEW_ORDER_STATUSES.has(normalizeStatus(status))
 }
 
 function isActiveOrder(status) {
@@ -167,6 +182,88 @@ function OrderTrendChart({ monthlyCounts, monthLabels = MONTH_LABELS, ariaLabel 
   )
 }
 
+/**
+ * The manager's monthly chart: a bar per month with a dashed trend line laid
+ * over it, as in the design.
+ */
+function OrderBarChart({ monthlyCounts, monthLabels, ariaLabel }) {
+  const width = 720
+  const height = 260
+  const padding = { top: 18, right: 12, bottom: 34, left: 34 }
+  const chartWidth = width - padding.left - padding.right
+  const chartHeight = height - padding.top - padding.bottom
+  const rawMax = Math.max(...monthlyCounts, 1)
+  // Round the top of the scale up so the gridline labels stay whole numbers.
+  const maxValue = Math.max(2, Math.ceil(rawMax / 2) * 2)
+  const slotWidth = chartWidth / monthlyCounts.length
+  const barWidth = Math.min(26, slotWidth * 0.42)
+  const yFor = (value) => padding.top + chartHeight - ((value / maxValue) * chartHeight)
+  const gridValues = Array.from({ length: (maxValue / 2) + 1 }, (_, index) => index * 2)
+  const points = monthlyCounts.map((value, index) => ({
+    x: padding.left + (slotWidth * index) + (slotWidth / 2),
+    y: yFor(value),
+    value,
+  }))
+  const trendPath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+
+  return (
+    <svg
+      className="vergo-md-chart-svg"
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label={ariaLabel}
+      preserveAspectRatio="none"
+    >
+      {gridValues.map((value) => (
+        <g key={value}>
+          <line
+            x1={padding.left}
+            x2={width - padding.right}
+            y1={yFor(value)}
+            y2={yFor(value)}
+            className="vergo-md-chart-grid"
+          />
+          <text x={padding.left - 10} y={yFor(value) + 4} className="vergo-md-chart-axis" textAnchor="end">
+            {value}
+          </text>
+        </g>
+      ))}
+
+      {points.map((point, index) => (
+        point.value > 0 ? (
+          <rect
+            key={`bar-${index}`}
+            className="vergo-md-chart-bar"
+            x={point.x - (barWidth / 2)}
+            y={point.y}
+            width={barWidth}
+            height={Math.max(padding.top + chartHeight - point.y, 0)}
+            rx="4"
+          />
+        ) : null
+      ))}
+
+      <path d={trendPath} className="vergo-md-chart-trend" />
+
+      {points.map((point, index) => (
+        <circle key={`dot-${index}`} cx={point.x} cy={point.y} r="4" className="vergo-md-chart-dot" />
+      ))}
+
+      {monthLabels.map((label, index) => (
+        <text
+          key={label}
+          x={padding.left + (slotWidth * index) + (slotWidth / 2)}
+          y={height - 12}
+          className="vergo-md-chart-axis"
+          textAnchor="middle"
+        >
+          {label}
+        </text>
+      ))}
+    </svg>
+  )
+}
+
 function getOrderAddress(order) {
   return order?.property_object?.address || order?.property_object?.name || order?.property?.title || '-'
 }
@@ -260,6 +357,7 @@ function DashboardPage({ role }) {
 
   const orderMetrics = useMemo(() => ({
     active: orders.filter((order) => isActiveOrder(order.status)).length,
+    review: orders.filter((order) => isReviewOrder(order.status)).length,
     completed: orders.filter((order) => isCompletedOrder(order.status)).length,
     total: orders.length,
   }), [orders])
@@ -301,208 +399,214 @@ function DashboardPage({ role }) {
     },
   ]
 
+  // The four cards along the top of the manager dashboard.
+  const managerKpis = [
+    {
+      key: 'active',
+      label: 'Aktive Aufträge',
+      helper: 'Alle aktuell laufenden Vorgänge',
+      value: orderMetrics.active,
+      href: '/orders',
+      icon: 'ti ti-file-description',
+      color: '#2563eb',
+      background: '#e8f0fe',
+    },
+    {
+      key: 'review',
+      label: 'Zu prüfen',
+      helper: 'Noch zu prüfen',
+      value: orderMetrics.review,
+      href: '/orders',
+      icon: 'ti ti-clock',
+      color: '#f59e0b',
+      background: '#fef3c7',
+    },
+    {
+      key: 'completed',
+      label: 'Abgeschlossene Aufträge',
+      helper: 'Fertig bearbeitete Vorgänge',
+      value: orderMetrics.completed,
+      href: '/orders',
+      icon: 'ti ti-circle-check',
+      color: '#10b981',
+      background: '#d1fae5',
+    },
+    {
+      key: 'total',
+      label: 'Gesamtaufträge',
+      helper: 'Alle erfassten Vorgänge',
+      value: orderMetrics.total,
+      href: '/orders',
+      icon: 'ti ti-file-analytics',
+      color: '#2563eb',
+      background: '#e8f0fe',
+    },
+  ]
+
   const activeOrders = useMemo(() => orders.filter((order) => isActiveOrder(order.status)), [orders])
   const activeOrderPreview = useMemo(() => activeOrders.slice(0, 3), [activeOrders])
-  const remainingActiveOrders = Math.max(activeOrders.length - activeOrderPreview.length, 0)
   const translatedMonthLabels = MONTH_LABELS.map((month) => t(month))
 
   return (
     <PageContent
       title={isManager ? '' : t('Vergo Dashboard')}
-      subtitle={isOwner ? '' : `${t('Willkommen im Dashboard als')} ${t(role)}.`}
+      subtitle={isOwner || isManager ? '' : `${t('Willkommen im Dashboard als')} ${t(role)}.`}
       variant="dashboard"
     >
       {isManager ? (
-        <>
-          <div className="card bg-light-info overflow-hidden mb-4">
-              <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4 py-3 px-5">
-                <div>
-                  <h2 className="mb-2">{t('Guten Tag')}</h2>
-                  <div className="text-muted">{user?.email || t('(Mail Adresse)')}</div>
-                </div>
+        <div className="vergo-md">
+          <div className="vergo-md-greeting">
+            <span className="vergo-md-eyebrow">{t('Dashboard')}</span>
+            <h1>{t('Guten Tag')}</h1>
+            <p>{user?.email || t('(Mail Adresse)')}</p>
+          </div>
 
-                <div className="d-flex flex-wrap gap-2">
-                  <Link to="/orders?open=create" className="btn vergo-manager-quick-link">
-                    {t('Auftrag erfassen')}
-                  </Link>
-                </div>
-              </div>
+          <div className="vergo-md-kpis">
+            {managerKpis.map((kpi) => (
+              <Link key={kpi.key} to={kpi.href} className="vergo-md-kpi">
+                <span
+                  className="vergo-md-kpi-icon"
+                  style={{ '--kpi-color': kpi.color, '--kpi-background': kpi.background }}
+                >
+                  <i className={kpi.icon}></i>
+                </span>
+                <span className="vergo-md-kpi-text">
+                  <span className="vergo-md-kpi-label">{t(kpi.label)}</span>
+                  <span className="vergo-md-kpi-value">{formatCount(kpi.value)}</span>
+                  <span className="vergo-md-kpi-helper">{t(kpi.helper)}</span>
+                </span>
+                <i className="ti ti-chevron-right vergo-md-kpi-arrow"></i>
+              </Link>
+            ))}
           </div>
 
           {analyticsError ? <div className="alert alert-danger py-2 mb-4">{analyticsError}</div> : null}
 
-          {!analyticsError ? (
-            <div className="card vergo-dashboard-analytics-card overflow-hidden">
-              <div className="card-body p-4">
-                <div className="row g-4 align-items-stretch">
-                  <div className="col-xl-4">
-                    <div className="vergo-dashboard-analytics-panel h-100">
-                      <div className="mb-3">
-                        <h5 className="fw-semibold mb-1">{t('Auftragsübersicht')}</h5>
-                      </div>
-
-                      {isAnalyticsLoading ? (
-                        <p className="text-muted mb-0">{t('Auftragsanalyse wird geladen...')}</p>
-                      ) : (
-                        <div className="d-grid gap-3">
-                          {analyticsMetrics.map((metric) => (
-                            <div className="vergo-dashboard-metric-card" key={metric.key}>
-                              <span
-                                className="vergo-dashboard-metric-icon"
-                                style={{
-                                  '--metric-color': metric.color,
-                                  '--metric-background': metric.background,
-                                }}
-                              >
-                                <i className={metric.icon}></i>
-                              </span>
-
-                              <div>
-                                <div className="vergo-dashboard-metric-value">{formatCount(metric.value)}</div>
-                                <div className="fw-semibold text-dark">{t(metric.label)}</div>
-                                <div className="text-muted small">{t(metric.helper)}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="col-xl-8">
-                    <div className="d-flex flex-column gap-4 h-100">
-                      <div className="vergo-dashboard-analytics-panel">
-                        <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
-                          <h5 className="fw-semibold mb-0">{t('Aktive Aufträge')}</h5>
-                          <span className="badge bg-light-primary text-primary px-3 py-2 rounded-pill">
-                            {t(`${formatCount(activeOrders.length)} aktiv`)}
-                          </span>
-                        </div>
-
-                        {isAnalyticsLoading ? (
-                          <div className="vergo-dashboard-chart-empty">
-                            <div>
-                              <div className="fw-semibold mb-1">{t('Aktive Aufträge werden geladen')}</div>
-                              <div>{t('Die aktuellen Karten werden vorbereitet.')}</div>
-                            </div>
-                          </div>
-                        ) : activeOrders.length > 0 ? (
-                          <div className="row g-3">
-                            {activeOrderPreview.map((order) => (
-                              <div className="col-lg-4 col-sm-6" key={order.id}>
-                                <Link to={`/orders/${order.id}`} className="vergo-manager-order-card">
-                                  <span className={`vergo-order-type-badge ${isInspectionOrder(order) ? 'is-inspection' : 'is-job'}`}>
-                                    {t(getOrderFlowTypeLabel(order))}
-                                  </span>
-                                  <div className="vergo-manager-order-card-label">{t('Gewerk')}</div>
-                                  <div className="vergo-manager-order-card-value">{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</div>
-                                  {order.title ? (
-                                    <div className="vergo-manager-order-card-meta">
-                                      <span>{t('Titel')}</span>
-                                      <strong>{order.title}</strong>
-                                    </div>
-                                  ) : null}
-                                  <div className="vergo-manager-order-card-meta">
-                                    <span>{t('Adresse')}</span>
-                                    <strong>{getOrderAddress(order)}</strong>
-                                  </div>
-                                  <div className="vergo-manager-order-card-grid">
-                                    <div>
-                                      <span>{t('PLZ')}</span>
-                                      <strong>{getOrderPostalCode(order)}</strong>
-                                    </div>
-                                    <div>
-                                      <span>{t('Ort')}</span>
-                                      <strong>{getOrderCity(order)}</strong>
-                                    </div>
-                                  </div>
-                                </Link>
-                              </div>
-                            ))}
-
-                            {remainingActiveOrders > 0 ? (
-                              <div className="col-lg-4 col-sm-6">
-                                <Link to="/orders" className="vergo-manager-order-card vergo-manager-order-card-more">
-                                  <span>{t('Weitere Aufträge')}</span>
-                                  <strong>+{formatCount(remainingActiveOrders)}</strong>
-                                </Link>
-                              </div>
-                            ) : (
-                              <div className="col-lg-4 col-sm-6">
-                                <Link to="/orders" className="vergo-manager-order-card vergo-manager-order-card-more vergo-manager-order-card-overview">
-                                  <strong>{t('Auftragsübersicht')}</strong>
-                                </Link>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="vergo-dashboard-chart-empty">
-                            <div>
-                              <div className="fw-semibold mb-1">{t('Keine aktiven Aufträge')}</div>
-                              <div>{t('Zurzeit sind keine laufenden Aufträge für diese Liegenschaft vorhanden.')}</div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="vergo-dashboard-analytics-panel vergo-dashboard-chart-panel flex-grow-1">
-                        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-                          <div>
-                            <h5 className="fw-semibold mb-1">{t('Monatliche Auftragsveröffentlichungen')}</h5>
-                            <p className="text-muted mb-0">
-                              {t('Januar bis Dezember, basierend auf Anfragedatum oder Erstellungsdatum.')}
-                            </p>
-                          </div>
-
-                          <div className="vergo-dashboard-year-filter">
-                            <label className="form-label mb-1">{t('Jahr')}</label>
-                            <select
-                              className="form-select"
-                              value={String(selectedYearNumber)}
-                              onChange={(event) => setSelectedYear(event.target.value)}
-                            >
-                              {availableYears.map((year) => (
-                                <option key={year} value={year}>
-                                  {year}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        {isAnalyticsLoading ? (
-                          <div className="vergo-dashboard-chart-empty">
-                            <div>
-                              <div className="fw-semibold mb-1">{t('Diagramm wird geladen')}</div>
-                              <div>{t('Die monatliche Auftragsentwicklung wird vorbereitet.')}</div>
-                            </div>
-                          </div>
-                        ) : publishedThisYear > 0 ? (
-                          <>
-                            <div className="vergo-dashboard-chart-summary">
-                              <span>{t(`${formatCount(publishedThisYear)} veröffentlichte Aufträge in ${selectedYearNumber}`)}</span>
-                              <span>
-                                {t('Stärkster Monat')}: {busiestMonthIndex >= 0 ? translatedMonthLabels[busiestMonthIndex] : '-'} ({formatCount(busiestMonthCount)})
-                              </span>
-                            </div>
-                            <OrderTrendChart monthlyCounts={monthlyCounts} monthLabels={translatedMonthLabels} ariaLabel={t('Monatliche Auftragsveröffentlichungen')} />
-                          </>
-                        ) : (
-                          <div className="vergo-dashboard-chart-empty">
-                            <div>
-                              <div className="fw-semibold mb-1">{t('Keine Aufträge in diesem Jahr')}</div>
-                              <div>{t(`Für ${selectedYearNumber} wurden noch keine Veröffentlichungen gefunden.`)}</div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <div className="vergo-md-split">
+            <div className="vergo-md-hero" style={{ backgroundImage: `url("${MANAGER_HERO_IMAGE}")` }}>
+              <div className="vergo-md-hero-body">
+                <h2>{t('Effizient. Digital. Verlässlich.')}</h2>
+                <Link to="/orders?open=create" className="vergo-md-hero-cta">
+                  <span>{t('Auftrag erfassen')}</span>
+                  <i className="ti ti-arrow-right"></i>
+                </Link>
               </div>
             </div>
-          ) : null}
-        </>
+
+            <div className="vergo-md-panel vergo-md-chart">
+              <div className="vergo-md-chart-head">
+                <div>
+                  <h3>{t('Monatliche Auftragsveröffentlichungen')}</h3>
+                  <p>{t('Januar bis Dezember, basierend auf Auftragsdatum oder Erstellungsdatum.')}</p>
+                </div>
+
+                <div className="vergo-md-year">
+                  <label htmlFor="vergo-md-year">{t('Jahr')}</label>
+                  <select
+                    id="vergo-md-year"
+                    className="form-select"
+                    value={String(selectedYearNumber)}
+                    onChange={(event) => setSelectedYear(event.target.value)}
+                  >
+                    {availableYears.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {isAnalyticsLoading ? (
+                <div className="vergo-md-empty">{t('Diagramm wird geladen')}</div>
+              ) : (
+                <OrderBarChart
+                  monthlyCounts={monthlyCounts}
+                  monthLabels={translatedMonthLabels}
+                  ariaLabel={t('Monatliche Auftragsveröffentlichungen')}
+                />
+              )}
+
+              <div className="vergo-md-chart-legend">
+                <span className="vergo-md-legend-item">
+                  <span className="vergo-md-legend-bar" aria-hidden="true"></span>
+                  {t('Veröffentlichte Aufträge')}
+                </span>
+                <span className="vergo-md-legend-item">
+                  <span className="vergo-md-legend-trend" aria-hidden="true"></span>
+                  {t('Trend')}
+                </span>
+                <span className="vergo-md-legend-count">
+                  {formatCount(publishedThisYear)} {t('veröffentlichte Aufträge in')} {selectedYearNumber}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="vergo-md-panel vergo-md-active">
+            <div className="vergo-md-active-head">
+              <h3>{t('Aktive Aufträge')}</h3>
+              <Link to="/orders" className="vergo-md-active-link">
+                <span>{formatCount(activeOrders.length)} {t('aktiv')}</span>
+                <i className="ti ti-chevron-right"></i>
+              </Link>
+            </div>
+
+            {isAnalyticsLoading ? (
+              <div className="vergo-md-empty">{t('Aktive Aufträge werden geladen')}</div>
+            ) : activeOrders.length > 0 ? (
+              <div className="vergo-md-rows">
+                {activeOrderPreview.map((order) => (
+                  <Link key={order.id} to={`/orders/${order.id}`} className="vergo-md-row">
+                    <span className="vergo-md-row-icon">
+                      <i className="ti ti-building-estate"></i>
+                    </span>
+
+                    <span className="vergo-md-row-main">
+                      <strong>{order.title || t(getOrderFlowTypeLabel(order))}</strong>
+                      <span className="vergo-md-row-address">
+                        <i className="ti ti-map-pin"></i>
+                        {getOrderAddress(order)}, {getOrderPostalCode(order)} {getOrderCity(order)}
+                      </span>
+                    </span>
+
+                    <span className="vergo-md-row-field">
+                      <span>{t('Gewerk')}</span>
+                      <strong>{getOptionLabel(JOB_TYPE_OPTIONS, order.service_type)}</strong>
+                    </span>
+
+                    <span className="vergo-md-row-field">
+                      <span>{t('PLZ / Ort')}</span>
+                      <strong>{getOrderPostalCode(order)} {getOrderCity(order)}</strong>
+                    </span>
+
+                    <span className="vergo-md-row-field">
+                      <span>{t('Erstellt am')}</span>
+                      <strong>{formatDateDisplay(getOrderPublishedAt(order)) || '-'}</strong>
+                    </span>
+
+                    <span className={`vergo-md-row-status${isReviewOrder(order.status) ? ' is-review' : ''}`}>
+                      {isReviewOrder(order.status) ? t('Zu prüfen') : t('Aktiv')}
+                    </span>
+
+                    <i className="ti ti-chevron-right vergo-md-row-arrow"></i>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="vergo-md-empty">
+                {t('Zurzeit sind keine laufenden Aufträge für diese Liegenschaft vorhanden.')}
+              </div>
+            )}
+          </div>
+
+          <div className="vergo-md-footer">
+            <span className="vergo-md-footer-links">
+              <a href={PRIVACY_URL} target="_blank" rel="noreferrer">{t('Datenschutz')}</a>
+              <span aria-hidden="true">|</span>
+              <a href={IMPRINT_URL} target="_blank" rel="noreferrer">{t('Impressum')}</a>
+            </span>
+            <span>{t('Digitale Immobilienprozesse. Einfach. Effizient. Verlässlich.')}</span>
+          </div>
+        </div>
       ) : null}
 
       {isInternalDashboard ? (

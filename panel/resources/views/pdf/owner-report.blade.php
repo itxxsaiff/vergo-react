@@ -5,17 +5,17 @@
     <style>
         * { font-family: DejaVu Sans, sans-serif; }
         body { margin: 0; padding: 28px 32px; color: #2f3441; font-size: 11px; }
-        .head { border-bottom: 3px solid #9f6d54; padding-bottom: 10px; margin-bottom: 18px; }
-        .head h1 { margin: 0 0 4px; font-size: 19px; color: #9f6d54; }
+        .head { border-bottom: 3px solid #16202b; padding-bottom: 10px; margin-bottom: 18px; }
+        .head h1 { margin: 0 0 4px; font-size: 19px; color: #16202b; }
         .head .meta { color: #6b7280; font-size: 10px; }
         .totals { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .totals td { border: 1px solid #eaded7; padding: 7px 9px; width: 16.6%; }
+        .totals td { border: 1px solid #e3e6ea; padding: 7px 9px; width: 16.6%; }
         .totals .k { color: #6b7280; font-size: 9px; text-transform: uppercase; display: block; }
         .totals .v { font-weight: bold; font-size: 13px; }
-        h2 { font-size: 13px; margin: 18px 0 6px; color: #9f6d54; }
+        h2 { font-size: 13px; margin: 18px 0 6px; color: #16202b; }
         table.data { width: 100%; border-collapse: collapse; }
-        table.data th { background: #f7f0ec; text-align: left; padding: 6px 9px; border: 1px solid #eaded7; font-size: 10px; }
-        table.data td { padding: 6px 9px; border: 1px solid #eee3dc; }
+        table.data th { background: #f4f6f8; text-align: left; padding: 6px 9px; border: 1px solid #e3e6ea; font-size: 10px; }
+        table.data td { padding: 6px 9px; border: 1px solid #e8eaee; }
         table.data td.r { text-align: right; }
         .empty { color: #6b7280; padding: 8px 0; }
     </style>

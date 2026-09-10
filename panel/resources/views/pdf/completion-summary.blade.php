@@ -5,18 +5,21 @@
     <style>
         * { font-family: DejaVu Sans, sans-serif; }
         body { margin: 0; padding: 30px 34px; color: #2f3441; font-size: 11px; }
-        .head { border-bottom: 3px solid #9f6d54; padding-bottom: 12px; margin-bottom: 20px; }
+        .head { border-bottom: 3px solid #16202b; padding-bottom: 12px; margin-bottom: 20px; }
         .head img { height: 38px; }
-        .head h1 { margin: 10px 0 2px; font-size: 18px; color: #9f6d54; }
+        /* The logo file is white, so it needs a dark panel behind it to be
+           visible on white paper. */
+        .logo-shell { display: inline-block; padding: 7px 12px 5px; background: #16202b; border-radius: 8px; }
+        .head h1 { margin: 10px 0 2px; font-size: 18px; color: #16202b; }
         .head .meta { color: #6b7280; font-size: 10px; }
-        h2 { font-size: 12px; margin: 18px 0 6px; color: #9f6d54; text-transform: uppercase; letter-spacing: .04em; }
+        h2 { font-size: 12px; margin: 18px 0 6px; color: #16202b; text-transform: uppercase; letter-spacing: .04em; }
         table.kv { width: 100%; border-collapse: collapse; }
         table.kv td { padding: 4px 0; vertical-align: top; }
         table.kv td.k { width: 190px; color: #6b7280; }
-        .box { border: 1px solid #eaded7; border-radius: 6px; padding: 10px 12px; background: #fbf7f4; }
+        .box { border: 1px solid #e3e6ea; border-radius: 6px; padding: 10px 12px; background: #f7f8fa; }
         table.items { width: 100%; border-collapse: collapse; margin-top: 4px; }
-        table.items th { background: #f7f0ec; text-align: left; padding: 6px 8px; border: 1px solid #eaded7; font-size: 10px; }
-        table.items td { padding: 6px 8px; border: 1px solid #eee3dc; }
+        table.items th { background: #f4f6f8; text-align: left; padding: 6px 8px; border: 1px solid #e3e6ea; font-size: 10px; }
+        table.items td { padding: 6px 8px; border: 1px solid #e8eaee; }
         table.items td.r, table.items th.r { text-align: right; }
         .total { margin-top: 8px; text-align: right; font-size: 13px; font-weight: bold; }
         .muted { color: #6b7280; }
@@ -24,7 +27,7 @@
 </head>
 <body>
     <div class="head">
-        @if($logoDataUri)<img src="{{ $logoDataUri }}" alt="Vergo">@endif
+        @if($logoDataUri)<span class="logo-shell"><img src="{{ $logoDataUri }}" alt="Vergo"></span>@endif
         <h1>{{ $labels['title'] }}</h1>
         <div class="meta">
             {{ $labels['order'] }} {{ $summary['order_number'] ?: '-' }}
@@ -77,7 +80,7 @@
             @endif
         </table>
 
-        <table class="kv" style="margin-top:8px;border-top:1px solid #eaded7;">
+        <table class="kv" style="margin-top:8px;border-top:1px solid #e3e6ea;">
             <tr>
                 <td class="k" style="padding-top:8px;"><strong>{{ $labels['send_to'] }}</strong></td>
                 <td style="padding-top:8px;">

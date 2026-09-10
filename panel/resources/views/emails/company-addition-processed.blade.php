@@ -8,9 +8,9 @@
     <table width="100%" cellspacing="0" cellpadding="0">
         <tr>
             <td align="center">
-                <table width="580" cellspacing="0" cellpadding="0" style="max-width:580px;background:#ffffff;border-radius:14px;border:1px solid #eaded7;">
+                <table width="580" cellspacing="0" cellpadding="0" style="max-width:580px;background:#ffffff;border-radius:14px;border:1px solid #e3e6ea;">
                     <tr>
-                        <td style="background:#9f6d54;padding:22px 32px;border-radius:14px 14px 0 0;">
+                        <td style="background:#16202b;padding:22px 32px;border-radius:14px 14px 0 0;">
                             <img src="{{ asset('VERGO.png') }}" alt="Vergo Logo" style="height:42px;display:block;">
                         </td>
                     </tr>

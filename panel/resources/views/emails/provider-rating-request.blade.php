@@ -19,7 +19,7 @@
 
         <p style="margin:24px 0;">
             <a href="{{ $ratingUrl }}"
-               style="display:inline-block;background:#95725f;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold;">
+               style="display:inline-block;background:#4a5563;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold;">
                 Jetzt bewerten
             </a>
         </p>

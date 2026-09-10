@@ -1057,7 +1057,7 @@ function OrderDetailsPage() {
                   ) : null}
 
                   {!order.cancelled_at && !['completed', 'closed'].includes(String(order.status || '').toLowerCase()) ? (
-                    <button type="button" className="btn btn-light-danger text-danger" onClick={() => setIsCancelOpen(true)}>
+                    <button type="button" className="btn btn-light" onClick={() => setIsCancelOpen(true)}>
                       {t('Auftrag absagen')}
                     </button>
                   ) : null}
@@ -2097,7 +2097,7 @@ ${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency 
                 ) : null}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setSelectedBidDetailId(null)}>
+                <button type="button" className="btn btn-light" onClick={() => setSelectedBidDetailId(null)}>
                   {t('Schließen')}
                 </button>
                 {canShortlistBids && isQuoteWorkflow ? (
@@ -2220,7 +2220,7 @@ ${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency 
                 )}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setIsQuoteModalOpen(false)}>
+                <button type="button" className="btn btn-light" onClick={() => setIsQuoteModalOpen(false)}>
                   {t('Schließen')}
                 </button>
                 {canPublishInspectionQuote ? (
@@ -2280,7 +2280,7 @@ ${t('Gesamtpreis')}: ${awardSummary.total_price ?? '-'} ${awardSummary.currency 
                 )}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setIsServiceItemsModalOpen(false)}>
+                <button type="button" className="btn btn-light" onClick={() => setIsServiceItemsModalOpen(false)}>
                   {t('Schließen')}
                 </button>
               </div>

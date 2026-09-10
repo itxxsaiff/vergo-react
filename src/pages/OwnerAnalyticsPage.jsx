@@ -475,7 +475,7 @@ function OwnerAnalyticsPage() {
                   ) : null}
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-light-danger text-danger" onClick={() => setIsReportOpen(false)}>
+                  <button type="button" className="btn btn-light" onClick={() => setIsReportOpen(false)}>
                     {t('Abbrechen')}
                   </button>
                   <button

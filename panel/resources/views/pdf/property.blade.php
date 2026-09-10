@@ -48,7 +48,7 @@
 
         .eyebrow {
             margin-bottom: 5px;
-            color: #9f6d54;
+            color: #16202b;
             font-size: 8px;
             font-weight: 700;
             letter-spacing: 0.2em;
@@ -65,7 +65,7 @@
             display: inline-block;
             padding: 8px 13px 6px;
             border-radius: 12px;
-            background: #9f6d54;
+            background: #16202b;
         }
 
         .logo {
@@ -77,7 +77,7 @@
             margin-bottom: 18px;
             padding: 16px 18px;
             border: 1px solid #e6eaf0;
-            border-left: 5px solid #9f6d54;
+            border-left: 5px solid #16202b;
             border-radius: 16px;
             background: #fbfcfe;
         }
@@ -193,8 +193,8 @@
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: #f3ebe6;
-            color: #9f6d54;
+            background: #eef0f3;
+            color: #16202b;
             font-size: 10px;
             font-weight: 700;
             overflow: hidden;

@@ -411,7 +411,7 @@ function EmployeesPage() {
                     {error ? <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div> : null}
                   </div>
                   <div className="modal-footer">
-                    <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>
+                    <button type="button" className="btn btn-light" onClick={closeModal}>
                       Abbrechen
                     </button>
                     <button type="submit" className="btn btn-primary" disabled={isSaving}>

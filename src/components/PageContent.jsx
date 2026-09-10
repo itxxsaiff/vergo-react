@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 
-function PageContent({ title, subtitle, actions = null, children, breadcrumbs = [], variant = 'default' }) {
+// `subtitle` is accepted from the callers that still pass one, but the header
+// has not shown it for a long time, so it is deliberately not rendered.
+function PageContent({ title, actions = null, children, breadcrumbs = [], variant = 'default' }) {
   const shouldRenderHeader = Boolean(title) || breadcrumbs.length > 0
 
   return (
-    <div className="mb-3">
+    <div className={`mb-3 vergo-page vergo-page-${variant}`}>
       {shouldRenderHeader ? (
         <div className="row align-items-center pt-3 pb-2 px-2 px-lg-3">
           <div className="col-12">

@@ -609,7 +609,7 @@ function PropertiesPage() {
                   </div>
 
                   <div className="modal-footer">
-                    <button type="button" className="btn btn-light-danger text-danger" onClick={closeModal}>Abbrechen</button>
+                    <button type="button" className="btn btn-light" onClick={closeModal}>Abbrechen</button>
                     <button type="submit" className="btn btn-primary" disabled={isSaving}>
                       {isSaving ? 'Wird gespeichert...' : editingProperty ? 'Liegenschaft aktualisieren' : 'Liegenschaft speichern'}
                     </button>

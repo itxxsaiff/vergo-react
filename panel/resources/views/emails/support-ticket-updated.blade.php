@@ -11,9 +11,9 @@
         <tr>
             <td align="center">
                 <table width="580" cellspacing="0" cellpadding="0"
-                    style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #eaded7;">
+                    style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e6ea;">
                     <tr>
-                        <td style="background:#9f6d54;padding:22px 32px;">
+                        <td style="background:#16202b;padding:22px 32px;">
                             <img src="{{ asset('VERGO.png') }}" alt="Vergo Logo" style="height:42px;display:block;">
                         </td>
                     </tr>
@@ -33,12 +33,12 @@
                             </p>
 
                             <table width="100%" cellspacing="0" cellpadding="0"
-                                style="margin:0 0 24px;border-collapse:collapse;background:#fbf8f6;border:1px solid #eaded7;border-radius:12px;overflow:hidden;">
+                                style="margin:0 0 24px;border-collapse:collapse;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:12px;overflow:hidden;">
                                 <tr>
-                                    <td style="padding:14px 18px;width:150px;color:#6b7280;font-size:14px;border-bottom:1px solid #eaded7;">
+                                    <td style="padding:14px 18px;width:150px;color:#6b7280;font-size:14px;border-bottom:1px solid #e3e6ea;">
                                         Ticket
                                     </td>
-                                    <td style="padding:14px 18px;font-weight:700;font-size:14px;border-bottom:1px solid #eaded7;color:#2f3441;">
+                                    <td style="padding:14px 18px;font-weight:700;font-size:14px;border-bottom:1px solid #e3e6ea;color:#2f3441;">
                                         {{ $ticket->ticket_number }}
                                     </td>
                                 </tr>
@@ -57,21 +57,21 @@
                                     style="margin:0 0 24px;border-collapse:collapse;">
                                     <tr>
                                         <td style="padding:0 8px 0 0;width:50%;">
-                                            <div style="padding:16px;background:#f8f8fb;border:1px solid #eaded7;border-radius:12px;">
+                                            <div style="padding:16px;background:#f8f8fb;border:1px solid #e3e6ea;border-radius:12px;">
                                                 <div style="margin:0 0 8px;color:#6b7280;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">
                                                     Previous status
                                                 </div>
-                                                <div style="display:inline-block;padding:7px 12px;background:#ffffff;border:1px solid #eaded7;border-radius:999px;color:#2f3441;font-weight:700;font-size:14px;">
+                                                <div style="display:inline-block;padding:7px 12px;background:#ffffff;border:1px solid #e3e6ea;border-radius:999px;color:#2f3441;font-weight:700;font-size:14px;">
                                                     {{ $previousStatus ?: '-' }}
                                                 </div>
                                             </div>
                                         </td>
                                         <td style="padding:0 0 0 8px;width:50%;">
-                                            <div style="padding:16px;background:#f7f0ec;border:1px solid #d9b9a8;border-radius:12px;">
-                                                <div style="margin:0 0 8px;color:#9f6d54;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">
+                                            <div style="padding:16px;background:#f4f6f8;border:1px solid #c2c8d0;border-radius:12px;">
+                                                <div style="margin:0 0 8px;color:#16202b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">
                                                     Current status
                                                 </div>
-                                                <div style="display:inline-block;padding:7px 12px;background:#9f6d54;border:1px solid #9f6d54;border-radius:999px;color:#ffffff;font-weight:700;font-size:14px;">
+                                                <div style="display:inline-block;padding:7px 12px;background:#16202b;border:1px solid #16202b;border-radius:999px;color:#ffffff;font-weight:700;font-size:14px;">
                                                     {{ $currentStatus }}
                                                 </div>
                                             </div>
@@ -81,8 +81,8 @@
                             @endif
 
                             @if ($eventType === 'comment' && $ticket->admin_comment)
-                                <div style="margin:0 0 24px;padding:18px 20px;background:#f7f0ec;border:1px solid #eaded7;border-left:4px solid #9f6d54;border-radius:12px;">
-                                    <div style="margin:0 0 10px;color:#9f6d54;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">
+                                <div style="margin:0 0 24px;padding:18px 20px;background:#f4f6f8;border:1px solid #e3e6ea;border-left:4px solid #16202b;border-radius:12px;">
+                                    <div style="margin:0 0 10px;color:#16202b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">
                                         Message
                                     </div>
                                     <div style="white-space:pre-wrap;font-size:15px;line-height:1.7;color:#2f3441;">{{ $ticket->admin_comment }}</div>

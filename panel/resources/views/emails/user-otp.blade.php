@@ -11,9 +11,9 @@
         <tr>
             <td align="center">
                 <table width="580" cellspacing="0" cellpadding="0"
-                    style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #eaded7;">
+                    style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e6ea;">
                     <tr>
-                        <td style="background:#9f6d54;padding:22px 32px;">
+                        <td style="background:#16202b;padding:22px 32px;">
                             <img src="{{ asset('VERGO.png') }}" alt="Vergo Logo" style="height:42px;display:block;">
                         </td>
                     </tr>
@@ -27,7 +27,7 @@
                                 Dein OTP-Code lautet:
                             </p>
 
-                            <div style="display:inline-block;margin:0 0 24px;padding:16px 24px;background:#f7f0ec;border:1px solid #eaded7;border-radius:12px;font-size:30px;font-weight:700;letter-spacing:8px;color:#9f6d54;">
+                            <div style="display:inline-block;margin:0 0 24px;padding:16px 24px;background:#f4f6f8;border:1px solid #e3e6ea;border-radius:12px;font-size:30px;font-weight:700;letter-spacing:8px;color:#16202b;">
                                 {{ $code }}
                             </div>
 

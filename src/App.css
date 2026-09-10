@@ -783,7 +783,7 @@ body {
   border: 2px solid #ffffff;
   font-size: 1.65rem;
   color: var(--vergo-accent-strong);
-  background: linear-gradient(180deg, #fa896b45 0%, #fa896b00 100%);
+  background: linear-gradient(180deg, #16202b26 0%, #16202b00 100%);
   box-shadow:
     0 10px 22px rgba(93, 135, 255, 0.18),
     0 4px 10px rgba(15, 23, 42, 0.08);
@@ -4052,4 +4052,718 @@ body {
   #headerCollapse {
     display: none !important;
   }
+}
+
+/* The language chip is wider than the round hover halo the template draws for
+   icon buttons, so it gets its own pill instead. */
+.app-header .vergo-header-language:hover::before,
+.app-header .vergo-header-language::before {
+  display: none !important;
+}
+
+.app-header .vergo-header-language {
+  gap: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  line-height: 1;
+}
+
+.app-header .vergo-header-language i {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* The dashboard shortcut in the profile menu is a plain link, which the
+   template paints in the theme colour. It follows the black now. */
+.profile-dropdown .message-body a,
+.profile-dropdown .message-body a h6,
+.profile-dropdown .message-body a i,
+.profile-dropdown .message-body a span {
+  color: var(--vergo-text-main) !important;
+}
+
+.profile-dropdown .message-body a:hover h6,
+.profile-dropdown .message-body a:hover i {
+  color: var(--vergo-accent-strong) !important;
+}
+
+/* ==========================================================================
+   Property manager dashboard
+   ========================================================================== */
+
+.vergo-md {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  color: var(--vergo-text-main);
+}
+
+.vergo-md-greeting .vergo-md-eyebrow {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #8a94a8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.vergo-md-greeting h1 {
+  margin: 0;
+  font-size: clamp(1.9rem, 3.2vw, 2.5rem);
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.vergo-md-greeting p {
+  margin: 0.15rem 0 0;
+  color: #8a94a8;
+  font-size: 1.02rem;
+}
+
+/* --- The four figures along the top --- */
+.vergo-md-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.vergo-md-kpi {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  padding: 1.05rem 1.15rem;
+  border: 1px solid var(--vergo-sidebar-line);
+  border-radius: 16px;
+  background: #ffffff;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vergo-md-kpi:hover {
+  border-color: #cbd5e6;
+  box-shadow: 0 10px 24px rgba(31, 42, 68, 0.07);
+}
+
+.vergo-md-kpi-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--kpi-background);
+  color: var(--kpi-color);
+  font-size: 1.3rem;
+}
+
+.vergo-md-kpi-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.vergo-md-kpi-label {
+  color: #5f6877;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.vergo-md-kpi-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #1f2a44;
+}
+
+.vergo-md-kpi-helper {
+  color: #9aa4b7;
+  font-size: 0.82rem;
+}
+
+.vergo-md-kpi-arrow {
+  flex: 0 0 auto;
+  color: #b6bfcf;
+  font-size: 1.1rem;
+}
+
+/* --- Photo panel and chart side by side --- */
+.vergo-md-split {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.vergo-md-panel {
+  padding: 1.35rem 1.5rem;
+  border: 1px solid var(--vergo-sidebar-line);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.vergo-md-hero {
+  position: relative;
+  min-height: 300px;
+  border-radius: 16px;
+  overflow: hidden;
+  background-position: center;
+  background-size: cover;
+}
+
+/* Enough shading at the foot of the photo for the wording to stay readable. */
+.vergo-md-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 45%, rgba(15, 23, 42, 0.62) 100%);
+}
+
+.vergo-md-hero-body {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.4rem 1.5rem;
+}
+
+.vergo-md-hero-body h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-shadow: 0 2px 10px rgba(15, 23, 42, 0.35);
+}
+
+.vergo-md-hero-cta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  background: var(--vergo-accent);
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 10px 22px rgba(22, 32, 43, 0.35);
+}
+
+.vergo-md-hero-cta:hover {
+  background: #243445;
+  color: #ffffff;
+}
+
+/* --- Chart --- */
+.vergo-md-chart {
+  display: flex;
+  flex-direction: column;
+}
+
+.vergo-md-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.vergo-md-chart-head h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.vergo-md-chart-head p {
+  margin: 0;
+  color: #8a94a8;
+  font-size: 0.88rem;
+}
+
+.vergo-md-year label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #6b7385;
+  font-size: 0.82rem;
+}
+
+.vergo-md-year .form-select {
+  min-width: 116px;
+  border-radius: 10px;
+}
+
+.vergo-md-chart-svg {
+  width: 100%;
+  height: 230px;
+  flex: 1 1 auto;
+}
+
+.vergo-md-chart-grid {
+  stroke: #e8edf4;
+  stroke-width: 1;
+  stroke-dasharray: 4 5;
+}
+
+.vergo-md-chart-axis {
+  fill: #8a94a8;
+  font-size: 11px;
+}
+
+.vergo-md-chart-bar {
+  fill: #bfd4f5;
+}
+
+.vergo-md-chart-trend {
+  fill: none;
+  stroke: #7ea6ee;
+  stroke-width: 1.6;
+  stroke-dasharray: 5 5;
+}
+
+.vergo-md-chart-dot {
+  fill: #2563eb;
+}
+
+.vergo-md-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  margin-top: 0.5rem;
+  color: #6b7385;
+  font-size: 0.85rem;
+}
+
+.vergo-md-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vergo-md-legend-bar {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.vergo-md-legend-trend {
+  width: 26px;
+  border-top: 2px dashed #7ea6ee;
+}
+
+.vergo-md-legend-count {
+  margin-left: auto;
+  color: #8a94a8;
+}
+
+/* --- Active orders --- */
+.vergo-md-active-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.vergo-md-active-head h3 {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.vergo-md-active-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--vergo-accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.vergo-md-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.vergo-md-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.95rem 0.25rem;
+  border-top: 1px solid #eef1f6;
+  color: inherit;
+  text-decoration: none;
+}
+
+.vergo-md-row:hover {
+  background: #f8fafc;
+}
+
+.vergo-md-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #eef2fb;
+  color: #5b7cc4;
+  font-size: 1.15rem;
+}
+
+.vergo-md-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vergo-md-row-main strong {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.vergo-md-row-address {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #8a94a8;
+  font-size: 0.86rem;
+}
+
+.vergo-md-row-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vergo-md-row-field span {
+  color: #9aa4b7;
+  font-size: 0.78rem;
+}
+
+.vergo-md-row-field strong {
+  font-weight: 600;
+  color: #2f3441;
+  font-size: 0.94rem;
+}
+
+.vergo-md-row-status {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: #eceef2;
+  color: var(--vergo-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vergo-md-row-status.is-review {
+  background: #fdf0d5;
+  color: #b26a00;
+}
+
+.vergo-md-row-arrow {
+  color: #b6bfcf;
+}
+
+.vergo-md-empty {
+  padding: 1.6rem 0;
+  color: #8a94a8;
+}
+
+/* --- Footer --- */
+.vergo-md-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0 1.5rem;
+  color: #9aa4b7;
+  font-size: 0.86rem;
+}
+
+.vergo-md-footer-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.vergo-md-footer-links a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.vergo-md-footer-links a:hover {
+  color: var(--vergo-text-main);
+}
+
+@media (max-width: 1199px) {
+  .vergo-md-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vergo-md-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The row turns into a stacked card once the columns no longer fit. */
+  .vergo-md-row {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    row-gap: 0.5rem;
+  }
+
+  .vergo-md-row-field {
+    grid-column: 2 / -1;
+    flex-direction: row;
+    gap: 0.4rem;
+  }
+
+  .vergo-md-row-arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 575px) {
+  .vergo-md-kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vergo-md-hero-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .vergo-md-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ==========================================================================
+   Orders page
+   ========================================================================== */
+
+.vergo-page-orders h2 {
+  position: relative;
+  padding-top: 1.1rem;
+  font-size: clamp(1.9rem, 3vw, 2.4rem);
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+/* The short blue rule above the page title. */
+.vergo-page-orders h2::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 46px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--vergo-accent);
+}
+
+.vergo-page-orders .vergo-breadcrumb {
+  display: none;
+}
+
+/* --- Filter bar --- */
+.vergo-page-orders .vergo-filter-bar .form-control,
+.vergo-page-orders .vergo-filter-bar .form-select {
+  height: 48px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1f2a44;
+}
+
+.vergo-page-orders .vergo-filter-bar .form-control:focus,
+.vergo-page-orders .vergo-filter-bar .form-select:focus {
+  border-color: var(--vergo-accent);
+  box-shadow: 0 0 0 3px rgba(22, 32, 43, 0.12);
+}
+
+.vergo-page-orders .vergo-action-buttons .btn {
+  height: 48px;
+  padding: 0 1.2rem;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.vergo-page-orders .vergo-action-buttons .btn-light-primary {
+  border: 1px solid #e3e8f0;
+  background: #ffffff;
+  color: #4a5563;
+}
+
+.vergo-page-orders .vergo-action-buttons .btn-light-primary:hover {
+  background: #f4f6fa;
+  color: #1f2a44;
+}
+
+.vergo-page-orders .vergo-action-buttons .btn-primary {
+  --bs-btn-bg: var(--vergo-accent);
+  --bs-btn-border-color: var(--vergo-accent);
+  --bs-btn-hover-bg: #243445;
+  --bs-btn-hover-border-color: #243445;
+  --bs-btn-active-bg: #243445;
+  --bs-btn-active-border-color: #243445;
+  box-shadow: 0 10px 22px rgba(22, 32, 43, 0.22);
+}
+
+/* --- Section cards --- */
+.vergo-page-orders .card {
+  border: 1px solid #e8ecf3;
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+.vergo-section-head {
+  margin-bottom: 1rem;
+}
+
+.vergo-section-head h5 {
+  margin: 0 0 0.15rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.vergo-section-head p {
+  margin: 0;
+  color: #8a94a8;
+  font-size: 0.9rem;
+}
+
+/* The other sections already carry a heading, styled to match. */
+.vergo-page-orders .card-body > div > h5,
+.vergo-page-orders .card-body > div > div > h5 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+/* --- Tables --- */
+.vergo-page-orders table.table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.vergo-page-orders table.table thead th {
+  padding: 0.85rem 1rem;
+  border: 0;
+  background: #f3f5f9;
+  vertical-align: middle;
+}
+
+.vergo-page-orders table.table thead th h6 {
+  font-size: 0.74rem !important;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7385;
+}
+
+.vergo-page-orders table.table thead th:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.vergo-page-orders table.table thead th:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.vergo-page-orders table.table tbody td {
+  padding: 0.95rem 1rem;
+  border-top: 0;
+  border-bottom: 1px solid #eef1f6;
+  color: #2f3441;
+}
+
+.vergo-page-orders table.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.vergo-page-orders table.table tbody tr:hover td {
+  background: #f9fafc;
+}
+
+.vergo-page-orders table.table tbody td .fw-semibold,
+.vergo-page-orders table.table tbody td > div:first-child {
+  color: #1f2a44;
+}
+
+.vergo-page-orders table.table tbody td .text-muted {
+  color: #9aa4b7 !important;
+  font-size: 0.87rem;
+}
+
+/* An order and a site visit have to be distinguishable without reading the
+   word: the order is blue, the site visit stays on the black primary. */
+.vergo-type-pill {
+  display: inline-block;
+  padding: 0.42rem 0.95rem;
+  border-radius: 999px;
+  background: #e4edfd;
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vergo-type-pill.is-inspection {
+  background: #e6e8ec;
+  color: var(--vergo-accent);
+}
+
+/* --- Row actions --- */
+.vergo-page-orders .table-action-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.vergo-page-orders .table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: #f1f3f7;
+  color: #5f6877;
+}
+
+.vergo-page-orders .table-action-btn:hover {
+  background: #e6e9f0;
+  color: #1f2a44;
+}
+
+.vergo-page-orders .table-action-delete {
+  background: #fdecec;
+  color: #dc4c48;
+}
+
+.vergo-page-orders .table-action-delete:hover {
+  background: #fbdcdc;
+  color: #c03a36;
+}
+
+/* The filters sit above the section cards, on the page background. */
+.vergo-orders-filters {
+  margin-top: 0.25rem;
+  padding: 0 0.5rem;
 }

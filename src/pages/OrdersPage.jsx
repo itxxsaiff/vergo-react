@@ -1783,61 +1783,66 @@ function OrdersPage() {
         { label: t('Dashboard'), href: '/dashboard' },
         { label: t('Aufträge') },
       ]}
+      variant="orders"
     >
+      <div className="row g-3 mb-4 vergo-orders-filters vergo-filter-bar vergo-filter-bar-compact">
+        <div className="col-xl-6 col-lg-6 col-md-12">
+          <div className="vergo-search-input-wrap">
+            <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
+            <input
+              aria-label={t('Suche')}
+              className="form-control"
+              name="search"
+              value={filters.search}
+              onChange={handleFilterChange}
+              placeholder={t('Nach Titel, Immobilie, Objekt, Anfragendem oder Auftragstyp suchen')}
+            />
+          </div>
+        </div>
+
+        <div className="col-xl-3 col-lg-3 col-md-12">
+          <div className="vergo-select-input-wrap">
+            <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
+            <select aria-label={t('Status')} className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
+              <option value="">{t('All Status')}</option>
+              <option value="draft">{t('Entwurf')}</option>
+              <option value="open">{t('Offen')}</option>
+              <option value="in_review">{t('In Prüfung')}</option>
+              <option value="awaiting_owner_approval">{t('Warten auf Eigentümerfreigabe')}</option>
+              <option value="approved">{t('Genehmigt')}</option>
+              <option value="completed">{t('Abgeschlossen')}</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="col-xl-3 col-lg-3 col-md-12">
+          <div className="d-flex justify-content-lg-end gap-2 flex-nowrap vergo-action-buttons">
+            <button
+              type="button"
+              className="btn btn-light-primary text-nowrap"
+              onClick={() => setFilters({ search: '', status: '' })}
+            >
+              <i className="ti ti-refresh me-1" aria-hidden="true"></i>
+              {t('Zurücksetzen')}
+            </button>
+
+            {canCreateOrders ? (
+              <button type="button" className="btn btn-primary text-nowrap" onClick={openCreateModal}>
+                <i className="ti ti-plus me-1"></i>
+                {t('Auftrag erfassen')}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
       <div className="row">
         <div className="col-12">
           <div className="card">
             <div className="card-body p-4">
-              <div className="row g-3 mb-4 vergo-filter-bar vergo-filter-bar-compact">
-                <div className="col-xl-6 col-lg-6 col-md-12">
-                  <div className="vergo-search-input-wrap">
-                    <i className="ti ti-search vergo-search-input-icon" aria-hidden="true"></i>
-                    <input
-                      aria-label={t('Suche')}
-                      className="form-control"
-                      name="search"
-                      value={filters.search}
-                      onChange={handleFilterChange}
-                      placeholder={t('Nach Titel, Immobilie, Objekt, Anfragendem oder Auftragstyp suchen')}
-                    />
-                  </div>
-                </div>
-
-                <div className="col-xl-3 col-lg-3 col-md-12">
-                  <div className="vergo-select-input-wrap">
-                    <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
-                    <select aria-label={t('Status')} className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-                      <option value="">{t('All Status')}</option>
-                      <option value="draft">{t('Entwurf')}</option>
-                      <option value="open">{t('Offen')}</option>
-                      <option value="in_review">{t('In Prüfung')}</option>
-                      <option value="awaiting_owner_approval">{t('Warten auf Eigentümerfreigabe')}</option>
-                      <option value="approved">{t('Genehmigt')}</option>
-                      <option value="completed">{t('Abgeschlossen')}</option>
-                      <option value="closed">{t('Geschlossen')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="col-xl-3 col-lg-3 col-md-12">
-                  <div className="d-flex justify-content-lg-end gap-2 flex-nowrap vergo-action-buttons">
-                    <button
-                      type="button"
-                      className="btn btn-light-primary text-nowrap"
-                      onClick={() => setFilters({ search: '', status: '' })}
-                    >
-                      <i className="ti ti-refresh me-1" aria-hidden="true"></i>
-                      {t('Zurücksetzen')}
-                    </button>
-
-                    {canCreateOrders ? (
-                      <button type="button" className="btn btn-primary text-nowrap" onClick={openCreateModal}>
-                        <i className="ti ti-plus me-1"></i>
-                        {t('Auftrag erfassen')}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
+              <div className="vergo-section-head">
+                <h5>{t('Aktive Aufträge')}</h5>
+                <p>{t('Laufende Aufträge, die sich in Bearbeitung oder Prüfung befinden.')}</p>
               </div>
 
               {isLoading ? <p className="text-muted mb-0">{t('Aufträge werden geladen...')}</p> : null}
@@ -1875,7 +1880,7 @@ function OrdersPage() {
                           <td>{getOrderObjectLabel(order)}</td>
 
                           <td>
-                            <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
+                            <span className={`vergo-type-pill${getOrderFlowTypeLabel(order) === 'Besichtigung' ? ' is-inspection' : ''}`}>
                               {t(getOrderFlowTypeLabel(order))}
                             </span>
                           </td>
@@ -1987,7 +1992,7 @@ function OrdersPage() {
                         </td>
                         <td>{getOrderObjectLabel(order)}</td>
                         <td>
-                          <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
+                          <span className={`vergo-type-pill${getOrderFlowTypeLabel(order) === 'Besichtigung' ? ' is-inspection' : ''}`}>
                             {t(getOrderFlowTypeLabel(order))}
                           </span>
                         </td>
@@ -2061,7 +2066,7 @@ function OrdersPage() {
                         </td>
                         <td>{getOrderObjectLabel(order)}</td>
                         <td>
-                          <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
+                          <span className={`vergo-type-pill${getOrderFlowTypeLabel(order) === 'Besichtigung' ? ' is-inspection' : ''}`}>
                             {t(getOrderFlowTypeLabel(order))}
                           </span>
                         </td>
@@ -3041,7 +3046,7 @@ function OrdersPage() {
                   </div>
 
                   <div className="modal-footer">
-                    <button type="button" className="btn btn-light-danger text-danger" onClick={handleCloseModal}>
+                    <button type="button" className="btn btn-light" onClick={handleCloseModal}>
                       {t('Abbrechen')}
                     </button>
 
@@ -3135,7 +3140,7 @@ function OrdersPage() {
                     </div>
 
                     <div className="modal-footer">
-                      <button type="button" className="btn btn-light-danger text-danger" onClick={closeCompanyRequestModal}>
+                      <button type="button" className="btn btn-light" onClick={closeCompanyRequestModal}>
                         {t('Abbrechen')}
                       </button>
                       <button type="submit" className="btn btn-primary" disabled={isSubmittingCompanyRequest}>

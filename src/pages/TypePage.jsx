@@ -1,23 +1,20 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import AuthShell from '../components/AuthShell'
+import AuthSplitShell from '../components/AuthSplitShell'
 import { EMAIL_OTP_LOGIN_ACCESS_KEY } from '../constants/auth'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import { immersiveAuthShellProps, useImmersiveAuthBackgroundStyle } from '../lib/immersiveAuth'
 
 const TYPE_OPTIONS = [
   {
     value: 'email',
-    icon: 'ti ti-user',
-    title: 'Eigentümer- / Dienstleisteranmeldung',
-    description: 'Mit Kundennummer, E-Mail und OTP anmelden. Eigentümer nutzen ETM, Dienstleister nutzen DLS.',
+    icon: 'ti ti-users',
+    title: 'Eigentümer-/ Dienstleisteranmeldung',
   },
   {
     value: 'property',
-    icon: 'ti ti-building-estate',
+    icon: 'ti ti-building-community',
     title: 'Immobilienanmeldung',
-    description: 'Mit LI-Nummer, E-Mail und OTP den kompletten Bereich öffnen.',
   },
 ]
 
@@ -26,7 +23,6 @@ function TypePage() {
   const { isAuthenticated } = useAuth()
   const { t } = useLanguage()
   const [selectedOption, setSelectedOption] = useState('email')
-  const backgroundStyle = useImmersiveAuthBackgroundStyle()
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
@@ -48,57 +44,43 @@ function TypePage() {
   }
 
   return (
-    <AuthShell
+    <AuthSplitShell
+      eyebrow={t('Herzlich Willkommen')}
       title={t('Anmeldung wählen')}
-      logoHref="/type"
-      backgroundStyle={backgroundStyle}
-      {...immersiveAuthShellProps}
+      subtitle={t('Bitte wählen Sie mit welchem Zugang Sie sich anmelden möchten.')}
     >
-      <div className="row justify-content-center g-3 mb-4">
+      <div className="vergo-auth-options">
         {TYPE_OPTIONS.map((option) => {
           const isActive = selectedOption === option.value
 
           return (
-            <div className="col-md-6" key={option.value}>
-              <button
-                type="button"
-                className={`card w-100 h-100 mb-0 p-0 text-center text-reset overflow-hidden vergo-type-choice-card ${isActive ? 'is-active' : ''}`}
-                onClick={() => setSelectedOption(option.value)}
-                aria-pressed={isActive}
-              >
-                <div className="card-body px-4 py-4 d-flex flex-column align-items-center text-center">
-                  <span className="vergo-type-choice-check" aria-hidden="true">
-                    <i className="ti ti-check"></i>
-                  </span>
-                  <div
-                    className="rounded-circle bg-type-buttons d-inline-flex align-items-center justify-content-center shadow-sm mb-3 vergo-type-choice-icon"
-                  >
-                    <i className={`${option.icon} fs-8 text-white`}></i>
-                  </div>
-                  <h4 className="fw-semibold mb-2 vergo-type-choice-title">
-                    {t(option.title)}
-                  </h4>
-                </div>
-              </button>
-            </div>
+            <button
+              key={option.value}
+              type="button"
+              className={`vergo-auth-option${isActive ? ' is-active' : ''}`}
+              onClick={() => setSelectedOption(option.value)}
+              aria-pressed={isActive}
+            >
+              <span className="vergo-auth-option-icon">
+                <i className={option.icon}></i>
+              </span>
+              <span className="vergo-auth-option-label">{t(option.title)}</span>
+              <i className="ti ti-chevron-right vergo-auth-option-chevron"></i>
+            </button>
           )
         })}
       </div>
 
-      <div className="d-grid mt-2">
-        <button
-          type="button"
-          className="btn vergo-type-continue rounded-2 fs-5"
-          onClick={handleContinue}
-          disabled={!selectedOption}
-        >
-          <span className="vergo-type-continue-label">{t('Anmelden')}</span>
-          <span className="vergo-type-continue-icon" aria-hidden="true">
-            <i className="ti ti-arrow-right"></i>
-          </span>
-        </button>
-      </div>
-    </AuthShell>
+      <button
+        type="button"
+        className="vergo-auth-submit"
+        onClick={handleContinue}
+        disabled={!selectedOption}
+      >
+        <span>{t('Weiter')}</span>
+        <i className="ti ti-arrow-right"></i>
+      </button>
+    </AuthSplitShell>
   )
 }
 

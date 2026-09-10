@@ -3135,3 +3135,245 @@ body {
     padding-left: calc(16.666667% + 1.5rem);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Public login screens: content left, photo right.
+   --------------------------------------------------------------------------- */
+:root {
+  --vergo-auth-ink: #0f1a2a;
+  --vergo-auth-muted: #7a8794;
+  --vergo-auth-line: #ccd5e0;
+  --vergo-auth-panel: #f7f8f8;
+  --vergo-auth-button: #16202b;
+}
+
+.vergo-auth-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  background: var(--vergo-auth-panel);
+}
+
+.vergo-auth-split-panel {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(2rem, 4vw, 3.75rem) clamp(1.75rem, 5vw, 5rem);
+}
+
+.vergo-auth-split-logo {
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.vergo-auth-split-logo img {
+  height: clamp(38px, 4vw, 54px);
+  width: auto;
+}
+
+/* The block sits optically centred between the logo and the footer. */
+.vergo-auth-split-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 620px;
+  width: 100%;
+  padding: 2.5rem 0;
+}
+
+.vergo-auth-split-eyebrow {
+  margin: 0 0 1rem;
+  color: var(--vergo-auth-muted);
+  font-size: clamp(0.95rem, 1.1vw, 1.05rem);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+}
+
+.vergo-auth-split-title {
+  margin: 0 0 1.25rem;
+  color: var(--vergo-auth-ink);
+  font-size: clamp(2.1rem, 4.2vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.vergo-auth-split-subtitle {
+  margin: 0 0 2.5rem;
+  max-width: 30ch;
+  color: var(--vergo-auth-muted);
+  font-size: clamp(1rem, 1.2vw, 1.15rem);
+  line-height: 1.55;
+}
+
+.vergo-auth-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.vergo-auth-option {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border: 1px solid var(--vergo-auth-line);
+  border-radius: 14px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vergo-auth-option:hover {
+  border-color: var(--vergo-auth-ink);
+}
+
+.vergo-auth-option.is-active {
+  border-color: var(--vergo-auth-ink);
+  box-shadow: 0 0 0 1px var(--vergo-auth-ink);
+}
+
+.vergo-auth-option-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #eff2f5;
+  color: var(--vergo-auth-ink);
+  font-size: 1.35rem;
+}
+
+.vergo-auth-option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--vergo-auth-ink);
+  font-size: clamp(0.98rem, 1.15vw, 1.1rem);
+  line-height: 1.35;
+}
+
+.vergo-auth-option-chevron {
+  flex: 0 0 auto;
+  color: var(--vergo-auth-muted);
+  font-size: 1.35rem;
+}
+
+.vergo-auth-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1.15rem 1.5rem;
+  border: 0;
+  border-radius: 14px;
+  background: var(--vergo-auth-button);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.vergo-auth-submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.vergo-auth-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vergo-auth-split-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  color: var(--vergo-auth-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vergo-auth-split-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.vergo-auth-split-footer a:hover {
+  color: var(--vergo-auth-ink);
+}
+
+.vergo-auth-split-media {
+  position: relative;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* The photo was pulling the eye away from the form. A soft dark wash calms it
+   down, a little heavier at the edges so it settles into the page. */
+.vergo-auth-split-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(15, 26, 42, 0.30) 0%, rgba(15, 26, 42, 0.10) 35%, rgba(15, 26, 42, 0.22) 100%),
+    linear-gradient(180deg, rgba(15, 26, 42, 0.18) 0%, rgba(15, 26, 42, 0.05) 45%, rgba(15, 26, 42, 0.30) 100%);
+  pointer-events: none;
+}
+
+/* The floating buttons stay above the wash. */
+.vergo-auth-split-actions {
+  z-index: 1;
+}
+
+.vergo-auth-split-actions {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.vergo-auth-split-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--vergo-auth-ink);
+  font-size: 1.15rem;
+  box-shadow: 0 6px 18px rgba(15, 26, 42, 0.18);
+  cursor: pointer;
+}
+
+.vergo-auth-split-action:hover {
+  background: #ffffff;
+}
+
+@media (max-width: 991.98px) {
+  /* The photo becomes a banner above the form rather than half the screen. */
+  .vergo-auth-split {
+    grid-template-columns: 1fr;
+  }
+
+  .vergo-auth-split-media {
+    order: -1;
+    min-height: 220px;
+  }
+
+  .vergo-auth-split-content {
+    max-width: none;
+    padding: 2rem 0;
+  }
+}

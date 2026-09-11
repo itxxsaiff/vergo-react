@@ -23,6 +23,7 @@ class OwnerResource extends JsonResource
             'domain_suffix' => $this->domain_suffix,
             'email' => $this->login_email,
             'login_email' => $this->login_email,
+            'price_comparison_emails' => $this->price_comparison_emails ?? [],
             'phone' => $this->phone,
             'status' => $this->status,
             'role' => $this->role?->name,

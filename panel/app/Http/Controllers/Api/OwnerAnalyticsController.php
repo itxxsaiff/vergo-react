@@ -197,12 +197,15 @@ class OwnerAnalyticsController extends Controller
 
         $blocks = $requested->map(function (string $key) use ($sections, $data, $search, $sectionFilters): array {
             $rows = collect($data[$key] ?? []);
-            // The section's own filter wins; the box on the page applies to
-            // anything left unfiltered.
-            $term = $sectionFilters->get($key, $search);
+            $field = self::FILTER_FIELDS[$key] ?? 'label';
 
-            if ($term !== '') {
-                $rows = $rows->filter(fn ($row): bool => $this->rowMatches($row, $term));
+            if ($sectionFilters->has($key)) {
+                // A value picked from the list: an exact match on that one
+                // field, so "ZH" is the canton ZH and nothing that contains it.
+                $value = $sectionFilters->get($key);
+                $rows = $rows->filter(fn ($row): bool => (string) data_get($row, $field) === $value);
+            } elseif ($search !== '') {
+                $rows = $rows->filter(fn ($row): bool => $this->rowMatches($row, $search));
             }
 
             return [
@@ -229,6 +232,26 @@ class OwnerAnalyticsController extends Controller
 
         return $pdf->stream('vergo-report.pdf');
     }
+
+    /**
+     * The field each section is narrowed by. The page offers only the values
+     * that actually occur in the owner's data for that field.
+     */
+    private const FILTER_FIELDS = [
+        'spend_by_property' => 'label',
+        'spend_by_object' => 'label',
+        'spend_by_canton' => 'label',
+        'orders_by_property' => 'label',
+        'orders_by_object' => 'label',
+        'orders_by_management' => 'label',
+        'orders_by_manager_email' => 'label',
+        'cancellations_by_manager' => 'manager_email',
+        'duplicates_by_manager' => 'label',
+        'providers' => 'company_name',
+        'providers_by_canton' => 'canton',
+        'providers_by_property' => 'company_name',
+        'top_services_by_property' => 'property',
+    ];
 
     /**
      * Which sections can be printed, and how each one is laid out.

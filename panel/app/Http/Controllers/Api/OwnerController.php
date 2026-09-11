@@ -93,6 +93,16 @@ class OwnerController extends Controller
             'city' => $request->string('city')->trim()->toString(),
             'domain_suffix' => $ownerType === 'company' ? $domainSuffix : null,
             'login_email' => $ownerEmail,
+            // Blank rows from the form are dropped, the rest normalised so the
+            // login comparison is not tripped up by case or stray spaces.
+            'price_comparison_emails' => $request->has('price_comparison_emails')
+                ? collect($request->input('price_comparison_emails', []))
+                    ->map(fn ($value): string => strtolower(trim((string) $value)))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all()
+                : ($existingOwner?->price_comparison_emails ?? []),
             'email' => $ownerEmail,
             'phone' => $request->string('phone')->trim()->toString(),
             'status' => $request->input('status', $existingOwner?->status ?? 'active'),

@@ -59,14 +59,34 @@ function AuthenticatedLayout() {
     homePath: user?.home_path ?? '/dashboard',
   }
 
+  // Entries only some sign-ins may see are dropped here, so the sidebar never
+  // offers a page the person would then be turned away from.
+  const canViewPriceComparison = user?.can_view_price_comparison !== false
+  const navigation = (navigationByRole[currentRole] ?? navigationByRole.admin)
+    .map((item) => (item.children
+      ? { ...item, children: item.children.filter((child) => !child.requiresPriceComparison || canViewPriceComparison) }
+      : item))
+    .filter((item) => !item.requiresPriceComparison || canViewPriceComparison)
+
   return (
     <ProtectedRoute>
       <AdminLayout
-        navigation={navigationByRole[currentRole] ?? navigationByRole.admin}
+        navigation={navigation}
         user={currentUser}
       />
     </ProtectedRoute>
   )
+}
+
+// Typing the address in directly is turned away the same way the menu is.
+function PriceComparisonRoute() {
+  const { user } = useAuth()
+
+  if (user?.can_view_price_comparison === false) {
+    return <Navigate to={user?.home_path ?? '/dashboard'} replace />
+  }
+
+  return <PriceComparisonPage />
 }
 
 function DashboardRoute() {
@@ -241,7 +261,7 @@ function App() {
           path="price-comparison"
           element={
             <ProtectedRoute allowRoles={['admin', 'owner', 'manager']} allowManagerAccessModes={['full']}>
-              <PriceComparisonPage />
+              <PriceComparisonRoute />
             </ProtectedRoute>
           }
         />

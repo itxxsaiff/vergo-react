@@ -296,6 +296,10 @@ class OwnerAnalyticsService
             })
             ->map(fn (Collection $group, string $label): array => [
                 'label' => $label,
+                // Kept apart as well, so the report can be narrowed to one
+                // canton or one company rather than searched as free text.
+                'company_name' => $group->first()->approvedBid->serviceProvider->company_name ?: '-',
+                'canton' => $group->first()->property?->state ?: '-',
                 'order_count' => $group->count(),
                 'completed_count' => $group->filter(fn (Order $o): bool => $o->status === 'completed')->count(),
             ])

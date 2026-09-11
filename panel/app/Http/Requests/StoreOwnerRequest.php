@@ -23,6 +23,9 @@ class StoreOwnerRequest extends FormRequest
             'postal_code' => ['required', 'string', 'max:30'],
             'city' => ['required', 'string', 'max:120'],
             'domain_suffix' => ['nullable', 'required_if:owner_type,company', 'string', 'max:255'],
+            // The owner's super users: the only logins that see the price comparison.
+            'price_comparison_emails' => ['nullable', 'array', 'max:50'],
+            'price_comparison_emails.*' => ['nullable', 'email', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email', 'unique:users,login_email'],
             'phone' => ['required', 'string', 'max:50'],
             'status' => ['nullable', 'in:active,inactive'],

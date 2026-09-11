@@ -16,11 +16,14 @@ function StatTile({ label, value }) {
   )
 }
 
-// Every category the owner can open. `columns` describes the table on the right,
-// `searchKeys` the fields the filter box looks at.
+// Every category the owner can open. `columns` describes the table on the right;
+// `filterKey` is the one field it is narrowed by, and the choices offered are
+// only the values that actually occur in this owner's data.
 const CATEGORIES = [
   {
     key: 'spend_by_property',
+    filterKey: 'label',
+    filterLabel: 'Liegenschaft',
     title: 'Ausgaben pro Liegenschaft',
     columns: [
       { key: 'label', heading: 'Liegenschaft' },
@@ -29,6 +32,8 @@ const CATEGORIES = [
   },
   {
     key: 'spend_by_object',
+    filterKey: 'label',
+    filterLabel: 'Objekt',
     title: 'Ausgaben pro Objekt',
     columns: [
       { key: 'label', heading: 'Objekt' },
@@ -37,6 +42,8 @@ const CATEGORIES = [
   },
   {
     key: 'spend_by_canton',
+    filterKey: 'label',
+    filterLabel: 'Kanton',
     title: 'Ausgaben pro Kanton',
     columns: [
       { key: 'label', heading: 'Kanton' },
@@ -45,6 +52,8 @@ const CATEGORIES = [
   },
   {
     key: 'orders_by_property',
+    filterKey: 'label',
+    filterLabel: 'Liegenschaft',
     title: 'Aufträge pro Liegenschaft',
     columns: [
       { key: 'label', heading: 'Liegenschaft' },
@@ -53,6 +62,8 @@ const CATEGORIES = [
   },
   {
     key: 'orders_by_object',
+    filterKey: 'label',
+    filterLabel: 'Objekt',
     title: 'Aufträge pro Objekt',
     columns: [
       { key: 'label', heading: 'Objekt' },
@@ -61,6 +72,8 @@ const CATEGORIES = [
   },
   {
     key: 'orders_by_management',
+    filterKey: 'label',
+    filterLabel: 'Bewirtschaftung',
     title: 'Aufträge pro Bewirtschaftung',
     columns: [
       { key: 'label', heading: 'Bewirtschaftung' },
@@ -69,6 +82,8 @@ const CATEGORIES = [
   },
   {
     key: 'orders_by_manager_email',
+    filterKey: 'label',
+    filterLabel: 'Bewirtschafter',
     title: 'Aufträge pro Bewirtschafter',
     columns: [
       { key: 'label', heading: 'E-Mail' },
@@ -77,26 +92,30 @@ const CATEGORIES = [
   },
   {
     key: 'cancellations_by_manager',
+    filterKey: 'manager_email',
+    filterLabel: 'Bewirtschafter',
     title: 'Stornierungen pro Bewirtschafter',
     columns: [
       { key: 'manager_email', heading: 'E-Mail' },
       { key: 'manager_name', heading: 'Name' },
       { key: 'cancelled_count', heading: 'Abgesagt', align: 'end' },
     ],
-    searchKeys: ['manager_email', 'manager_name'],
   },
   {
     key: 'duplicates_by_manager',
+    filterKey: 'label',
+    filterLabel: 'Bewirtschafter',
     title: 'Duplikate pro Bewirtschafter',
     columns: [
       { key: 'label', heading: 'E-Mail' },
       { key: 'manager_name', heading: 'Name' },
       { key: 'duplicate_count', heading: 'Duplikate', align: 'end' },
     ],
-    searchKeys: ['label', 'manager_name'],
   },
   {
     key: 'providers',
+    filterKey: 'company_name',
+    filterLabel: 'Dienstleister',
     title: 'Dienstleister',
     columns: [
       { key: 'company_name', heading: 'Firma' },
@@ -104,10 +123,11 @@ const CATEGORIES = [
       { key: 'completed_count', heading: 'Abgeschlossen', align: 'end' },
       { key: 'revenue', heading: 'Umsatz', money: true, align: 'end' },
     ],
-    searchKeys: ['company_name'],
   },
   {
     key: 'providers_by_canton',
+    filterKey: 'canton',
+    filterLabel: 'Kanton',
     title: 'Dienstleister pro Kanton',
     columns: [
       { key: 'label', heading: 'Firma - Kanton' },
@@ -117,24 +137,34 @@ const CATEGORIES = [
   },
   {
     key: 'providers_by_property',
+    filterKey: 'company_name',
+    filterLabel: 'Dienstleister',
     title: 'Dienstleister pro Liegenschaft',
     columns: [
       { key: 'property', heading: 'Liegenschaft' },
       { key: 'company_name', heading: 'Firma' },
       { key: 'completed_count', heading: 'Abgeschlossen', align: 'end' },
     ],
-    searchKeys: ['property', 'company_name'],
   },
   {
     key: 'top_services_by_property',
+    filterKey: 'property',
+    filterLabel: 'Liegenschaft',
     title: 'Häufigste Leistungen pro Liegenschaft',
     columns: [
       { key: 'property', heading: 'Liegenschaft' },
       { key: 'top_service', heading: 'Häufigste Leistung', service: true },
     ],
-    searchKeys: ['property', 'top_service'],
   },
 ]
+
+function getFilterOptions(category, data) {
+  const values = (data?.[category.key] ?? [])
+    .map((row) => String(row?.[category.filterKey] ?? '').trim())
+    .filter((value) => value && value !== '-')
+
+  return [...new Set(values)].sort((first, second) => first.localeCompare(second, 'de'))
+}
 
 function cellValue(row, column) {
   const raw = row?.[column.key]
@@ -160,7 +190,7 @@ function OwnerAnalyticsPage() {
   const [error, setError] = useState('')
   // Nothing is shown on the right until a category is opened.
   const [openCategory, setOpenCategory] = useState('')
-  const [categorySearch, setCategorySearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [reportSections, setReportSections] = useState([])
   // One filter per chosen category: a canton for the provider list, a manager
@@ -205,19 +235,16 @@ function OwnerAnalyticsPage() {
     }
 
     const rows = data[activeCategory.key] ?? []
-    const term = categorySearch.trim().toLowerCase()
 
-    if (!term) {
+    if (!categoryFilter) {
       return rows
     }
 
-    const keys = activeCategory.searchKeys ?? ['label']
-
-    return rows.filter((row) => keys.some((key) => String(row?.[key] ?? '').toLowerCase().includes(term)))
-  }, [activeCategory, categorySearch, data])
+    return rows.filter((row) => String(row?.[activeCategory.filterKey] ?? '').trim() === categoryFilter)
+  }, [activeCategory, categoryFilter, data])
 
   function handleCategoryClick(key) {
-    setCategorySearch('')
+    setCategoryFilter('')
     setOpenCategory((current) => (current === key ? '' : key))
   }
 
@@ -236,6 +263,16 @@ function OwnerAnalyticsPage() {
     })
   }
 
+  // Whatever is narrowed on screen starts out narrowed in the report too.
+  function openReport() {
+    if (openCategory && categoryFilter) {
+      setReportSections((current) => (current.includes(openCategory) ? current : [...current, openCategory]))
+      setReportFilters((current) => ({ ...current, [openCategory]: categoryFilter }))
+    }
+
+    setIsReportOpen(true)
+  }
+
   async function handleCreateReport() {
     if (reportSections.length === 0) {
       return
@@ -247,8 +284,8 @@ function OwnerAnalyticsPage() {
       await api.openOwnerAnalyticsReport({
         sections: reportSections,
         owner_id: canFilterByOwner && ownerId ? ownerId : null,
-        search: categorySearch.trim(),
-        filters: reportFilters,
+        // Only real choices go out; "all" means no filter for that block.
+        filters: Object.fromEntries(Object.entries(reportFilters).filter(([, value]) => value)),
         language,
       })
       setIsReportOpen(false)
@@ -263,14 +300,19 @@ function OwnerAnalyticsPage() {
     <div className="card mb-0">
       <div className="px-4 py-3 border-bottom">
         <h5 className="card-title fw-semibold mb-2">{t(activeCategory.title)}</h5>
-        {/* The filter sits where the description used to be. */}
-        <input
-          type="search"
-          className="form-control"
-          value={categorySearch}
-          onChange={(event) => setCategorySearch(event.target.value)}
-          placeholder={t('In dieser Kategorie filtern...')}
-        />
+        {/* Only the values that occur in this owner's data can be picked -
+            the cantons their properties are in, the companies that worked
+            for them - rather than typing and hoping for a match. */}
+        <select
+          className="form-select"
+          value={categoryFilter}
+          onChange={(event) => setCategoryFilter(event.target.value)}
+        >
+          <option value="">{t('Alle')}: {t(activeCategory.filterLabel)}</option>
+          {getFilterOptions(activeCategory, data).map((value) => (
+            <option key={value} value={value}>{value}</option>
+          ))}
+        </select>
       </div>
       <div className="card-body p-4">
         {activeRows.length === 0 ? (
@@ -324,7 +366,13 @@ function OwnerAnalyticsPage() {
                 <select
                   className="form-select"
                   value={ownerId}
-                  onChange={(event) => setOwnerId(event.target.value)}
+                  onChange={(event) => {
+                    // Another owner has other cantons and companies, so a value
+                    // picked for the previous one would match nothing.
+                    setOwnerId(event.target.value)
+                    setCategoryFilter('')
+                    setReportFilters({})
+                  }}
                 >
                   <option value="">{t('Alle Eigentümer')}</option>
                   {owners.map((owner) => (
@@ -341,7 +389,7 @@ function OwnerAnalyticsPage() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => setIsReportOpen(true)}
+                onClick={openReport}
               >
                 <i className="ti ti-file-text me-1"></i>
                 {t('Bericht erstellen')}
@@ -450,29 +498,27 @@ function OwnerAnalyticsPage() {
 
                           {/* Its own filter, so one report can show e.g. only
                               providers in Zürich and only one manager's orders. */}
-                          {reportSections.includes(category.key) ? (
-                            <input
-                              type="search"
-                              className="form-control form-control-sm mt-2"
+                          {reportSections.includes(category.key) && getFilterOptions(category, data).length > 0 ? (
+                            <select
+                              className="form-select form-select-sm mt-2"
                               value={reportFilters[category.key] ?? ''}
                               onChange={(event) => setReportFilters((current) => ({
                                 ...current,
                                 [category.key]: event.target.value,
                               }))}
-                              placeholder={t('Diese Kategorie filtern (optional)')}
-                            />
+                            >
+                              <option value="">{t('Alle')}: {t(category.filterLabel)}</option>
+                              {getFilterOptions(category, data).map((value) => (
+                                <option key={value} value={value}>{value}</option>
+                              ))}
+                            </select>
                           ) : null}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {categorySearch.trim() ? (
-                    <div className="alert alert-light border small mt-3 mb-0">
-                      <i className="ti ti-filter me-1"></i>
-                      {t('Der aktive Filter wird auf den Bericht angewendet:')} <strong>{categorySearch.trim()}</strong>
-                    </div>
-                  ) : null}
+
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-light" onClick={() => setIsReportOpen(false)}>

@@ -368,13 +368,16 @@ class AuthController extends Controller
                 'consumed_at' => now(),
             ]);
 
-            $token = $owner->createToken('vergo-owner')->plainTextToken;
+            // Several people can sign in for one company owner; the token keeps
+            // the address they used, which decides whether they see the price
+            // comparison.
+            $token = $owner->createToken('vergo-owner:'.$email)->plainTextToken;
 
             return response()->json([
                 'message' => 'Login successful.',
                 'data' => [
                     'token' => $token,
-                    'user' => $this->transformUserActor($owner),
+                    'user' => $this->transformUserActor($owner->load('role'), null, $email),
                 ],
             ]);
         }
@@ -464,7 +467,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'data' => $this->transformUserActor($actor->load('role'), $providerLoginEmail),
+            'data' => $this->transformUserActor($actor->load('role'), $providerLoginEmail, User::ownerLoginEmailFromToken($tokenName)),
         ]);
     }
 
@@ -589,6 +592,33 @@ class AuthController extends Controller
             }
 
             return [$privateOwner, $property, null, 200];
+        }
+
+        // A super user listed on the owner may sign in for it from any address
+        // - an outside advisor on gmail, say - not only from the company domain.
+        $superUserOwners = User::query()
+            ->with('role')
+            ->whereHas('role', fn ($query) => $query->where('name', 'owner'))
+            ->when($ownerIdFromCustomer, fn ($query) => $query->where('id', $ownerIdFromCustomer))
+            ->whereJsonContains('price_comparison_emails', $email)
+            ->get();
+
+        if ($superUserOwners->isNotEmpty()) {
+            if ($property) {
+                $matchingOwner = $superUserOwners->first(
+                    fn (User $owner) => $owner->ownedProperties()->where('properties.id', $property->id)->exists()
+                );
+
+                if ($matchingOwner) {
+                    return [$matchingOwner, $property, null, 200];
+                }
+            } elseif ($superUserOwners->count() === 1) {
+                $matchingOwner = $superUserOwners->first();
+
+                return [$matchingOwner, $matchingOwner->ownedProperties()->select('properties.id', 'li_number', 'title')->first(), null, 200];
+            } else {
+                return [null, null, 'This email is a super user for several owners. Please enter the customer number.', 409];
+            }
         }
 
         $domain = strtolower((string) str($email)->after('@'));
@@ -763,7 +793,7 @@ class AuthController extends Controller
         return 'DLS-'.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
     }
 
-    private function transformUserActor(User $user, ?string $providerLoginEmail = null): array
+    private function transformUserActor(User $user, ?string $providerLoginEmail = null, ?string $ownerLoginEmail = null): array
     {
         $user->loadMissing('serviceProvider');
 
@@ -780,6 +810,10 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'provider_login_email' => $providerLoginEmail,
+            'owner_login_email' => $ownerLoginEmail,
+            // Owners see the price comparison only when they signed in with one
+            // of the super-user addresses; staff always do.
+            'can_view_price_comparison' => $user->canViewPriceComparison($ownerLoginEmail),
             'image' => $user->image,
             'role' => $role,
             'access_level' => $accessLevel,

@@ -17,6 +17,8 @@ const initialForm = {
   email: '',
   phone: '',
   status: 'active',
+  // The owner's super users: login addresses that may open the price comparison.
+  price_comparison_emails: [''],
 }
 
 function getDisplayName(owner) {
@@ -172,6 +174,9 @@ function OwnersPage() {
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim(),
         status: form.status,
+        price_comparison_emails: form.price_comparison_emails
+          .map((value) => value.trim().toLowerCase())
+          .filter(Boolean),
       }
 
       if (editingOwnerId) {
@@ -207,9 +212,35 @@ function OwnersPage() {
       email: owner.email || '',
       phone: owner.phone || '',
       status: owner.status || 'active',
+      // Always at least one row, so there is a field to type into.
+      price_comparison_emails: owner.price_comparison_emails?.length ? owner.price_comparison_emails : [''],
     })
     setError('')
     setFieldErrors({})
+  }
+
+  function updateSuperUserEmail(index, value) {
+    setForm((current) => ({
+      ...current,
+      price_comparison_emails: current.price_comparison_emails.map((entry, entryIndex) => (
+        entryIndex === index ? value : entry
+      )),
+    }))
+  }
+
+  function addSuperUserEmail() {
+    setForm((current) => ({
+      ...current,
+      price_comparison_emails: [...current.price_comparison_emails, ''],
+    }))
+  }
+
+  function removeSuperUserEmail(index) {
+    setForm((current) => {
+      const next = current.price_comparison_emails.filter((_, entryIndex) => entryIndex !== index)
+
+      return { ...current, price_comparison_emails: next.length ? next : [''] }
+    })
   }
 
   function handleCancelEdit() {
@@ -341,6 +372,45 @@ function OwnersPage() {
                     <input className={`form-control${fieldErrors.domain_suffix ? ' is-invalid' : ''}`} name="domain_suffix" value={form.domain_suffix} onChange={handleChange} placeholder={t('beispiel.ch')} />
                   </div>
                 ) : null}
+
+                {/* Everyone signs in with the ETM number, their email and a code;
+                    only the addresses listed here also see the price comparison. */}
+                <div className="mb-3">
+                  <label className="form-label">{t('Super-User (Preisvergleich)')}</label>
+                  <div className="form-text mt-0 mb-2">
+                    {t('Nur diese E-Mail-Adressen sehen den Preisvergleich. Alle anderen Benutzer dieses Eigentümers nicht.')}
+                  </div>
+
+                  <div className="d-flex flex-column gap-2">
+                    {form.price_comparison_emails.map((value, index) => (
+                      <div className="input-group" key={index}>
+                        <input
+                          type="email"
+                          className="form-control"
+                          value={value}
+                          onChange={(event) => updateSuperUserEmail(index, event.target.value)}
+                          placeholder={t('z. B. name@beispiel.ch')}
+                        />
+                        {form.price_comparison_emails.length > 1 || value ? (
+                          <button
+                            type="button"
+                            className="btn btn-light border"
+                            onClick={() => removeSuperUserEmail(index)}
+                            aria-label={t('Entfernen')}
+                            title={t('Entfernen')}
+                          >
+                            <i className="ti ti-x"></i>
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button type="button" className="btn btn-light border btn-sm mt-2" onClick={addSuperUserEmail}>
+                    <i className="ti ti-plus me-1"></i>
+                    {t('Weitere hinzufügen')}
+                  </button>
+                </div>
 
                 <div className="mb-3">
                   <label className="form-label">{t('Status')}</label>

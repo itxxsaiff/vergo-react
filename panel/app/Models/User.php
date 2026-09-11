@@ -37,6 +37,7 @@ class User extends Authenticatable
         'city',
         'domain_suffix',
         'login_email',
+        'price_comparison_emails',
     ];
 
     protected $hidden = [
@@ -54,7 +55,42 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'price_comparison_emails' => 'array',
         ];
+    }
+
+    /**
+     * Whether the person signed in may open the price comparison.
+     *
+     * Everyone signing in for a company owner shares one account, so this is
+     * decided by the email they logged in with, not by the account: only the
+     * addresses the admin listed as super users get it. Staff always do.
+     */
+    /**
+     * The address an owner session logged in with, read back from its token.
+     */
+    public static function ownerLoginEmailFromToken(?string $tokenName): ?string
+    {
+        $tokenName = (string) $tokenName;
+
+        return str_starts_with($tokenName, 'vergo-owner:')
+            ? substr($tokenName, strlen('vergo-owner:'))
+            : null;
+    }
+
+    public function canViewPriceComparison(?string $loginEmail): bool
+    {
+        if ($this->role?->name !== 'owner') {
+            return true;
+        }
+
+        $email = strtolower(trim((string) $loginEmail));
+
+        return $email !== '' && in_array(
+            $email,
+            array_map(fn ($value): string => strtolower(trim((string) $value)), $this->price_comparison_emails ?? []),
+            true,
+        );
     }
 
     public function role(): BelongsTo

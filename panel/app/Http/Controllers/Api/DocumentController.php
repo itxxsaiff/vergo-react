@@ -179,6 +179,10 @@ class DocumentController extends Controller
         }
 
         if ($actor instanceof User && $actor->role?->name === 'owner') {
+            // Owners read their documents but never remove them - an invoice
+            // they uploaded for a price review stays on record.
+            abort_if($write, 403, 'Eigentümer können Dokumente nur ansehen, nicht löschen.');
+
             abort_unless(
                 $document->property && $document->property->owners()->where('users.id', $actor->id)->exists(),
                 403

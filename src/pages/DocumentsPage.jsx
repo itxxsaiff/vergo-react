@@ -324,7 +324,9 @@ function DocumentsPage() {
                           >
                             <i className="ti ti-download"></i>
                           </button>
-                          {canUpload ? (
+                          {/* Owners can upload an invoice for a price review and
+                              view everything, but deleting is not theirs to do. */}
+                          {canUpload && !isOwner ? (
                             <button type="button" className="table-action-btn table-action-delete" onClick={() => handleDelete(document.id)} title="Dokument löschen">
                               <i className="ti ti-trash"></i>
                             </button>

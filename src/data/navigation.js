@@ -172,7 +172,9 @@ export const navigationByRole = {
         // Manager decisions with the reason that was given: rejected best
         // offers, cancellations and duplicates.
         { title: 'Berichte', href: '/owner-decisions' },
-        { title: 'Preisvergleich', href: '/price-comparison' },
+        // Only the owner's super users - the login addresses the admin listed
+        // on the owner - see this entry.
+        { title: 'Preisvergleich', href: '/price-comparison', requiresPriceComparison: true },
         { title: 'Unterlagen', href: '/documents' },
       ],
     },

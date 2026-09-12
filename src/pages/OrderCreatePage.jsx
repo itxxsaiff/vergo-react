@@ -125,6 +125,7 @@ const MANAGER_STEP_DEFS = {
   property: { key: 'property', label: 'Liegenschaft', helper: 'Objekte wählen', icon: 'ti ti-building-estate' },
   flow: { key: 'flow', label: 'Ablauf', helper: 'Besichtigung oder Auftrag', icon: 'ti ti-git-branch' },
   details: { key: 'details', label: 'Details', helper: 'Gewerk und Angaben', icon: 'ti ti-file-description' },
+  appointments: { key: 'appointments', label: 'Termin & Kontakt', helper: 'Daten erfassen', icon: 'ti ti-calendar-event' },
   award: { key: 'award', label: 'Vergabe', helper: 'Anfrageart festlegen', icon: 'ti ti-badge-ad' },
   items: { key: 'items', label: 'Positionen', helper: 'Leistungen erfassen', icon: 'ti ti-list-details' },
   companies: { key: 'companies', label: 'Firmen', helper: 'Anbieter auswählen', icon: 'ti ti-users' },
@@ -136,8 +137,15 @@ function getManagerSteps(wizard) {
     MANAGER_STEP_DEFS.property,
     MANAGER_STEP_DEFS.flow,
     MANAGER_STEP_DEFS.details,
-    MANAGER_STEP_DEFS.award,
   ]
+
+  // A site visit needs dates and a contact on site; those follow the work scope
+  // on a page of their own.
+  if (wizard.flow_type === 'inspection') {
+    steps.push(MANAGER_STEP_DEFS.appointments)
+  }
+
+  steps.push(MANAGER_STEP_DEFS.award)
 
   // Only the manager entering the items needs a page for them.
   if (wizard.flow_type === 'direct_order' && wizard.quote_item_source !== 'provider') {
@@ -154,7 +162,8 @@ function getManagerSteps(wizard) {
 const MANAGER_STEP_HEADINGS = {
   property: { title: 'Liegenschaft wählen', helper: 'Wählen Sie die Liegenschaft und die dazugehörigen Objekte, für die der Auftrag erstellt werden soll.' },
   flow: { title: 'Ablauf wählen', helper: 'Wählen Sie, ob eine Besichtigung geplant oder direkt ein Auftrag vergeben werden soll.' },
-  details: { title: 'Details erfassen', helper: 'Wählen Sie das Gewerk und beschreiben Sie den Auftrag.' },
+  details: { title: 'Arbeitsumfang & Details', helper: 'Wählen Sie das Gewerk und beschreiben Sie den Auftrag.' },
+  appointments: { title: 'Termine & Kontakt', helper: 'Erfassen Sie die bevorzugten Besichtigungstermine und die Kontaktperson vor Ort.' },
   award: { title: 'Anfrageart wählen', helper: 'Legen Sie fest, ob direkt bei ausgewählten Firmen angefragt oder öffentlich ausgeschrieben werden soll.' },
   items: { title: 'Positionen erfassen', helper: 'Erfassen Sie die Leistungen, die angeboten werden sollen.' },
   companies: { title: 'Firmen auswählen', helper: 'Wählen Sie die passenden Dienstleister für diese Anfrage aus.' },
@@ -1148,7 +1157,44 @@ function OrderCreatePage() {
         return false
       }
 
-      if (managerWizard.flow_type === 'inspection') {
+      if (managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date' && !managerWizard.due_date) {
+        setError(t('Bitte geben Sie ein gewünschtes Ausführungsdatum an.'))
+        return false
+      }
+
+      if (managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date' && isPastDate(managerWizard.due_date)) {
+        setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
+        return false
+      }
+
+      if (managerWizard.flow_type === 'direct_order' && managerWizard.invoice_recipient_type === 'third_party') {
+        if (!managerWizard.invoice_first_name.trim() || !managerWizard.invoice_last_name.trim()) {
+          setError(t('Bitte hinterlegen Sie Vor- und Nachnamen für den Rechnungsempfänger.'))
+          return false
+        }
+
+        if (!managerWizard.invoice_address.trim() || !managerWizard.invoice_postal_code.trim() || !managerWizard.invoice_city.trim()) {
+          setError(t('Bitte hinterlegen Sie Adresse, PLZ und Ort für den Rechnungsempfänger.'))
+          return false
+        }
+
+        if (managerWizard.invoice_delivery_method === 'email') {
+          if (!managerWizard.invoice_email.trim()) {
+            setError(t('Bitte geben Sie die E-Mail-Adresse für den Rechnungsversand ein.'))
+            return false
+          }
+
+          const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+          if (!emailPattern.test(managerWizard.invoice_email.trim())) {
+            setError(t('Bitte geben Sie eine gültige Rechnungs-E-Mail-Adresse ein.'))
+            return false
+          }
+        }
+      }
+    }
+
+    if (step === 'appointments') {
         if (!managerWizard.inspection_date_1) {
           setError(t('Bitte geben Sie das Besichtigungsdatum 1 an.'))
           return false
@@ -1213,43 +1259,6 @@ function OrderCreatePage() {
           return false
         }
       }
-
-      if (managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date' && !managerWizard.due_date) {
-        setError(t('Bitte geben Sie ein gewünschtes Ausführungsdatum an.'))
-        return false
-      }
-
-      if (managerWizard.flow_type === 'direct_order' && managerWizard.completion_mode === 'fixed_date' && isPastDate(managerWizard.due_date)) {
-        setError(t('Bitte wählen Sie kein Datum in der Vergangenheit.'))
-        return false
-      }
-
-      if (managerWizard.flow_type === 'direct_order' && managerWizard.invoice_recipient_type === 'third_party') {
-        if (!managerWizard.invoice_first_name.trim() || !managerWizard.invoice_last_name.trim()) {
-          setError(t('Bitte hinterlegen Sie Vor- und Nachnamen für den Rechnungsempfänger.'))
-          return false
-        }
-
-        if (!managerWizard.invoice_address.trim() || !managerWizard.invoice_postal_code.trim() || !managerWizard.invoice_city.trim()) {
-          setError(t('Bitte hinterlegen Sie Adresse, PLZ und Ort für den Rechnungsempfänger.'))
-          return false
-        }
-
-        if (managerWizard.invoice_delivery_method === 'email') {
-          if (!managerWizard.invoice_email.trim()) {
-            setError(t('Bitte geben Sie die E-Mail-Adresse für den Rechnungsversand ein.'))
-            return false
-          }
-
-          const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-          if (!emailPattern.test(managerWizard.invoice_email.trim())) {
-            setError(t('Bitte geben Sie eine gültige Rechnungs-E-Mail-Adresse ein.'))
-            return false
-          }
-        }
-      }
-    }
 
     if (step === 'award') {
       if (managerWizard.flow_type === 'inspection' && !managerWizard.inspection_request_mode) {
@@ -1716,8 +1725,11 @@ function OrderCreatePage() {
   const selectedObjectLabels = managerAvailableObjects
     .filter((object) => managerWizard.selected_object_ids.includes(object.id))
     .map((object) => [getPropertyObjectLabel(object), object.postal_code, object.city].filter(Boolean).join(', '))
+  // Ids can arrive as numbers or as text, so they are compared as text: a
+  // strict match missed the companies picked for a site visit.
+  const selectedProviderIdSet = new Set((managerWizard.selected_provider_ids ?? []).map(String))
   const selectedProviderNames = serviceProviders
-    .filter((provider) => managerWizard.selected_provider_ids.includes(provider.id))
+    .filter((provider) => selectedProviderIdSet.has(String(provider.id)))
     .map((provider) => provider.company_name || provider.name || provider.email)
 
   // What the summary page shows, one card per step it came from.
@@ -1734,8 +1746,9 @@ function OrderCreatePage() {
             ? `${selectedProperty.li_number ?? selectedProperty.id} - ${selectedProperty.title ?? selectedProperty.name ?? ''}`
             : '',
         },
+        // A row like every other, rather than a chip sitting further left.
+        { label: 'Objekte', value: selectedObjectLabels.join('; ') },
       ],
-      chips: selectedObjectLabels,
     },
     {
       key: 'flow',
@@ -1764,7 +1777,7 @@ function OrderCreatePage() {
     },
     ...(managerWizard.flow_type === 'inspection' ? [{
       key: 'appointments',
-      stepKey: 'details',
+      stepKey: 'appointments',
       icon: 'ti ti-calendar-event',
       title: 'Termine & Kontakt',
       rows: [
@@ -1813,24 +1826,20 @@ function OrderCreatePage() {
       rows: [
         { label: 'Erfasste Positionen', value: String((managerWizard.quote_items ?? []).length) },
       ],
-      chips: (managerWizard.quote_items ?? [])
-        .map((item) => [item.label || item.category, item.quantity, item.unit].filter(Boolean).join(' · '))
-        .filter(Boolean),
     }] : []),
     {
       key: 'companies',
       stepKey: 'companies',
       icon: 'ti ti-building-store',
       title: 'Ausgewählte Firmen',
-      rows: selectedProviderNames.length === 0
-        ? [{
-          label: 'Firmen',
-          value: managerWizard.inspection_request_mode === 'public' || managerWizard.flow_type === 'direct_order'
+      rows: [{
+        label: 'Firmen',
+        value: selectedProviderNames.length > 0
+          ? selectedProviderNames.join(', ')
+          : managerWizard.inspection_request_mode === 'public' || managerWizard.flow_type === 'direct_order'
             ? t('Öffentliche Ausschreibung')
             : '',
-        }]
-        : [],
-      chips: selectedProviderNames,
+      }],
     },
   ]
 
@@ -1946,7 +1955,11 @@ function OrderCreatePage() {
                         <div className="vergo-wizard-card">
                           <div className="vergo-section-head">
                             <h5>{t(MANAGER_STEP_HEADINGS[currentStepKey]?.title ?? '')}</h5>
-                            <p>{t(MANAGER_STEP_HEADINGS[currentStepKey]?.helper ?? '')}</p>
+                            {/* That sentence is about site visits, so a direct order
+                                goes without it. */}
+                            {currentStepKey === 'award' && managerWizard.flow_type === 'direct_order'
+                              ? null
+                              : <p>{t(MANAGER_STEP_HEADINGS[currentStepKey]?.helper ?? '')}</p>}
                           </div>
 
                         {currentStepKey === 'property' ? (
@@ -2073,8 +2086,117 @@ function OrderCreatePage() {
                               <textarea className="form-control" rows="4" name="description" value={managerWizard.description} onChange={handleManagerWizardChange}></textarea>
                             </div>
 
-                            {managerWizard.flow_type === 'inspection' ? (
+                            {managerWizard.flow_type === 'direct_order' ? (
                               <>
+                                <div className="col-md-6">
+                                  <label className="form-label">{t('Gewünschte Fertigstellung')}</label>
+                                  <select className="form-select" name="completion_mode" value={managerWizard.completion_mode} onChange={handleManagerWizardChange}>
+                                    <option value="fixed_date">{t('Fixes Datum')}</option>
+                                    <option value="asap">{t('So schnell wie möglich')}</option>
+                                  </select>
+                                </div>
+                                {managerWizard.completion_mode === 'fixed_date' ? (
+                                  <div className="col-md-6">
+                                    <label className="form-label">{t('Fälligkeitsdatum (spätestens bis)')}</label>
+                                    <input type="date" className="form-control" name="due_date" value={managerWizard.due_date} min={TODAY_DATE} onChange={handleManagerWizardChange} />
+                                  </div>
+                                ) : null}
+                                <div className="col-12">
+                                  <div className="border rounded-3 p-3">
+                                    <div className="fw-semibold mb-3">{t('Rechnungsversand')}</div>
+                                    <div className="row g-3">
+                                      <div className="col-md-6">
+                                        <button
+                                          type="button"
+                                          className={`vergo-order-choice-card h-100 text-start${managerWizard.invoice_recipient_type === 'manager_profile' ? ' is-selected' : ''}`}
+                                          onClick={() => handleManagerWizardChange({ target: { name: 'invoice_recipient_type', value: 'manager_profile' } })}
+                                        >
+                                          <div className="fw-semibold mb-2">{t('An Immobilienverwalter senden')}</div>
+                                          <div className="text-muted small">{t('Verwendet die hinterlegten Rechnungsdaten des Immobilienverwalters.')}</div>
+                                        </button>
+                                      </div>
+                                      <div className="col-md-6">
+                                        <button
+                                          type="button"
+                                          className={`vergo-order-choice-card h-100 text-start${managerWizard.invoice_recipient_type === 'third_party' ? ' is-selected' : ''}`}
+                                          onClick={() => handleManagerWizardChange({ target: { name: 'invoice_recipient_type', value: 'third_party' } })}
+                                        >
+                                          <div className="fw-semibold mb-2">{t('An Dritte senden')}</div>
+                                          <div className="text-muted small">{t('Rechnungsadresse und Versandart für einen abweichenden Empfänger erfassen.')}</div>
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {managerWizard.invoice_recipient_type === 'third_party' ? (
+                                      <div className="row g-3 mt-1">
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Firmenname')}</label>
+                                          <input className="form-control" name="invoice_company_name" value={managerWizard.invoice_company_name} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Co.')}</label>
+                                          <input className="form-control" name="invoice_company_extra" value={managerWizard.invoice_company_extra} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Vorname')}</label>
+                                          <input className="form-control" name="invoice_first_name" value={managerWizard.invoice_first_name} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Nachname')}</label>
+                                          <input className="form-control" name="invoice_last_name" value={managerWizard.invoice_last_name} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-12">
+                                          <label className="form-label">{t('Adresse')}</label>
+                                          <input className="form-control" name="invoice_address" value={managerWizard.invoice_address} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-4">
+                                          <label className="form-label">{t('PLZ')}</label>
+                                          <input className="form-control" name="invoice_postal_code" value={managerWizard.invoice_postal_code} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-8">
+                                          <label className="form-label">{t('Ort')}</label>
+                                          <input className="form-control" name="invoice_city" value={managerWizard.invoice_city} onChange={handleManagerWizardChange} />
+                                        </div>
+                                        <div className="col-md-6">
+                                          <label className="form-label">{t('Versandart')}</label>
+                                          <select className="form-select" name="invoice_delivery_method" value={managerWizard.invoice_delivery_method} onChange={handleManagerWizardChange}>
+                                            <option value="email">{t('E-Mail')}</option>
+                                            <option value="mail">{t('Post')}</option>
+                                          </select>
+                                        </div>
+                                        {managerWizard.invoice_delivery_method === 'email' ? (
+                                          <div className="col-md-6">
+                                            <label className="form-label">{t('E-Mail für Rechnungen')}</label>
+                                            <input type="email" className="form-control" name="invoice_email" value={managerWizard.invoice_email} onChange={handleManagerWizardChange} />
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : (
+                                      <div className="alert alert-light border small mt-3 mb-0">
+                                        {t('Der ausgewählte Dienstleister erhält nach Abschluss die beim Immobilienverwalter hinterlegte Rechnungsadresse.')}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </>
+                            ) : null}
+                            {/* Images and documents belong to the work scope, for every kind of order. */}
+                            <div className="col-12">
+                              <label className="form-label">{t('Bilder und Dokumente')}</label>
+                              <input type="file" className="form-control" name="attachment" accept=".pdf,.png,.jpg,.jpeg" onChange={handleManagerWizardFileChange} />
+                              <div className="form-text">{t('Optional. Laden Sie ein PDF oder Bild bis zu 10 MB hoch.')}</div>
+                              {managerWizard.attachment?.name || existingAttachmentName ? (
+                                <div className="text-muted small mt-2">
+                                  {t('Aktueller Anhang')}: {managerWizard.attachment?.name || existingAttachmentName}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {/* Dates and the contact on site, split off the work scope. */}
+                        {currentStepKey === 'appointments' ? (
+                          <div className="row g-3">
                                 <div className="col-md-3">
                                   <label className="form-label">{t('Besichtigung Datum 1')}</label>
                                   <input type="date" className="form-control" name="inspection_date_1" value={managerWizard.inspection_date_1} min={TODAY_DATE} onChange={handleManagerWizardChange} />
@@ -2174,113 +2296,6 @@ function OrderCreatePage() {
                                   <label className="form-label">{t('E-Mail')}</label>
                                   <input className="form-control" name="onsite_email" value={managerWizard.onsite_email} onChange={handleManagerWizardChange} />
                                 </div>
-                              </>
-                            ) : null}
-
-                            {managerWizard.flow_type === 'direct_order' ? (
-                              <>
-                                <div className="col-md-6">
-                                  <label className="form-label">{t('Gewünschte Fertigstellung')}</label>
-                                  <select className="form-select" name="completion_mode" value={managerWizard.completion_mode} onChange={handleManagerWizardChange}>
-                                    <option value="fixed_date">{t('Fixes Datum')}</option>
-                                    <option value="asap">{t('So schnell wie möglich')}</option>
-                                  </select>
-                                </div>
-                                {managerWizard.completion_mode === 'fixed_date' ? (
-                                  <div className="col-md-6">
-                                    <label className="form-label">{t('Fälligkeitsdatum (spätestens bis)')}</label>
-                                    <input type="date" className="form-control" name="due_date" value={managerWizard.due_date} min={TODAY_DATE} onChange={handleManagerWizardChange} />
-                                  </div>
-                                ) : null}
-                                <div className="col-12">
-                                  <label className="form-label">{t('Anhang')}</label>
-                                  <input type="file" className="form-control" name="attachment" accept=".pdf,.png,.jpg,.jpeg" onChange={handleManagerWizardFileChange} />
-                                  <div className="form-text">{t('Optional. Laden Sie ein PDF oder Bild bis zu 10 MB hoch.')}</div>
-                                  {managerWizard.attachment?.name || existingAttachmentName ? (
-                                    <div className="text-muted small mt-2">
-                                      {t('Aktueller Anhang')}: {managerWizard.attachment?.name || existingAttachmentName}
-                                    </div>
-                                  ) : null}
-                                </div>
-                                <div className="col-12">
-                                  <div className="border rounded-3 p-3">
-                                    <div className="fw-semibold mb-3">{t('Rechnungsversand')}</div>
-                                    <div className="row g-3">
-                                      <div className="col-md-6">
-                                        <button
-                                          type="button"
-                                          className={`vergo-order-choice-card h-100 text-start${managerWizard.invoice_recipient_type === 'manager_profile' ? ' is-selected' : ''}`}
-                                          onClick={() => handleManagerWizardChange({ target: { name: 'invoice_recipient_type', value: 'manager_profile' } })}
-                                        >
-                                          <div className="fw-semibold mb-2">{t('An Immobilienverwalter senden')}</div>
-                                          <div className="text-muted small">{t('Verwendet die hinterlegten Rechnungsdaten des Immobilienverwalters.')}</div>
-                                        </button>
-                                      </div>
-                                      <div className="col-md-6">
-                                        <button
-                                          type="button"
-                                          className={`vergo-order-choice-card h-100 text-start${managerWizard.invoice_recipient_type === 'third_party' ? ' is-selected' : ''}`}
-                                          onClick={() => handleManagerWizardChange({ target: { name: 'invoice_recipient_type', value: 'third_party' } })}
-                                        >
-                                          <div className="fw-semibold mb-2">{t('An Dritte senden')}</div>
-                                          <div className="text-muted small">{t('Rechnungsadresse und Versandart für einen abweichenden Empfänger erfassen.')}</div>
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {managerWizard.invoice_recipient_type === 'third_party' ? (
-                                      <div className="row g-3 mt-1">
-                                        <div className="col-md-6">
-                                          <label className="form-label">{t('Firmenname')}</label>
-                                          <input className="form-control" name="invoice_company_name" value={managerWizard.invoice_company_name} onChange={handleManagerWizardChange} />
-                                        </div>
-                                        <div className="col-md-6">
-                                          <label className="form-label">{t('Co.')}</label>
-                                          <input className="form-control" name="invoice_company_extra" value={managerWizard.invoice_company_extra} onChange={handleManagerWizardChange} />
-                                        </div>
-                                        <div className="col-md-6">
-                                          <label className="form-label">{t('Vorname')}</label>
-                                          <input className="form-control" name="invoice_first_name" value={managerWizard.invoice_first_name} onChange={handleManagerWizardChange} />
-                                        </div>
-                                        <div className="col-md-6">
-                                          <label className="form-label">{t('Nachname')}</label>
-                                          <input className="form-control" name="invoice_last_name" value={managerWizard.invoice_last_name} onChange={handleManagerWizardChange} />
-                                        </div>
-                                        <div className="col-12">
-                                          <label className="form-label">{t('Adresse')}</label>
-                                          <input className="form-control" name="invoice_address" value={managerWizard.invoice_address} onChange={handleManagerWizardChange} />
-                                        </div>
-                                        <div className="col-md-4">
-                                          <label className="form-label">{t('PLZ')}</label>
-                                          <input className="form-control" name="invoice_postal_code" value={managerWizard.invoice_postal_code} onChange={handleManagerWizardChange} />
-                                        </div>
-                                        <div className="col-md-8">
-                                          <label className="form-label">{t('Ort')}</label>
-                                          <input className="form-control" name="invoice_city" value={managerWizard.invoice_city} onChange={handleManagerWizardChange} />
-                                        </div>
-                                        <div className="col-md-6">
-                                          <label className="form-label">{t('Versandart')}</label>
-                                          <select className="form-select" name="invoice_delivery_method" value={managerWizard.invoice_delivery_method} onChange={handleManagerWizardChange}>
-                                            <option value="email">{t('E-Mail')}</option>
-                                            <option value="mail">{t('Post')}</option>
-                                          </select>
-                                        </div>
-                                        {managerWizard.invoice_delivery_method === 'email' ? (
-                                          <div className="col-md-6">
-                                            <label className="form-label">{t('E-Mail für Rechnungen')}</label>
-                                            <input type="email" className="form-control" name="invoice_email" value={managerWizard.invoice_email} onChange={handleManagerWizardChange} />
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    ) : (
-                                      <div className="alert alert-light border small mt-3 mb-0">
-                                        {t('Der ausgewählte Dienstleister erhält nach Abschluss die beim Immobilienverwalter hinterlegte Rechnungsadresse.')}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </>
-                            ) : null}
                           </div>
                         ) : null}
 
@@ -2677,13 +2692,13 @@ function OrderCreatePage() {
                             ) : (
                               <>
                             <div className="col-lg-7">
-                              <div className="mb-3">
-                                <h6 className="fw-semibold mb-1">{t('Firmenauswahl')}</h6>
-                                <p className="text-muted small mb-0">
-                                  {requiresProviderSelection
-                                    ? `${t('Wählen Sie passende Firmen aus der Liste aus.')} ${managerWizard.selected_provider_ids.length}/${managerWizard.inspection_provider_limit}`
-                                    : t('Die Auswahl ist optional. Sie können den Auftrag auch ohne direkte Firmenzuordnung speichern.')}
-                                </p>
+                              <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+                                <h6 className="fw-semibold mb-0">{t('Firmenauswahl')}</h6>
+                                {requiresProviderSelection ? (
+                                  <span className="badge bg-light-primary text-primary rounded-pill px-3 py-2">
+                                    {managerWizard.selected_provider_ids.length} / {managerWizard.inspection_provider_limit} {t('ausgewählt')}
+                                  </span>
+                                ) : null}
                               </div>
 
                               <div className="mb-3">

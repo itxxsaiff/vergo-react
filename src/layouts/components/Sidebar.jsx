@@ -55,7 +55,7 @@ function Sidebar({ navigation, user }) {
             type="button"
             className="close-btn d-lg-none d-block cursor-pointer border-0 bg-transparent"
             id="sidebarCollapse"
-            onClick={() => closeSidebar({ persistState: true })}
+            onClick={closeSidebar}
           >
             <i className="ti ti-x fs-8 text-muted"></i>
           </button>

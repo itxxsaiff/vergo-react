@@ -279,9 +279,10 @@ function OrdersPage() {
   const [isCompanyRequestModalOpen, setIsCompanyRequestModalOpen] = useState(false)
   const [companyRequestForm, setCompanyRequestForm] = useState(initialCompanyRequestForm)
   const [isSubmittingCompanyRequest, setIsSubmittingCompanyRequest] = useState(false)
+  // Only a search: the list is already split into active, completed and
+  // cancelled sections, so a status filter on top was redundant.
   const [filters, setFilters] = useState({
     search: '',
-    status: '',
   })
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingOrderId, setEditingOrderId] = useState(null)
@@ -1037,10 +1038,7 @@ function OrdersPage() {
       .join(' ')
       .toLowerCase()
 
-    const searchMatch = !filters.search || searchValue.includes(filters.search.toLowerCase())
-    const statusMatch = !filters.status || String(order.status || '').toLowerCase() === filters.status.toLowerCase()
-
-    return searchMatch && statusMatch
+    return !filters.search || searchValue.includes(filters.search.toLowerCase())
   })
 
   // Finished work moves out of the working list into its own section. A site
@@ -1100,27 +1098,13 @@ function OrdersPage() {
           </div>
         </div>
 
-        <div className="col-xl-3 col-lg-3 col-md-12">
-          <div className="vergo-select-input-wrap">
-            <i className="ti ti-adjustments vergo-select-input-icon" aria-hidden="true"></i>
-            <select aria-label={t('Status')} className="form-select" name="status" value={filters.status} onChange={handleFilterChange}>
-              <option value="">{t('All Status')}</option>
-              <option value="draft">{t('Entwurf')}</option>
-              <option value="open">{t('Offen')}</option>
-              <option value="in_review">{t('In Prüfung')}</option>
-              <option value="awaiting_owner_approval">{t('Warten auf Eigentümerfreigabe')}</option>
-              <option value="approved">{t('Genehmigt')}</option>
-              <option value="completed">{t('Abgeschlossen')}</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="col-xl-3 col-lg-3 col-md-12">
+        {/* The buttons take the rest of the row, pushed to its right edge. */}
+        <div className="col-xl-6 col-lg-6 col-md-12">
           <div className="d-flex justify-content-lg-end gap-2 flex-nowrap vergo-action-buttons">
             <button
               type="button"
               className="btn btn-light-primary text-nowrap"
-              onClick={() => setFilters({ search: '', status: '' })}
+              onClick={() => setFilters({ search: '' })}
             >
               <i className="ti ti-refresh me-1" aria-hidden="true"></i>
               {t('Zurücksetzen')}

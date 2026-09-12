@@ -209,36 +209,12 @@ function LoginPage() {
     },
   }
 
-  // The message laid over the photo, with its own headline per step.
-  const mediaFeatures = [
-    { icon: 'ti ti-stack-2', label: t('Digital') },
-    { icon: 'ti ti-bolt', label: t('Effizient') },
-    { icon: 'ti ti-leaf', label: t('Nachhaltig') },
-  ]
   // One photo per step, and no photo used on two different screens.
   const imageByStep = {
     li: '/assets/images/ui-images/iStock-475654381.jpg',
     email: '/assets/images/ui-images/iStock-2152759035.jpg',
     otp: '/assets/images/ui-images/iStock-1353601970.jpg',
   }
-  const mediaByStep = {
-    li: {
-      headline: t('Intelligente Bewirtschaftung für lebenswerte Immobilien.'),
-      features: mediaFeatures,
-      caption: t('Gemeinsam für eine smartere Immobilienwelt.'),
-    },
-    email: {
-      headline: `${t('Mehr Transparenz.')}\n${t('Mehr Effizienz.')}\n${t('Mehr Lebensqualität.')}`,
-      features: mediaFeatures,
-      caption: t('Gemeinsam für eine smarte Immobilienwelt.'),
-    },
-    otp: {
-      headline: t('Intelligente Bewirtschaftung für lebenswerte Immobilien.'),
-      features: mediaFeatures,
-      caption: t('Gemeinsam für eine smarte Immobilienwelt.'),
-    },
-  }
-
   return (
     <AuthSplitShell
       title={t(contentByStep[step].title)}
@@ -252,7 +228,6 @@ function LoginPage() {
         : { onClick: resetLiFlow, label: t('Zurück') }}
       step={{ index: contentByStep[step].index, label: `${t('Schritt')} ${contentByStep[step].index} ${t('von')} 3` }}
       stepCount={3}
-      media={mediaByStep[step]}
     >
       {step === 'li' ? (
         <form onSubmit={handleLiSubmit}>

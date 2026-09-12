@@ -18,7 +18,7 @@
   --vergo-sidebar-line: #ebedf1;
   --vergo-shadow-soft: 0 14px 34px rgba(27, 36, 48, 0.06);
   --vergo-shell-gap: 10px;
-  --vergo-sidebar-base-width: 270px;
+  --vergo-sidebar-base-width: 280px;
   --vergo-sidebar-float-width: 232px;
   --vergo-sidebar-mini-width: 76px;
   --vergo-header-height: 60px;
@@ -4190,9 +4190,10 @@ body {
 }
 
 /* --- Photo panel and chart side by side --- */
+/* The photo and the monthly summary take half the width each. */
 .vergo-md-split {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: stretch;
 }
@@ -4218,7 +4219,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 45%, rgba(15, 23, 42, 0.62) 100%);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 15%, rgba(15, 23, 42, 0.62) 100%);
 }
 
 .vergo-md-hero-body {
@@ -4395,7 +4396,10 @@ body {
 
 .vergo-md-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto 18px;
+  /* Every row is its own grid, so the status column has a fixed width: an
+     "auto" one followed the pill's wording, and a longer status nudged the
+     Gewerk / PLZ / date columns out of line with the rows above. */
+  grid-template-columns: 44px minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 11rem 18px;
   align-items: center;
   gap: 1rem;
   padding: 0.95rem 0.25rem;
@@ -5422,4 +5426,274 @@ body {
     flex-direction: column;
     gap: 0.1rem;
   }
+}
+
+/* ==========================================================================
+   Login screens: support and language as words beside the logo, and one
+   short line on the photo
+   ========================================================================== */
+
+.vergo-auth-split-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 0 0 auto;
+}
+
+.vergo-auth-split-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--vergo-auth-muted);
+  font-size: 0.92rem;
+}
+
+.vergo-auth-split-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.1rem;
+  border: 0;
+  background: transparent;
+  color: var(--vergo-auth-ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.vergo-auth-split-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.vergo-auth-split-links-divider {
+  color: #c3cad4;
+}
+
+/* The three words, top left of the photo, one below the other. */
+.vergo-auth-split-tagline {
+  position: absolute;
+  top: clamp(1.75rem, 4vw, 3rem);
+  left: clamp(1.75rem, 4vw, 3rem);
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #ffffff;
+  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.25;
+  text-shadow: 0 2px 14px rgba(15, 26, 42, 0.45);
+}
+
+@media (max-width: 991.98px) {
+  .vergo-auth-split-tagline {
+    top: 1.25rem;
+    left: 1.25rem;
+    font-size: 1.2rem;
+  }
+}
+
+/* ==========================================================================
+   Sidebar - final word on its size and behaviour
+   Desktop: always open, full width, never collapses to icons.
+   Phone and tablet (below 1200px): hidden, slides in from the menu button,
+   closes on the dark backdrop or when a page is opened.
+   ========================================================================== */
+
+/* The icon-only mode is gone; neutralise anything that still keys off it. */
+#main-wrapper[data-layout=vertical] .left-sidebar,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar:hover {
+  width: var(--vergo-sidebar-base-width);
+}
+
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav ul .sidebar-item .hide-menu,
+#main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .left-sidebar .sidebar-nav .nav-small-cap .hide-menu {
+  display: inline;
+}
+
+/* Long labels such as "Support-Tickets" and "Liegenschaften" are shown in full. */
+.left-sidebar .sidebar-nav ul .sidebar-item .sidebar-link .hide-menu,
+.left-sidebar .sidebar-nav ul .sidebar-item .vergo-sidebar-parent-link .hide-menu {
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* The menu itself scrolls when it is taller than the screen. */
+.left-sidebar .scroll-sidebar {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 1200px) {
+  #main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .left-sidebar {
+    left: 0;
+    transform: none;
+  }
+
+  #main-wrapper[data-layout=vertical] .body-wrapper,
+  #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .body-wrapper {
+    margin-left: var(--vergo-sidebar-base-width);
+  }
+
+  #main-wrapper[data-layout=vertical][data-header-position=fixed] .app-header,
+  #main-wrapper[data-layout=vertical][data-header-position=fixed][data-sidebartype=mini-sidebar] .app-header {
+    left: var(--vergo-sidebar-base-width);
+  }
+
+  #main-wrapper .dark-transparent {
+    display: none;
+  }
+}
+
+@media (max-width: 1199.98px) {
+  /* Off the left edge until opened. transform rather than left, so no earlier
+     "left: 0" rule can pin it back on screen. */
+  #main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .left-sidebar {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1100;
+    height: 100%;
+    width: min(var(--vergo-sidebar-base-width), 86vw);
+    border-radius: 0;
+    box-shadow: none;
+    transform: translateX(-105%);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  #main-wrapper[data-layout=vertical][data-sidebar-position=fixed].show-sidebar .left-sidebar {
+    transform: translateX(0);
+    box-shadow: 18px 0 40px rgba(15, 26, 42, 0.18);
+  }
+
+  /* The page takes the full width and scrolls normally underneath. */
+  #main-wrapper[data-layout=vertical] .body-wrapper,
+  #main-wrapper[data-layout=vertical][data-sidebartype=mini-sidebar] .body-wrapper {
+    margin-left: 0;
+  }
+
+  #main-wrapper[data-layout=vertical][data-header-position=fixed] .app-header,
+  #main-wrapper[data-layout=vertical][data-header-position=fixed][data-sidebartype=full] .app-header,
+  #main-wrapper[data-layout=vertical][data-header-position=fixed][data-sidebartype=mini-sidebar] .app-header {
+    left: 0;
+  }
+
+  /* Tapping the dimmed page closes the menu again. */
+  #main-wrapper .dark-transparent {
+    display: none;
+  }
+
+  #main-wrapper.show-sidebar .dark-transparent {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background: rgba(15, 26, 42, 0.45);
+  }
+}
+
+/* The dashboard greeting outside the manager's layout, which spaces its own
+   blocks with a gap, needs its own room below. */
+.vergo-dashboard-greeting {
+  margin-bottom: 1.35rem;
+}
+
+.vergo-md > .vergo-dashboard-greeting {
+  margin-bottom: 0;
+}
+
+/* Provider dashboard: three columns, each ending in "Show all". */
+.vergo-provider-show-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  font-weight: 600;
+}
+
+.vergo-provider-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: #6b7385;
+  text-decoration: none;
+}
+
+.vergo-provider-back:hover {
+  color: var(--vergo-accent);
+}
+
+/* The template sizes every header link at 20px with a five-class rule, which
+   overrode the language chip's own size. This one is more specific, so "EN"
+   sits at about the height of the bell icon beside it. */
+.app-header .navbar .navbar-nav .nav-item .nav-link.vergo-header-language {
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.35rem 0.55rem;
+}
+
+.app-header .navbar .navbar-nav .nav-item .nav-link.vergo-header-language i {
+  font-size: 0.8rem;
+}
+
+/* The status pill sits centred in its fixed column; a long status wraps
+   inside it rather than widening the column. */
+.vergo-md-row-status {
+  justify-self: center;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+
+/* Notification panel: the template fixes every header dropdown at 360px, which
+   pushed "Mark as read" onto three lines. Wider, and never wider than the
+   screen on a phone. */
+.navbar-nav .dropdown-menu.content-dd.vergo-notification-dropdown {
+  width: min(460px, calc(100vw - 24px));
+  max-width: min(460px, calc(100vw - 24px));
+}
+
+.vergo-notification-head {
+  gap: 0.75rem;
+}
+
+.vergo-notification-head h5 {
+  white-space: nowrap;
+}
+
+.vergo-notification-head-actions {
+  flex: 0 0 auto;
+}
+
+.vergo-notification-head-actions .badge,
+.vergo-notification-head-actions .btn-link {
+  white-space: nowrap;
+}
+
+.vergo-notification-head-actions .btn-link {
+  font-size: 0.88rem;
+}
+
+/* Roomier entries, and a taller list before it starts to scroll. */
+.vergo-notification-dropdown .vergo-notification-list {
+  max-height: min(480px, 65vh);
+}
+
+.vergo-notification-dropdown .vergo-notification-item {
+  padding-top: 0.9rem !important;
+  padding-bottom: 0.9rem !important;
+  white-space: normal;
+}
+
+.vergo-notification-dropdown .vergo-notification-message {
+  line-height: 1.45;
 }

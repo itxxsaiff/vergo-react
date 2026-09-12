@@ -35,6 +35,8 @@ function SupportTicketButton({
   buttonClassName = 'nav-link nav-icon-hover border-0 bg-transparent position-relative',
   buttonStyle,
   label,
+  // The login screens show the word "Support" on its own, without the icon.
+  showIcon = true,
 }) {
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -118,6 +120,7 @@ function SupportTicketButton({
       aria-label={t('Support')}
       title={t('Support')}
     >
+      {showIcon ? (
       <svg
         className="vergo-support-icon"
         viewBox="0 0 24 24"
@@ -137,6 +140,7 @@ function SupportTicketButton({
         <path d="M2.5 15.1c1.2-.85 2.5-.6 3.5.1l2.4 1.7h3.1c.83 0 1.5.6 1.5 1.35s-.67 1.35-1.5 1.35H9.1" />
         <path d="M8.4 16.9l6.9-1.9c1.9-.53 3.6-.6 4.9.05.9.45 1 1.5.2 2.1l-5.2 3.7c-.9.64-2 .95-3.1.85l-5.2-.5c-.7-.07-1.4.1-2 .48" />
       </svg>
+      ) : null}
       {/* The sidebar shows the icon with wording next to it; the header does not. */}
       {label ? <span>{label}</span> : null}
     </button>

@@ -24,11 +24,11 @@ function AuthSplitShell({
   backLink,
   step,
   stepCount,
-  media,
   logoHref = '/type',
   imageSrc = AUTH_IMAGE,
 }) {
   const { language, changeLanguage, languages, t } = useLanguage()
+  const activeLanguage = languages.find((entry) => entry.value === language)
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
   const [languageMenuPosition, setLanguageMenuPosition] = useState({ top: 0, right: 0 })
   const languageButtonRef = useRef(null)
@@ -121,9 +121,41 @@ function AuthSplitShell({
   return (
     <div className="vergo-auth-split">
       <div className="vergo-auth-split-panel">
-        <Link to={logoHref} className="vergo-auth-split-logo" aria-label="Vergo">
-          <img src={VergoLogo} alt="Vergo" />
-        </Link>
+        <div className="vergo-auth-split-top">
+          <Link to={logoHref} className="vergo-auth-split-logo" aria-label="Vergo">
+            <img src={VergoLogo} alt="Vergo" />
+          </Link>
+
+          {/* Support and language sit with the form as plain words rather than
+              as round icons over the photo. */}
+          <div className="vergo-auth-split-links">
+            <SupportTicketButton
+              publicMode
+              asNavItem={false}
+              showIcon={false}
+              label={t('Support')}
+              buttonClassName="vergo-auth-split-link"
+            />
+            <span className="vergo-auth-split-links-divider" aria-hidden="true">|</span>
+            <button
+              ref={languageButtonRef}
+              type="button"
+              className="vergo-auth-split-link"
+              aria-expanded={isLanguageMenuOpen}
+              aria-label={t('Sprache')}
+              title={t('Sprache')}
+              onClick={() => {
+                if (!isLanguageMenuOpen) {
+                  updateLanguageMenuPosition()
+                }
+
+                setIsLanguageMenuOpen((current) => !current)
+              }}
+            >
+              <span data-no-translate="true">{activeLanguage?.shortLabel ?? language.toUpperCase()}</span>
+            </button>
+          </div>
+        </div>
 
         <div className="vergo-auth-split-content">
           {/* Going back is a link between pages but an action within a
@@ -179,57 +211,12 @@ function AuthSplitShell({
       </div>
 
       <div className="vergo-auth-split-media" style={{ backgroundImage: `url("${imageSrc}")` }}>
-        {/* Optional brand message laid over the photo. */}
-        {media ? (
-          <div className="vergo-auth-split-media-content">
-            <div className="vergo-auth-split-media-top">
-              <span className="vergo-auth-split-rule" aria-hidden="true"></span>
-              <h2>{media.headline}</h2>
-              {media.features?.length ? (
-                <ul className="vergo-auth-split-features">
-                  {media.features.map((feature) => (
-                    <li key={feature.label}>
-                      <i className={feature.icon}></i>
-                      <span>{feature.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-
-            {media.caption ? (
-              <div className="vergo-auth-split-media-caption">
-                <span className="vergo-auth-split-rule" aria-hidden="true"></span>
-                <p>{media.caption}</p>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className="vergo-auth-split-actions">
-          <SupportTicketButton
-            publicMode
-            asNavItem={false}
-            buttonClassName="vergo-auth-split-action"
-          />
-          <button
-            ref={languageButtonRef}
-            type="button"
-            className="vergo-auth-split-action"
-            aria-expanded={isLanguageMenuOpen}
-            aria-label={t('Sprache')}
-            title={t('Sprache')}
-            onClick={() => {
-              if (!isLanguageMenuOpen) {
-                updateLanguageMenuPosition()
-              }
-
-              setIsLanguageMenuOpen((current) => !current)
-            }}
-          >
-            <i className="ti ti-language"></i>
-          </button>
-        </div>
+        {/* Three words, top left of the photo - the only text on it. */}
+        <ul className="vergo-auth-split-tagline">
+          <li>{t('Digital.')}</li>
+          <li>{t('Effizient.')}</li>
+          <li>{t('Kostengünstig.')}</li>
+        </ul>
       </div>
 
       {languageMenu}

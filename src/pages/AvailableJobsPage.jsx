@@ -1122,7 +1122,7 @@ function AvailableJobsPage() {
                   <h3 className="mb-0">{openOrdersCount}</h3>
                 </div>
                 <span className="vergo-job-stat-icon bg-light text-primary">
-                  <i className="ti ti-briefcase-2"></i>
+                  <i className="ti ti-briefcase"></i>
                 </span>
               </div>
             </div>
@@ -1154,7 +1154,7 @@ function AvailableJobsPage() {
                   <h3 className="mb-0">{submittedBidsCount}</h3>
                 </div>
                 <span className="vergo-job-stat-icon bg-light text-success">
-                  <i className="ti ti-rosette-discount-check"></i>
+                  <i className="ti ti-discount-check"></i>
                 </span>
               </div>
             </div>

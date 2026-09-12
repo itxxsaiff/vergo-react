@@ -30,6 +30,7 @@ import PropertyDetailsPage from './pages/PropertyDetailsPage'
 import PropertyManagersPage from './pages/PropertyManagersPage'
 import PropertyObjectsPage from './pages/PropertyObjectsPage'
 import ProviderDashboardPage from './pages/ProviderDashboardPage'
+import ProviderJobsPage from './pages/ProviderJobsPage'
 import ProviderRatingsPage from './pages/ProviderRatingsPage'
 import PropertiesPage from './pages/PropertiesPage'
 import RateProviderPage from './pages/RateProviderPage'
@@ -214,6 +215,15 @@ function App() {
           element={
             <ProtectedRoute allowRoles={['admin', 'manager']}>
               <OrderCreatePage />
+            </ProtectedRoute>
+          }
+        />
+        {/* "Show all" from one of the three columns on the provider dashboard. */}
+        <Route
+          path="provider-jobs/:category"
+          element={
+            <ProtectedRoute allowRoles={['provider']}>
+              <ProviderJobsPage />
             </ProtectedRoute>
           }
         />

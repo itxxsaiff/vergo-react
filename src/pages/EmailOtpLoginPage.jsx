@@ -163,17 +163,6 @@ function EmailOtpLoginPage() {
     },
   }
 
-  // The message laid over the photo.
-  const mediaFeatures = [
-    { icon: 'ti ti-stack-2', label: t('Digital') },
-    { icon: 'ti ti-bolt', label: t('Effizient') },
-    { icon: 'ti ti-leaf', label: t('Nachhaltig') },
-  ]
-  const mediaContent = {
-    headline: `${t('Mehr Transparenz.')}\n${t('Mehr Effizienz.')}\n${t('Mehr Lebensqualität.')}`,
-    features: mediaFeatures,
-    caption: t('Gemeinsam für eine smarte Immobilienwelt.'),
-  }
 
   return (
     <AuthSplitShell
@@ -188,7 +177,6 @@ function EmailOtpLoginPage() {
         : { onClick: resetFlow, label: t('Zurück') }}
       step={{ index: contentByStep[step].index, label: `${t('Schritt')} ${contentByStep[step].index} ${t('von')} 2` }}
       stepCount={2}
-      media={mediaContent}
     >
       {step === 'email' ? (
         <form onSubmit={handleRequestOtp}>

@@ -16,9 +16,6 @@ function Header({ user, showSidebarToggle = true }) {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const isPropertyManager = user?.navigationRole === 'manager' || user?.role === 'manager'
-  // Owners are greeted in the header bar itself - the manager already has the
-  // same greeting on their dashboard card.
-  const showHeaderGreeting = user?.role === 'owner'
   const activeLanguage = languages.find((entry) => entry.value === language)
 
   useEffect(() => {
@@ -123,13 +120,6 @@ function Header({ user, showSidebarToggle = true }) {
           </Link>
         ) : null}
 
-        {showHeaderGreeting ? (
-          <div className="vergo-header-greeting">
-            <span className="vergo-header-greeting-title">{t('Guten Tag')}</span>
-            {user?.email ? <span className="vergo-header-greeting-mail">{user.email}</span> : null}
-          </div>
-        ) : null}
-
         <button
           className="navbar-toggler p-0 border-0"
           type="button"
@@ -165,9 +155,9 @@ function Header({ user, showSidebarToggle = true }) {
                 className="dropdown-menu content-dd dropdown-menu-end dropdown-menu-animate-up vergo-notification-dropdown"
                 aria-labelledby="vergo-notifications-dropdown"
               >
-                <div className="d-flex align-items-center justify-content-between py-3 px-4">
+                <div className="d-flex align-items-center justify-content-between py-3 px-4 vergo-notification-head">
                   <h5 className="mb-0 fs-5 fw-semibold">{t('Benachrichtigungen')}</h5>
-                  <div className="d-flex align-items-center gap-2">
+                  <div className="d-flex align-items-center gap-2 vergo-notification-head-actions">
                     <span className="badge bg-primary rounded-4 px-3 py-1 lh-sm">{unreadCount} {t('neu')}</span>
                     {unreadCount > 0 ? (
                       <button type="button" className="btn btn-link text-primary p-0 border-0" onClick={handleMarkAllRead}>

@@ -13,8 +13,8 @@
     <link id="themeColors" rel="stylesheet" href="/assets/css/style-black.min.css" />
 
     <title>Vergo</title>
-    <script type="module" crossorigin src="/assets/index-CqUvSVCC.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index--lpjrCJQ.css">
+    <script type="module" crossorigin src="/assets/index-B-GC2tIo.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DtV3Dcic.css">
   </head>
   <body data-sidebar="dark" data-layout-mode="light">
     <div id="root"></div>
@@ -24,7 +24,10 @@
     <script src="/assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <!--  core files -->
     <script src="/assets/js/app.min.js"></script>
-    <script src="/assets/js/app.init.js"></script>
+    <!-- app.init.js is deliberately not loaded. It started the template's layout
+         plugin, which on every resize forced the sidebar into its icon-only
+         mode below 1300px - on phones scrolling alone triggers that. The React
+         layout sets these attributes itself. -->
     <script src="/assets/js/app-style-switcher.js"></script>
     <script src="/assets/js/sidebarmenu.js"></script>
     <script src="/assets/js/custom.js"></script>

@@ -46,16 +46,6 @@ function UserLoginPage() {
     }
   }
 
-  // The message laid over the photo, matching the other public screens.
-  const mediaContent = {
-    headline: `${t('Mehr Transparenz.')}\n${t('Mehr Effizienz.')}\n${t('Mehr Lebensqualität.')}`,
-    features: [
-      { icon: 'ti ti-stack-2', label: t('Digital') },
-      { icon: 'ti ti-bolt', label: t('Effizient') },
-      { icon: 'ti ti-leaf', label: t('Nachhaltig') },
-    ],
-    caption: t('Gemeinsam für eine smarte Immobilienwelt.'),
-  }
 
   return (
     <AuthSplitShell
@@ -63,7 +53,6 @@ function UserLoginPage() {
       subtitle={t('Bitte melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an.')}
       logoHref="/admin-login"
       imageSrc="/assets/images/ui-images/admin-login.jpg"
-      media={mediaContent}
     >
       <form onSubmit={handleSubmit}>
         <label className="vergo-auth-label" htmlFor="vergo-admin-email">{t('E-Mail-Adresse')}</label>

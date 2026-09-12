@@ -186,12 +186,20 @@ export const navigationByRole = {
       href: '/dashboard',
     },
     {
+      // The same three groups as the dashboard columns.
       title: 'Aufträge',
       icon: 'ti ti-briefcase',
       children: [
-        { title: 'Verfügbar', href: '/available-jobs' },
-        { title: 'Abgegeben', href: '/submitted-bids' },
+        { title: 'Aktuelle Aufträge', href: '/provider-jobs/current' },
+        { title: 'Direkt zugewiesen', href: '/provider-jobs/direct' },
+        { title: 'Öffentliche Aufträge', href: '/provider-jobs/public' },
       ],
+    },
+    {
+      // Confirmed but not received, or called off by the administrator.
+      title: 'Storniert',
+      icon: 'ti ti-circle-x',
+      href: '/provider-jobs/cancelled',
     },
   ],
   manager: [

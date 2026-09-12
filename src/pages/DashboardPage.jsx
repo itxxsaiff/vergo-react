@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import DashboardGreeting from '../components/DashboardGreeting'
 import PageContent from '../components/PageContent'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { api } from '../lib/api'
 import { getOptionLabel, JOB_TYPE_OPTIONS } from '../lib/vergoOptions'
 import { formatDateDisplay } from '../lib/dateFormat'
+import { formatStatusLabel } from '../lib/tableStatus'
 
-const MANAGER_HERO_IMAGE = '/assets/images/ui-images/manager-dashboard.jpg'
+const MANAGER_HERO_IMAGE = '/assets/images/ui-images/wide-summary.jpg'
 const PRIVACY_URL = 'https://www.vergo.ch/privacy-policy'
 const IMPRINT_URL = 'https://www.vergo.ch/legal-notice'
 // Orders sitting with the manager: offers or quotes are in, and somebody
@@ -443,23 +445,26 @@ function DashboardPage({ role }) {
     },
   ]
 
-  const activeOrders = useMemo(() => orders.filter((order) => isActiveOrder(order.status)), [orders])
+  // The list at the foot of the manager dashboard: active orders, newest first.
+  // Its link leads to all orders.
+  const activeOrders = useMemo(() => orders
+    .filter((order) => isActiveOrder(order.status))
+    .sort((first, second) => (
+      (getSafeDate(getOrderPublishedAt(second))?.getTime() ?? 0)
+      - (getSafeDate(getOrderPublishedAt(first))?.getTime() ?? 0)
+    )), [orders])
   const activeOrderPreview = useMemo(() => activeOrders.slice(0, 3), [activeOrders])
   const translatedMonthLabels = MONTH_LABELS.map((month) => t(month))
 
   return (
     <PageContent
-      title={isManager ? '' : t('Vergo Dashboard')}
+      title={isManager || isOwner ? '' : t('Vergo Dashboard')}
       subtitle={isOwner || isManager ? '' : `${t('Willkommen im Dashboard als')} ${t(role)}.`}
       variant="dashboard"
     >
       {isManager ? (
         <div className="vergo-md">
-          <div className="vergo-md-greeting">
-            <span className="vergo-md-eyebrow">{t('Dashboard')}</span>
-            <h1>{t('Guten Tag')}</h1>
-            <p>{user?.email || t('(Mail Adresse)')}</p>
-          </div>
+          <DashboardGreeting />
 
           <div className="vergo-md-kpis">
             {managerKpis.map((kpi) => (
@@ -545,13 +550,13 @@ function DashboardPage({ role }) {
             <div className="vergo-md-active-head">
               <h3>{t('Aktive Aufträge')}</h3>
               <Link to="/orders" className="vergo-md-active-link">
-                <span>{formatCount(activeOrders.length)} {t('aktiv')}</span>
+                <span>{t('Alle Aufträge')}</span>
                 <i className="ti ti-chevron-right"></i>
               </Link>
             </div>
 
             {isAnalyticsLoading ? (
-              <div className="vergo-md-empty">{t('Aktive Aufträge werden geladen')}</div>
+              <div className="vergo-md-empty">{t('Aufträge werden geladen...')}</div>
             ) : activeOrders.length > 0 ? (
               <div className="vergo-md-rows">
                 {activeOrderPreview.map((order) => (
@@ -583,8 +588,11 @@ function DashboardPage({ role }) {
                       <strong>{formatDateDisplay(getOrderPublishedAt(order)) || '-'}</strong>
                     </span>
 
+                    {/* The order's real status, worded as on the Orders page -
+                        not a blanket "active". Orders waiting on a decision
+                        keep the amber highlight. */}
                     <span className={`vergo-md-row-status${isReviewOrder(order.status) ? ' is-review' : ''}`}>
-                      {isReviewOrder(order.status) ? t('Zu prüfen') : t('Aktiv')}
+                      {t(formatStatusLabel(order.status))}
                     </span>
 
                     <i className="ti ti-chevron-right vergo-md-row-arrow"></i>
@@ -608,6 +616,8 @@ function DashboardPage({ role }) {
           </div>
         </div>
       ) : null}
+
+      {isOwner ? <DashboardGreeting /> : null}
 
       {isInternalDashboard ? (
         <>
